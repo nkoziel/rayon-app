@@ -21,6 +21,7 @@ import { t as T } from '../core/i18n.js';
 import { recosFor } from '../data/recos.js';
 import { whyHTML, mergeWhy, strengthOf, signalsOf } from './why.js';
 import { addFromMedia } from './add.js';
+import { discoverChanged } from './refresh.js';
 
 /* MangaBaka items carry `mb`; their AniList `id` is often null, so keying the tally on `id`
    alone would collapse every unmatched series onto the same bucket. */
@@ -85,6 +86,7 @@ export async function runDiscover(){
   bar.classList.add("hidden");
   btn.disabled = false;
   renderDiscover();
+  discoverChanged();
   $("tabDiscN").textContent = visibleDiscover().length || "—";
 }
 
@@ -170,7 +172,7 @@ export function renderDiscover(partial, isPartial){
   [...box.querySelectorAll("[data-add]")].forEach(b=>{
     b.onclick = () => {
       const r = items.find(x=>keyOf(x)===b.dataset.add);
-      if (r && addFromMedia(r)){ renderDiscover(); }
+      if (r && addFromMedia(r)){ renderDiscover(); discoverChanged(); }
     };
   });
   [...box.querySelectorAll("[data-skip]")].forEach(b=>{
@@ -179,6 +181,7 @@ export function renderDiscover(partial, isPartial){
       DISMISSED.add(b.dataset.skip);
       saveDismissed();
       renderDiscover();
+      discoverChanged();
       $("tabDiscN").textContent = visibleDiscover().length || "—";
     };
   });

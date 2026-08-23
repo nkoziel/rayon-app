@@ -12,7 +12,7 @@ import { mihonAvailable, openInMihon } from './ui/mihon.js';
 import { addFromMedia, openAddModal } from './ui/add.js';
 import { runDiscover, renderDiscover, visibleDiscover, discoverPool, typeTest } from './ui/discover.js';
 import { signalsOf, WHY_KINDS } from './ui/why.js';
-import { onLibraryChanged } from './ui/refresh.js';
+import { onLibraryChanged, onDiscoverChanged } from './ui/refresh.js';
 import { renderShopping, shoppingRows, askPrice, defaultPrice } from './ui/shopping.js';
 import { renderLibrary, libRows, shelfTest, typeOf, updateFilterSummary, SHELVES, SORTS, TYPES, LIBTYPES, DSORTS, MEDIA_TYPE } from './ui/library.js';
 import { openSheet, closeSheet } from './ui/sheet.js';
@@ -149,6 +149,7 @@ function drawDiscoverChips(){
         null, v=>T("dsort."+v));
 }
 drawDiscoverChips();
+onDiscoverChanged(drawDiscoverChips);
 
 function togglePanel(btn, panel){
   const open = panel.classList.toggle("hidden") === false;
@@ -276,6 +277,9 @@ function afterImport(){ boot(); hydrate(renderLibrary); }
   }
   applyStatic();
   boot();
+  /* Again, now that DISCOVER exists. The top-level call runs before loadCaches(), so its chip
+     counts were all computed against an empty pool and read 0 next to a full list. */
+  drawDiscoverChips();
   hydrate();
 })();
 

@@ -21,3 +21,10 @@ export function onLibraryChanged(fn){ handler = fn; }
 
 /* Called by any UI module after it mutates the library. */
 export function libraryChanged(){ handler(); }
+
+/* The second notification, added by name rather than by growing the above into an emit():
+   the Discover pool changed, so its filter chips need recounting. Fires when a run finishes and
+   when a title is dismissed or added — anything that changes what the chips are counting. */
+let discoverHandler = () => {};
+export function onDiscoverChanged(fn){ discoverHandler = fn; }
+export function discoverChanged(){ discoverHandler(); }

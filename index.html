@@ -1535,6 +1535,14 @@ function onLibraryChanged(fn) {
 function libraryChanged() {
   handler();
 }
+let discoverHandler = () => {
+};
+function onDiscoverChanged(fn) {
+  discoverHandler = fn;
+}
+function discoverChanged() {
+  discoverHandler();
+}
 function addFromMedia(m, opts) {
   opts = opts || {};
   if (LIB.entries.some((e) => e.al && e.al === m.id || norm(e.t) === norm(m.titre))) {
@@ -2188,6 +2196,7 @@ async function runDiscover() {
   bar.classList.add("hidden");
   btn.disabled = false;
   renderDiscover();
+  discoverChanged();
   $("tabDiscN").textContent = visibleDiscover().length || "—";
 }
 function rankTally(tally) {
@@ -2262,6 +2271,7 @@ function renderDiscover(partial, isPartial) {
       const r = items.find((x) => keyOf(x) === b.dataset.add);
       if (r && addFromMedia(r)) {
         renderDiscover();
+        discoverChanged();
       }
     };
   });
@@ -2270,6 +2280,7 @@ function renderDiscover(partial, isPartial) {
       DISMISSED.add(b.dataset.skip);
       saveDismissed();
       renderDiscover();
+      discoverChanged();
       $("tabDiscN").textContent = visibleDiscover().length || "—";
     };
   });
@@ -2553,6 +2564,7 @@ function drawDiscoverChips() {
   );
 }
 drawDiscoverChips();
+onDiscoverChanged(drawDiscoverChips);
 function togglePanel(btn, panel) {
   const open = panel.classList.toggle("hidden") === false;
   btn.setAttribute("aria-expanded", String(open));
@@ -2706,6 +2718,7 @@ function afterImport() {
   }
   applyStatic();
   boot();
+  drawDiscoverChips();
   hydrate();
 })();
 $("langBtn").onclick = () => {
