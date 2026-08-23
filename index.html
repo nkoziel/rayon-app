@@ -1717,7 +1717,7 @@ function whyHTML(r) {
   if (w.tags && w.tags.length) bits.push(esc(t("reco.shares", { tags: w.tags.join(", ") })));
   if (w.sharedUsers) bits.push(esc(t("reco.sharedReaders", { n: w.sharedUsers })));
   if (!bits.length && w.tagsTotal) bits.push(esc(t("reco.sharedTags", { n: w.tagsTotal })));
-  const badge = w.both ? `<span class="owned">${esc(t("reco.both"))}</span>` : "";
+  const badge = w.both ? ` <span class="agree">${esc(t("reco.both"))}</span>` : "";
   return bits.join(" · ") + badge;
 }
 function recoRowHTML(r) {
@@ -2636,7 +2636,10 @@ dd{margin:0}
      border:1.5px solid var(--dim);background:transparent;color:var(--dim);cursor:pointer}
 .vol.own{background:var(--ink);border-color:var(--ink);color:var(--paper-hi)}
 .vol:focus-visible{outline:2px solid var(--press);outline-offset:2px}
-.remain.zero,.rmeta.zero{color:var(--press)}</style>
+.remain.zero,.rmeta.zero{color:var(--press)}
+/* les deux signaux de recommandation concordent : le signal le plus fort disponible */
+.agree{font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;
+       background:var(--press);color:var(--paper-hi);padding:1px 5px;white-space:nowrap}</style>
 </head>
 <body>
 <div class="wrap">

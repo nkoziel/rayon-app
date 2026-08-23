@@ -193,3 +193,6 @@ dd{margin:0}
 .vol.own{background:var(--ink);border-color:var(--ink);color:var(--paper-hi)}
 .vol:focus-visible{outline:2px solid var(--press);outline-offset:2px}
 .remain.zero,.rmeta.zero{color:var(--press)}
+/* les deux signaux de recommandation concordent : le signal le plus fort disponible */
+.agree{font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;
+       background:var(--press);color:var(--paper-hi);padding:1px 5px;white-space:nowrap}

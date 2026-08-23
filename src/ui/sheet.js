@@ -28,7 +28,9 @@ function whyHTML(r){
   if (w.tags && w.tags.length) bits.push(esc(T("reco.shares", { tags: w.tags.join(", ") })));
   if (w.sharedUsers) bits.push(esc(T("reco.sharedReaders", { n: w.sharedUsers })));
   if (!bits.length && w.tagsTotal) bits.push(esc(T("reco.sharedTags", { n: w.tagsTotal })));
-  const badge = w.both ? `<span class="owned">${esc(T("reco.both"))}</span>` : "";
+  /* The badge is its own element and needs a separator — without one it rendered as
+     "…ont les deuxtags et lecteurs concordent". */
+  const badge = w.both ? ` <span class="agree">${esc(T("reco.both"))}</span>` : "";
   return bits.join(" · ") + badge;
 }
 
