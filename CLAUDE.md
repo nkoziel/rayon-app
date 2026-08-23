@@ -6,8 +6,17 @@ No account, no server, everything local in the browser.
 ## Language policy
 
 **All code, comments, documentation and commit messages are in English.**
-The **user-facing UI strings stay French** — the app is a French-language product.
-Do not translate UI copy without being asked.
+
+**The UI ships in English by default, with French selectable** (decided 2026-08-23, so the
+app is easy to share). The current code still has French strings hard-coded throughout
+`index.html`; they are being migrated to a `t()` lookup — see the i18n phase in the vault
+roadmap.
+
+Consequences while that migration is in progress:
+- New UI strings go through `t()` with an English default and a French entry. Never add a new
+  hard-coded French string.
+- French must stay a *complete* locale, not a partial fallback — the owner uses the app in
+  French. A missing key falling back to English is a bug, not a graceful degradation.
 
 ## State of the code
 
