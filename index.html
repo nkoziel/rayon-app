@@ -302,16 +302,16 @@ dd{margin:0}
    ============================================================ */
 const $ = id => document.getElementById(id);
 /* Title normalisation, used for fuzzy matching only.
-   WARNING: do NOT go back to [^a-z0-9] \u2014 it stripped every non-ASCII character, so
-   "\u9032\u6483\u306e\u5de8\u4eba", "\ub098 \ud63c\uc790\ub9cc \ub808\ubca8\uc5c5" and "\u30ef\u30f3\u30d4\u30fc\u30b9" all collapsed to "" and overwrote each
-   other in META, OWNED, MDCACHE and the reco: caches. (REVIEW.md \u00a71.1)
+   WARNING: do NOT go back to [^a-z0-9] — it stripped every non-ASCII character, so
+   "進撃の巨人", "나 혼자만 레벨업" and "ワンピース" all collapsed to "" and overwrote each
+   other in META, OWNED, MDCACHE and the reco: caches. (REVIEW.md §1.1)
 
-   The .normalize("NFC") is not cosmetic: NFD decomposes \u30d4 into \u30d2 + handakuten (U+309A),
-   which is a mark and not a letter \u2014 without recomposing, [^\p{L}\p{N}] strips it and
-   "\u30ef\u30f3\u30d4\u30fc\u30b9" becomes "\u30ef\u30f3\u30d2\u30fc\u30b9". Worse, \u30d1\u30d1 collides with \u30cf\u30cf. */
+   The .normalize("NFC") is not cosmetic: NFD decomposes ピ into ヒ + handakuten (U+309A),
+   which is a mark and not a letter — without recomposing, [^\p{L}\p{N}] strips it and
+   "ワンピース" becomes "ワンヒース". Worse, パパ collides with ハハ. */
 const norm = s => (s||"").toLowerCase().normalize("NFD")
-  .replace(/[\u0300-\u036f]/g,"")            // latin diacritics only: \u00e9 -> e
-  .normalize("NFC")                  // RECOMPOSE before filtering \u2014 see above
+  .replace(/[\u0300-\u036f]/g,"")            // latin diacritics only: é -> e
+  .normalize("NFC")                  // RECOMPOSE before filtering — see above
   .replace(/[^\p{L}\p{N}]/gu,"");   // keep letters and digits of EVERY script
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const stripTags = s => String(s||"").replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g,"").trim();

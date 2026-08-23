@@ -1,8 +1,8 @@
-﻿/* Rayon â€” service worker: offline shell, fresh network for AniList */
+/* Rayon — service worker: offline shell, fresh network for AniList */
 
-/* IMPORTANT â€” bump VERSION on EVERY release.
+/* IMPORTANT — bump VERSION on EVERY release.
    Without it, browsers that already installed the app never receive fixes:
-   the SW only reinstalls when its own bytes change. See REVIEW.md Â§1.3. */
+   the SW only reinstalls when its own bytes change. See REVIEW.md §1.3. */
 const VERSION = "2026-08-23.5";
 
 const CACHE   = `rayon-shell-${VERSION}`;  // purged on every version bump
@@ -30,12 +30,12 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   const req = e.request;
-  if (req.method !== "GET") return;                     // les requÃªtes AniList sont en POST
+  if (req.method !== "GET") return;                     // AniList requests are POST
   const url = new URL(req.url);
 
   if (url.origin === location.origin) {
-    // Le document : RÃ‰SEAU D'ABORD, cache en repli.
-    // C'est ce qui permet Ã  une correction d'atteindre une app dÃ©jÃ  installÃ©e.
+    // The document: NETWORK FIRST, cache as fallback.
+    // This is what lets a fix reach an already-installed app.
     if (req.mode === "navigate" || req.destination === "document") {
       e.respondWith(
         fetch(req)
@@ -49,7 +49,7 @@ self.addEventListener("fetch", e => {
       return;
     }
 
-    // Reste de la coquille : cache d'abord (purgÃ© au changement de VERSION)
+    // Rest of the shell: cache first (purged whenever VERSION changes)
     e.respondWith(
       caches.match(req).then(hit => hit || fetch(req).then(res => {
         const copy = res.clone();
@@ -60,8 +60,8 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // Polices et couvertures : cache d'abord, rafraÃ®chi en arriÃ¨re-plan.
-  // Cache sÃ©parÃ©, non purgÃ© : une mise Ã  jour de l'app ne jette pas les couvertures.
+  // Fonts and cover images: cache first, refreshed in the background.
+  // Separate cache, never purged: an app update must not throw away the covers.
   if (/fonts\.(googleapis|gstatic)\.com|anilist\.co/.test(url.hostname)) {
     e.respondWith(
       caches.match(req).then(hit => {
