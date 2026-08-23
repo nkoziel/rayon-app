@@ -657,6 +657,89 @@ function parseBackup(bytes){
   return entries;
 }
 
+/* Merge an incoming library into the current one (REVIEW.md §1.5).
+   Match on the AniList id when both sides have one, else on the normalised title.
+   The governing rule is that progress NEVER moves backwards: importing a friend's list, or an
+   older backup, must not undo what you have read. Everything else is filled in only where the
+   current entry has nothing. */
+function mergeLibraries(current, incoming){
+  const out = current.map(e => Object.assign({}, e));
+  /* Index by BOTH id and title. A single composite key would duplicate a series whenever one
+     side carries an AniList id and the other does not — the common case, since a Mihon backup
+     only has one when AniList tracking was configured. */
+  const byAl = new Map(), byTitle = new Map();
+  out.forEach(e => {
+    if (e.al) byAl.set(String(e.al), e);
+    byTitle.set(norm(e.t), e);
+  });
+
+  let added = 0, updated = 0;
+  incoming.forEach(inc => {
+    let cur = inc.al ? byAl.get(String(inc.al)) || null : null;
+    if (!cur){
+      const t = byTitle.get(norm(inc.t));
+      /* two different AniList ids sharing a title are two different series — do not merge */
+      if (t && !(t.al && inc.al && String(t.al) !== String(inc.al))) cur = t;
+    }
+    if (!cur){
+      const copy = Object.assign({}, inc);
+      out.push(copy);
+      if (copy.al) byAl.set(String(copy.al), copy);
+      byTitle.set(norm(copy.t), copy);
+      added++;
+      return;
+    }
+    let changed = false;
+    if ((inc.r||0)  > (cur.r||0)) { cur.r  = inc.r;  changed = true; }
+    if ((inc.rv||0) > (cur.rv||0)){ cur.rv = inc.rv; changed = true; }
+    if ((inc.n||0)  > (cur.n||0))   cur.n  = inc.n;
+    if (!cur.al && inc.al){ cur.al = inc.al; byAl.set(String(inc.al), cur); changed = true; }
+    /* a manual total is an explicit user decision — adopt it only if we have none */
+    if (cur.manCh  == null && inc.manCh  != null) cur.manCh  = inc.manCh;
+    if (cur.manVol == null && inc.manVol != null) cur.manVol = inc.manVol;
+    if (inc.d && (!cur.d || inc.d > cur.d)) cur.d = inc.d;
+    if (changed) updated++;
+  });
+  return { entries: out, added, updated };
+}
+
+/* Ask before destroying a library. Three outcomes, so this cannot be a confirm(). */
+function askImportMode(incoming){
+  const cur = LIB.entries.length;
+  const p = mergeLibraries(LIB.entries, incoming);
+  return new Promise(resolve => {
+    $("modalHost").innerHTML = `
+      <div class="modal" id="impScrim">
+        <div class="modalbox" role="dialog" aria-modal="true" aria-label="Importer une bibliothèque">
+          <div class="modalhead">
+            <h3>Importer ${incoming.length} série${incoming.length>1?"s":""}</h3>
+            <p class="rmeta" style="margin:0">Ta bibliothèque en contient déjà ${cur}.</p>
+          </div>
+          <div style="padding:14px 15px;display:grid;gap:14px">
+            <div>
+              <button class="btn" id="impMerge" style="width:100%">Fusionner</button>
+              <p class="rmeta" style="margin:6px 0 0">${p.added} nouvelle${p.added>1?"s":""}, ${p.updated} mise${p.updated>1?"s":""} à jour, ${p.entries.length} au total. Ta progression n'est jamais reculée.</p>
+            </div>
+            <div>
+              <button class="btn ghost danger" id="impReplace" style="width:100%">Remplacer</button>
+              <p class="rmeta" style="margin:6px 0 0">Tes ${cur} série${cur>1?"s":""} et leur progression seront définitivement perdues.</p>
+            </div>
+            <button class="btn ghost" id="impCancel" style="width:100%">Annuler</button>
+          </div>
+        </div>
+      </div>`;
+    const done = v => { closeModal(); resolve(v); };
+    $("impMerge").onclick   = () => done("merge");
+    $("impReplace").onclick = () => done("replace");
+    $("impCancel").onclick  = () => done(null);
+    $("impScrim").onclick   = e => { if (e.target.id === "impScrim") done(null); };
+    document.addEventListener("keydown", function esc(e){
+      if (e.key === "Escape"){ document.removeEventListener("keydown", esc); done(null); }
+    });
+    $("impMerge").focus();
+  });
+}
+
 async function importFile(file){
   try{
     $("statusline").textContent = "Lecture de "+file.name+"…";
@@ -676,11 +759,31 @@ async function importFile(file){
     }
     if (!entries.length) throw new Error("Aucune série trouvée dans ce fichier.");
     entries.sort((a,b)=>(b.f-a.f)||a.t.localeCompare(b.t,"fr"));
-    LIB = { label, entries };
+
+    /* An empty library has nothing to lose, so do not nag. Otherwise this is the one gesture
+       that can wipe everything — a stray drag-and-drop reaches here directly. */
+    let msg;
+    if (!LIB.entries.length){
+      LIB = { label, entries };
+      msg = entries.length + " séries importées";
+    } else {
+      const mode = await askImportMode(entries);
+      if (!mode){ $("statusline").textContent = ""; return; }
+      if (mode === "merge"){
+        const m = mergeLibraries(LIB.entries, entries);
+        m.entries.sort((a,b)=>(b.f-a.f)||a.t.localeCompare(b.t,"fr"));
+        LIB = { label: LIB.label, entries: m.entries };
+        msg = `${m.added} ajoutée(s), ${m.updated} mise(s) à jour`;
+      } else {
+        LIB = { label, entries };
+        msg = entries.length + " séries importées";
+      }
+    }
+
     saveLib();
     DISCOVER = null; kvDel("discover:v1");   // the previous run's results describe another library
     boot();
-    toast(entries.length+" séries importées");
+    toast(msg);
     hydrate();
   }catch(e){
     $("statusline").textContent = "";

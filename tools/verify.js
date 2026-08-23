@@ -134,7 +134,62 @@ if (norm) {
   else console.log('  OK   パパ et ハハ restent distincts');
 }
 
-/* ---------- 4. migrateCaches (REVIEW.md §1.2) ----------
+/* ---------- 4. mergeLibraries (REVIEW.md §1.5) ---------- */
+section('mergeLibraries — importer ne doit jamais faire reculer une progression');
+{
+  const src = extractFunction('mergeLibraries');
+  const normStart = srcLines.findIndex(l => l.startsWith('const norm = '));
+  const normSrc = srcLines.slice(normStart, normStart + 4).join('\n');
+  if (!src) fail('mergeLibraries indisponible');
+  else {
+    const sb = { console };
+    vm.createContext(sb);
+    vm.runInContext(normSrc + '\n' + src, sb);
+    const merge = (a, b) => vm.runInContext('mergeLibraries', sb)(a, b);
+
+    const at = (list, t) => list.find(e => e.t === t);
+
+    // progress must never regress, whichever side is behind
+    let r = merge(
+      [{ t: 'One Piece', al: 30013, r: 900, rv: 0 }],
+      [{ t: 'One Piece', al: 30013, r: 500, rv: 0 }]);
+    if (at(r.entries, 'One Piece').r !== 900) fail(`progression reculee : ${at(r.entries,'One Piece').r} au lieu de 900`);
+
+    r = merge(
+      [{ t: 'One Piece', al: 30013, r: 500 }],
+      [{ t: 'One Piece', al: 30013, r: 900 }]);
+    if (at(r.entries, 'One Piece').r !== 900) fail('progression plus avancee non adoptee');
+    if (r.updated !== 1) fail(`updated=${r.updated}, attendu 1`);
+
+    // same series, one side lacking the AniList id -> matched on title, not duplicated
+    r = merge([{ t: 'Berserk', al: 0, r: 10 }], [{ t: 'Berserk', al: 0, r: 20 }]);
+    if (r.entries.length !== 1) fail(`doublon sur titre identique : ${r.entries.length} entrees`);
+
+    // CJK titles must not collapse together (depends on the §1.1 fix)
+    r = merge([], [{ t: '進撃の巨人', al: 0, r: 1 }, { t: 'ワンピース', al: 0, r: 2 }]);
+    if (r.entries.length !== 2) fail(`titres CJK fusionnes a tort : ${r.entries.length} entree(s)`);
+
+    // a genuinely new series is added
+    r = merge([{ t: 'A', al: 1, r: 5 }], [{ t: 'B', al: 2, r: 3 }]);
+    if (r.entries.length !== 2 || r.added !== 1) fail(`ajout : ${r.entries.length} entrees, added=${r.added}`);
+
+    // an absent AniList id is filled in from the incoming side
+    r = merge([{ t: 'C', al: 0, r: 1 }], [{ t: 'C', al: 99, r: 1 }]);
+    if (at(r.entries, 'C').al !== 99) fail('al non complete depuis l import');
+
+    // a manual total is adopted only when we have none
+    r = merge([{ t: 'D', al: 4, r: 1, manCh: 50 }], [{ t: 'D', al: 4, r: 1, manCh: 10 }]);
+    if (at(r.entries, 'D').manCh !== 50) fail('total manuel existant ecrase par l import');
+
+    // two different series that happen to share a title must NOT be merged
+    r = merge([{ t: 'Bleach', al: 11, r: 5 }], [{ t: 'Bleach', al: 22, r: 7 }]);
+    if (r.entries.length !== 2) fail('deux ids AniList differents fusionnes a tort');
+
+    if (failures === 0) console.log('  OK   8 regles de fusion respectees');
+  }
+}
+
+/* ---------- 5. migrateCaches (REVIEW.md §1.2) ----------
    Runs the real migration against fake storage. This cannot prove IndexedDB behaves, but it
    does prove the ordering invariant that matters: a localStorage key is only dropped once its
    value is safely stored elsewhere. Getting that wrong destroys libraries. */
