@@ -712,7 +712,13 @@ $("resetBtn").onclick = async () => {
     + `Cette action est irréversible.`)) return;
   const btn = $("resetBtn");
   btn.disabled = true; btn.textContent = "Effacement…";
-  await resetEverything();
+  const done = await resetEverything();
+  if (!done){
+    /* The delete was blocked by another tab. Reloading now would queue an open() behind a
+       delete that may never run, and wedge the database — resetEverything explains why. */
+    btn.disabled = false; btn.textContent = T("btn.reset");
+    return;
+  }
   toast(T("toast.erased"));
   /* Reload rather than reset the globals by hand: it is the only way to be sure nothing
      stale survives in memory. */

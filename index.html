@@ -941,13 +941,20 @@ async function resetEverything() {
     const d = await db().catch(() => null);
     if (d) d.close();
     forgetDb();
-    await new Promise((res) => {
+    const outcome = await new Promise((res) => {
       const req = indexedDB.deleteDatabase(DB_NAME);
-      req.onsuccess = req.onerror = req.onblocked = () => res();
-      setTimeout(res, 3e3);
+      req.onsuccess = () => res("deleted");
+      req.onerror = () => res("error");
+      req.onblocked = () => res("blocked");
     });
+    if (outcome !== "deleted") {
+      toast("Ferme les autres onglets de Rayon puis réessaie — le stockage est encore ouvert ailleurs.");
+      return false;
+    }
+    return true;
   } catch (e) {
     console.error("[rayon] reset: IndexedDB", e);
+    return false;
   }
 }
 const MIHON_PACKAGE = "app.mihon";
@@ -1726,7 +1733,12 @@ Cette action est irréversible.`
   const btn = $("resetBtn");
   btn.disabled = true;
   btn.textContent = "Effacement…";
-  await resetEverything();
+  const done = await resetEverything();
+  if (!done) {
+    btn.disabled = false;
+    btn.textContent = t("btn.reset");
+    return;
+  }
   toast(t("toast.erased"));
   setTimeout(() => location.reload(), 700);
 };

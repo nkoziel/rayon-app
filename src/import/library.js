@@ -171,6 +171,8 @@ const RAYON_LS_KEYS = ["lib:v1","meta:v2","md:v1","catalog:v1","fsprog:v1","pick
   "discover:v1","dismissed:v1","seenDFilters:v1","panel:v1","seeds:v1","unit:v1",
   "readmode:v1","rtl:v1"];
 
+/* Returns true when the database is actually gone, false when the delete was blocked.
+   The distinction matters — see the warning below. */
 export async function resetEverything(){
   /* localStorage is per-ORIGIN, and this origin also serves other projects on
      nkoziel.github.io — so remove our own keys, never localStorage.clear(). */
@@ -183,16 +185,32 @@ export async function resetEverything(){
     [...RAYON_LS_KEYS, ...reco].forEach(k => store.del(k));
   }catch(e){ console.error("[rayon] reset: localStorage", e); }
 
-  /* Close our own connection first: deleteDatabase does not fail while one is open,
-     it blocks silently and forever. Cap the wait so the UI can never be stuck here. */
+  /* DANGER, learned by wedging a real database.
+     A blocked deleteDatabase does not fail — it queues, and EVERY later open() or delete()
+     on that database queues behind it, firing no events at all. So a version of this that
+     resolved on a timeout and then reloaded could leave the store permanently unopenable:
+     the reload's open() joined a queue that would never drain.
+     Therefore: close our own connection first, and if the delete is still blocked, say so
+     and do NOT pretend it worked. */
   try{
     const d = await db().catch(() => null);
     if (d) d.close();
     forgetDb();
-    await new Promise(res => {
+
+    const outcome = await new Promise(res => {
       const req = indexedDB.deleteDatabase(DB_NAME);
-      req.onsuccess = req.onerror = req.onblocked = () => res();
-      setTimeout(res, 3000);
+      req.onsuccess = () => res("deleted");
+      req.onerror   = () => res("error");
+      req.onblocked = () => res("blocked");   // another tab still holds a connection
     });
-  }catch(e){ console.error("[rayon] reset: IndexedDB", e); }
+
+    if (outcome !== "deleted"){
+      toast("Ferme les autres onglets de Rayon puis réessaie — le stockage est encore ouvert ailleurs.");
+      return false;
+    }
+    return true;
+  }catch(e){
+    console.error("[rayon] reset: IndexedDB", e);
+    return false;
+  }
 }
