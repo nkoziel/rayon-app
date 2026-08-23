@@ -132,6 +132,22 @@ const en = {
   "reset.exportFirst":         "Export your library before erasing it?\n\n{n} series. The export is the only possible backup.",
 
   "tabs.label":                "Main sections",
+
+  "track.chapters":            "Chapters",
+  "track.volumes":             "Volumes",
+  "track.unitLabel":           "Tracking unit",
+  "track.chapterReached":      "Chapter reached",
+  "track.progress":            "Progress",
+  "track.allRead":             "All read",
+  "track.setTotal":            "Set the total",
+  "vol.gridLabel":             "Volumes owned",
+  "vol.ownedOf":               "{n} of {total} owned",
+  "vol.ownedCount":            {"one":"{n} volume owned","other":"{n} volumes owned"},
+  "vol.missingCount":          {"one":"{n} missing","other":"{n} missing"},
+  "vol.complete":              "Complete",
+  "vol.noTotal":               "No known volume count — set it to build a shopping list",
+  "vol.ownRange":              "I own 1 to N",
+  "vol.ownRangePrompt":        "Which volumes do you own? For example 1-12, or a single number.",
 };
 
 const fr = {
@@ -246,6 +262,22 @@ const fr = {
   "reset.exportFirst":         "Exporter ta bibliothèque avant de l'effacer ?\n\n{n} série(s). L'export est la seule sauvegarde possible.",
 
   "tabs.label":                "Sections principales",
+
+  "track.chapters":            "Chapitres",
+  "track.volumes":             "Tomes",
+  "track.unitLabel":           "Unité de suivi",
+  "track.chapterReached":      "Chapitre atteint",
+  "track.progress":            "Progression",
+  "track.allRead":             "Tout lu",
+  "track.setTotal":            "Saisir le total",
+  "vol.gridLabel":             "Tomes possédés",
+  "vol.ownedOf":               "{n} tomes sur {total}",
+  "vol.ownedCount":            {"one":"{n} tome possédé","other":"{n} tomes possédés"},
+  "vol.missingCount":          {"one":"{n} manquant","other":"{n} manquants"},
+  "vol.complete":              "Complète",
+  "vol.noTotal":               "Nombre de tomes inconnu — saisis-le pour avoir une liste de courses",
+  "vol.ownRange":              "Je possède 1 à N",
+  "vol.ownRangePrompt":        "Quels tomes possèdes-tu ? Par exemple 1-12, ou un seul numéro.",
 };
 
 const LOCALES = { en, fr };

@@ -103,12 +103,25 @@ describe('progressOf', () => {
     expect(p.remain).toBeNull();
   });
 
-  it('tracks volumes separately from chapters', () => {
+  it('measures the physical collection on the volume axis, not reading', () => {
+    /* Chapters track reading; volumes track what you OWN. A volume owned unread and a
+       volume read borrowed are different facts, so the two axes count different things. */
     MDCACHE[KEY] = { maxCh: 200, maxVol: 20 };
-    const p = progressOf(entry({ r: 50, rv: 5, unit: 'vol' }));
+    const p = progressOf(entry({ r: 50, ownedVol: '1-5', unit: 'vol' }));
     expect(p.read).toBe(5);
     expect(p.tot).toBe(20);
     expect(p.unit).toBe('tomes');
+  });
+
+  it('counts a sparse collection correctly', () => {
+    MDCACHE[KEY] = { maxVol: 20 };
+    expect(progressOf(entry({ ownedVol: '1-3,7,10-12', unit: 'vol' })).read).toBe(7);
+  });
+
+  it('reports nothing owned when the collection is empty', () => {
+    MDCACHE[KEY] = { maxVol: 20 };
+    const p = progressOf(entry({ r: 99, unit: 'vol' }));
+    expect(p.read).toBe(0);   // chapters read must not leak into the volume axis
   });
 });
 

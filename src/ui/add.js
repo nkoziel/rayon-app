@@ -15,7 +15,7 @@ export function addFromMedia(m, opts){
   LIB.entries.unshift({
     id: uid(), t: m.titre, a: m.auteur, s: opts.source || "Ajout manuel",
     st: m.statut || "Inconnu", g: m.genres.slice(0,6),
-    r: opts.read || 0, rv: 0, n: m.chapitres || 0, d: "",
+    r: opts.read || 0, ownedVol: "", n: m.chapitres || 0, d: "",
     ad: new Date().toISOString().slice(0,10), m: m.type === "Manhwa" ? "Webtoon" : "",
     al: m.id, f: 1, origin: "manuel"
   });

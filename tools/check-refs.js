@@ -92,7 +92,11 @@ for (const f of files) {
   const used = new Set();
   for (const m of code.matchAll(/(^|[^.\w$])([A-Za-z_$][\w$]*)\s*(?=[(.[]|\s*[=!<>+\-*/,);\]}])/g)) used.add(m[2]);
 
-  const free = [...used].filter(n => appNames.has(n) && !local.has(n));
+  /* Regex literals are not stripped above (telling `/` division from a regex needs a real
+     parser), so the `$` ending an anchored pattern like /^(\d+)$/ looks like a use of the
+     `$` helper. It is only ever called as `$("id")`, so require the parenthesis. */
+  const free = [...used].filter(n => appNames.has(n) && !local.has(n))
+    .filter(n => n !== '$' || new RegExp('\\$\\s*\\(').test(code));
   if (free.length) {
     problems += free.length;
     console.log(`\n${name}`);

@@ -187,7 +187,22 @@ const en = {
   "onboard.search": "Search for a title",
   "onboard.import": "Import a backup",
   "reset.exportFirst": "Export your library before erasing it?\n\n{n} series. The export is the only possible backup.",
-  "tabs.label": "Main sections"
+  "tabs.label": "Main sections",
+  "track.chapters": "Chapters",
+  "track.volumes": "Volumes",
+  "track.unitLabel": "Tracking unit",
+  "track.chapterReached": "Chapter reached",
+  "track.progress": "Progress",
+  "track.allRead": "All read",
+  "track.setTotal": "Set the total",
+  "vol.gridLabel": "Volumes owned",
+  "vol.ownedOf": "{n} of {total} owned",
+  "vol.ownedCount": { "one": "{n} volume owned", "other": "{n} volumes owned" },
+  "vol.missingCount": { "one": "{n} missing", "other": "{n} missing" },
+  "vol.complete": "Complete",
+  "vol.noTotal": "No known volume count — set it to build a shopping list",
+  "vol.ownRange": "I own 1 to N",
+  "vol.ownRangePrompt": "Which volumes do you own? For example 1-12, or a single number."
 };
 const fr = {
   "app.title": "Rayon",
@@ -290,7 +305,22 @@ const fr = {
   "onboard.search": "Chercher un titre",
   "onboard.import": "Importer une sauvegarde",
   "reset.exportFirst": "Exporter ta bibliothèque avant de l'effacer ?\n\n{n} série(s). L'export est la seule sauvegarde possible.",
-  "tabs.label": "Sections principales"
+  "tabs.label": "Sections principales",
+  "track.chapters": "Chapitres",
+  "track.volumes": "Tomes",
+  "track.unitLabel": "Unité de suivi",
+  "track.chapterReached": "Chapitre atteint",
+  "track.progress": "Progression",
+  "track.allRead": "Tout lu",
+  "track.setTotal": "Saisir le total",
+  "vol.gridLabel": "Tomes possédés",
+  "vol.ownedOf": "{n} tomes sur {total}",
+  "vol.ownedCount": { "one": "{n} tome possédé", "other": "{n} tomes possédés" },
+  "vol.missingCount": { "one": "{n} manquant", "other": "{n} manquants" },
+  "vol.complete": "Complète",
+  "vol.noTotal": "Nombre de tomes inconnu — saisis-le pour avoir une liste de courses",
+  "vol.ownRange": "Je possède 1 à N",
+  "vol.ownRangePrompt": "Quels tomes possèdes-tu ? Par exemple 1-12, ou un seul numéro."
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -731,6 +761,65 @@ async function mdAggregate(entry) {
   kvSet("md:v1", MDCACHE);
   return info;
 }
+function parseVolumes(str) {
+  if (!str || typeof str !== "string") return [];
+  const out = /* @__PURE__ */ new Set();
+  for (const part of str.split(",")) {
+    const p = part.trim();
+    if (!p) continue;
+    const m = p.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (m) {
+      let a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+      if (a > b) [a, b] = [b, a];
+      if (b - a > 5e3) continue;
+      for (let i = a; i <= b; i++) out.add(i);
+      continue;
+    }
+    const n = parseInt(p, 10);
+    if (Number.isFinite(n) && n > 0) out.add(n);
+  }
+  return [...out].sort((x, y) => x - y);
+}
+function formatVolumes(list) {
+  const nums = [...new Set((list || []).filter((n) => Number.isFinite(n) && n > 0))].sort((a, b) => a - b);
+  const parts = [];
+  let start2 = null, prev = null;
+  for (const n of nums) {
+    if (start2 === null) {
+      start2 = prev = n;
+      continue;
+    }
+    if (n === prev + 1) {
+      prev = n;
+      continue;
+    }
+    parts.push(start2 === prev ? String(start2) : `${start2}-${prev}`);
+    start2 = prev = n;
+  }
+  if (start2 !== null) parts.push(start2 === prev ? String(start2) : `${start2}-${prev}`);
+  return parts.join(",");
+}
+function toggleVolume(str, n) {
+  const owned = parseVolumes(str);
+  const i = owned.indexOf(n);
+  if (i === -1) owned.push(n);
+  else owned.splice(i, 1);
+  return formatVolumes(owned);
+}
+function addRange(str, from, to) {
+  const owned = parseVolumes(str);
+  const [a, b] = from <= to ? [from, to] : [to, from];
+  for (let i = a; i <= b; i++) owned.push(i);
+  return formatVolumes(owned);
+}
+const countVolumes = (str) => parseVolumes(str).length;
+function missingVolumes(str, total) {
+  if (!total || total < 1) return [];
+  const owned = new Set(parseVolumes(str));
+  const out = [];
+  for (let i = 1; i <= total; i++) if (!owned.has(i)) out.push(i);
+  return out;
+}
 function totals(d) {
   const meta = META[norm(d.t)];
   const md = MDCACHE[norm(d.t)];
@@ -789,7 +878,7 @@ function progressOf(d) {
   const t2 = totals(d);
   const unit = unitOf(d);
   if (unit === "vol") {
-    const read2 = d.rv || 0, tot2 = t2.vol || 0;
+    const read2 = countVolumes(d.ownedVol), tot2 = t2.vol || 0;
     return {
       read: read2,
       tot: tot2,
@@ -899,12 +988,13 @@ function parseBackup(bytes) {
       m: MMODE[g[14] ? Number(g[14][0].v) : 0] || "",
       al,
       f: !g[100] || Number(g[100][0].v) !== 0 ? 1 : 0,
-      rv: 0,
+      ownedVol: "",
       origin: "mihon"
     });
   });
   return entries;
 }
+const mergeOwned = (a, b) => formatVolumes([...parseVolumes(a), ...parseVolumes(b)]);
 function mergeLibraries(current2, incoming) {
   const out = current2.map((e) => Object.assign({}, e));
   const byAl = /* @__PURE__ */ new Map(), byTitle = /* @__PURE__ */ new Map();
@@ -932,9 +1022,12 @@ function mergeLibraries(current2, incoming) {
       cur.r = inc.r;
       changed = true;
     }
-    if ((inc.rv || 0) > (cur.rv || 0)) {
-      cur.rv = inc.rv;
-      changed = true;
+    if (inc.ownedVol) {
+      const merged = mergeOwned(cur.ownedVol, inc.ownedVol);
+      if (merged !== (cur.ownedVol || "")) {
+        cur.ownedVol = merged;
+        changed = true;
+      }
     }
     if ((inc.n || 0) > (cur.n || 0)) cur.n = inc.n;
     if (!cur.al && inc.al) {
@@ -1145,7 +1238,7 @@ function addFromMedia(m, opts) {
     st: m.statut || "Inconnu",
     g: m.genres.slice(0, 6),
     r: opts.read || 0,
-    rv: 0,
+    ownedVol: "",
     n: m.chapitres || 0,
     d: "",
     ad: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
@@ -1246,39 +1339,59 @@ function provenanceHTML(d) {
     lines.push(t2.ch ? `Total chapitres : <b>${t2.ch}</b> — ${SRCLABEL[t2.chSrc]}${t2.chSrc === "mangadex" && t2.at ? `, relevé le ${t2.at}` : ""}. <span>${SRCNOTE[t2.chSrc]}.</span>` : `<span class="warn">Aucun total fiable.</span> Série en cours : AniList ne publie pas de compte tant qu'elle n'est pas achevée. Vérifie sur MangaDex ou saisis le total.`);
   }
   if (md && md.id === null) lines.push(`<span class="warn">Absente de MangaDex</span> — le suivi des sorties doit être manuel.`);
-  const p = unit === "vol" ? { read: d.rv || 0, tot: t2.vol } : { read: d.r || 0, tot: t2.ch };
+  const p = unit === "vol" ? { read: countVolumes(d.ownedVol), tot: t2.vol } : { read: d.r || 0, tot: t2.ch };
   if (p.tot && p.read > p.tot) lines.push(`<span class="warn">Tu es allé plus loin que le total connu (${p.read} > ${p.tot}).</span> Les numérotations diffèrent souvent entre scantrad et édition officielle : saisis le total à la main pour trancher.`);
   return `<div class="prov">${lines.join("<br>")}</div>`;
 }
 function trackerHTML(d) {
   const unit = unitOf(d);
   const p = progressOf(d);
-  const read = unit === "vol" ? d.rv || 0 : d.r || 0;
+  const read = unit === "vol" ? countVolumes(d.ownedVol) : d.r || 0;
   const remainTxt = p.tot ? p.remain > 0 ? `Reste ${p.remain} ${p.unit}` : "À jour" : "Total inconnu";
   return `
     <div class="trackline">
-      <div class="seg" role="group" aria-label="Unité de suivi">
-        <button data-unit="ch" aria-pressed="${unit === "ch"}">Chapitres</button>
-        <button data-unit="vol" aria-pressed="${unit === "vol"}">Tomes</button>
+      <div class="seg" role="group" aria-label="${esc(t("track.unitLabel"))}">
+        <button data-unit="ch" aria-pressed="${unit === "ch"}">${esc(t("track.chapters"))}</button>
+        <button data-unit="vol" aria-pressed="${unit === "vol"}">${esc(t("track.volumes"))}</button>
       </div>
       <span class="remain ${p.remain === 0 ? "zero" : ""}">${esc(remainTxt)}</span>
     </div>
+    ${unit === "vol" ? volumeGridHTML(d, p.tot) : `
     <div class="trackline">
-      <span class="rmeta">${unit === "vol" ? "Tomes lus" : "Chapitre atteint"}</span>
+      <span class="rmeta">${esc(t("track.chapterReached"))}</span>
       <button class="btn sm ghost" id="minus">−</button>
-      <input type="number" id="readInput" value="${read}" min="0" step="${unit === "vol" ? 1 : 0.5}" aria-label="Progression">
+      <input type="number" id="readInput" value="${read}" min="0" step="0.5" aria-label="${esc(t("track.progress"))}">
       <button class="btn sm ghost" id="plus">+</button>
       <span class="rmeta">${p.tot ? "/ " + p.tot : "/ ?"}</span>
-      <button class="btn sm" id="allRead">Tout lu</button>
-    </div>
+      <button class="btn sm" id="allRead">${esc(t("track.allRead"))}</button>
+    </div>`}
     <div class="trackline">
-      <button class="btn sm ghost" id="mdCheck">Vérifier les sorties</button>
-      <button class="btn sm ghost" id="setTotal">Saisir le total</button>
-      ${unit === "vol" && MDCACHE[norm(d.t)] && MDCACHE[norm(d.t)].vols && MDCACHE[norm(d.t)].vols.length ? `<button class="btn sm ghost" id="convert">Déduire de mes chapitres</button>` : ""}
+      <button class="btn sm ghost" id="mdCheck">${esc(t("btn.checkReleases"))}</button>
+      <button class="btn sm ghost" id="setTotal">${esc(t("track.setTotal"))}</button>
+      ${unit === "vol" ? `<button class="btn sm ghost" id="ownRange">${esc(t("vol.ownRange"))}</button>` : ""}
       <button class="btn sm ghost" id="removeBtn" style="margin-left:auto">Retirer</button>
     </div>
     ${provenanceHTML(d)}`;
 }
+function volumeGridHTML(d, total) {
+  const owned = new Set(parseVolumes(d.ownedVol));
+  const n = countVolumes(d.ownedVol);
+  if (!total) {
+    return `<div class="trackline"><span class="rmeta">${esc(t("vol.noTotal"))}</span>
+      <span class="rmeta" style="margin-left:auto">${esc(t("vol.ownedCount", { n }))}</span></div>
+      ${n ? `<div class="volgrid">${[...owned].sort((a, b) => a - b).map((v) => volBtn(v, true)).join("")}</div>` : ""}`;
+  }
+  const cells = [];
+  for (let v = 1; v <= total; v++) cells.push(volBtn(v, owned.has(v)));
+  const missing = missingVolumes(d.ownedVol, total).length;
+  return `
+    <div class="trackline">
+      <span class="rmeta">${esc(t("vol.ownedOf", { n, total }))}</span>
+      <span class="rmeta ${missing ? "" : "zero"}" style="margin-left:auto">${esc(missing ? t("vol.missingCount", { n: missing }) : t("vol.complete"))}</span>
+    </div>
+    <div class="volgrid" role="group" aria-label="${esc(t("vol.gridLabel"))}">${cells.join("")}</div>`;
+}
+const volBtn = (v, owned) => `<button class="vol ${owned ? "own" : ""}" data-vol="${v}" aria-pressed="${owned}">${v}</button>`;
 function refreshTracker(d, onRemoved) {
   $("trackwrap").innerHTML = trackerHTML(d);
   wireTracker(d, onRemoved);
@@ -1288,20 +1401,39 @@ function refreshTracker(d, onRemoved) {
 function wireTracker(d, onRemoved) {
   const unit = unitOf(d);
   const setRead = (v) => {
-    const val = Math.max(0, unit === "vol" ? Math.round(v) || 0 : Math.round((+v || 0) * 2) / 2);
-    if (unit === "vol") d.rv = val;
-    else d.r = val;
+    const val = Math.max(0, Math.round((+v || 0) * 2) / 2);
+    d.r = val;
     d.d = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     refreshTracker(d, onRemoved);
   };
-  const step = unit === "vol" ? 1 : 1;
-  $("minus").onclick = () => setRead((unit === "vol" ? d.rv || 0 : d.r || 0) - step);
-  $("plus").onclick = () => setRead((unit === "vol" ? d.rv || 0 : d.r || 0) + step);
-  $("readInput").onchange = (e) => setRead(e.target.value);
-  $("allRead").onclick = () => {
-    const p = progressOf(d);
-    if (p.tot) setRead(p.tot);
-  };
+  if (unit !== "vol") {
+    $("minus").onclick = () => setRead((d.r || 0) - 1);
+    $("plus").onclick = () => setRead((d.r || 0) + 1);
+    $("readInput").onchange = (e) => setRead(e.target.value);
+    $("allRead").onclick = () => {
+      const p = progressOf(d);
+      if (p.tot) setRead(p.tot);
+    };
+  } else {
+    [...$("trackwrap").querySelectorAll("[data-vol]")].forEach((b) => {
+      b.onclick = () => {
+        d.ownedVol = toggleVolume(d.ownedVol, +b.dataset.vol);
+        refreshTracker(d, onRemoved);
+      };
+    });
+    const or = $("ownRange");
+    if (or) or.onclick = () => {
+      const v = prompt(t("vol.ownRangePrompt"), "1-" + (totals(d).vol || 1));
+      if (!v) return;
+      const m = String(v).match(/^\s*(\d+)\s*[-–]\s*(\d+)\s*$/);
+      if (m) d.ownedVol = addRange(d.ownedVol, +m[1], +m[2]);
+      else {
+        const one = parseInt(v, 10);
+        if (Number.isFinite(one) && one > 0) d.ownedVol = toggleVolume(d.ownedVol, one);
+      }
+      refreshTracker(d, onRemoved);
+    };
+  }
   [...$("trackwrap").querySelectorAll("[data-unit]")].forEach((b) => {
     b.onclick = () => {
       d.unit = b.dataset.unit;
@@ -1318,14 +1450,6 @@ function wireTracker(d, onRemoved) {
       else delete d.manCh;
     } else if (unit === "vol") d.manVol = n;
     else d.manCh = n;
-    refreshTracker(d, onRemoved);
-  };
-  const conv = $("convert");
-  if (conv) conv.onclick = () => {
-    const vols = (MDCACHE[norm(d.t)] || {}).vols || [];
-    const done = vols.filter((v) => v.last !== null && v.last <= (d.r || 0)).length;
-    d.rv = done;
-    toast(done + " tome(s) déduits de tes " + (d.r || 0) + " chapitres");
     refreshTracker(d, onRemoved);
   };
   $("mdCheck").onclick = async () => {
@@ -2266,7 +2390,15 @@ dd{margin:0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--safe-b));z-index:70;background:var(--ink);color:var(--paper-hi);font-family:'Space Mono',monospace;font-size:11.5px;padding:9px 14px;border:2px solid var(--paper-hi);max-width:90vw}
 .hidden{display:none!important}
 .foot{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding-top:26px;line-height:1.9}
-@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style>
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- tomes possedes ---------- */
+.volgrid{display:flex;flex-wrap:wrap;gap:5px;padding:8px 0}
+.vol{font-family:'Space Mono',monospace;font-size:12px;min-width:36px;height:36px;padding:0 6px;
+     border:1.5px solid var(--dim);background:transparent;color:var(--dim);cursor:pointer}
+.vol.own{background:var(--ink);border-color:var(--ink);color:var(--paper-hi)}
+.vol:focus-visible{outline:2px solid var(--press);outline-offset:2px}
+.remain.zero,.rmeta.zero{color:var(--press)}</style>
 </head>
 <body>
 <div class="wrap">

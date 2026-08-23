@@ -59,7 +59,7 @@ export function parseBackup(bytes){
       ad: g[13] ? isoDay(Number(g[13][0].v)) : "",
       m: MMODE[g[14]?Number(g[14][0].v):0] || "",
       al, f: (!g[100] || Number(g[100][0].v)!==0) ? 1 : 0,
-      rv: 0, origin: "mihon"
+      ownedVol: "", origin: "mihon"
     });
   });
   return entries;

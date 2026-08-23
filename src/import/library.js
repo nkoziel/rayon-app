@@ -4,10 +4,13 @@
 
 import { $, esc, toast, uid, closeModal } from '../core/dom.js';
 import { norm } from '../core/norm.js';
+import { parseVolumes, formatVolumes } from '../core/volumes.js';
 import { LIB, setLib, saveLib, setDiscover, META, MDCACHE, markMetaDirty, saveMeta } from '../core/state.js';
 import { store, db, forgetDb, kvDel, kvSet, DB_NAME } from '../core/store.js';
 import { t as T } from '../core/i18n.js';
 import { parseBackup } from './tachibk.js';
+
+const mergeOwned = (a, b) => formatVolumes([...parseVolumes(a), ...parseVolumes(b)]);
 
 export function mergeLibraries(current, incoming){
   const out = current.map(e => Object.assign({}, e));
@@ -38,7 +41,12 @@ export function mergeLibraries(current, incoming){
     }
     let changed = false;
     if ((inc.r||0)  > (cur.r||0)) { cur.r  = inc.r;  changed = true; }
-    if ((inc.rv||0) > (cur.rv||0)){ cur.rv = inc.rv; changed = true; }
+        /* Owned volumes merge as a UNION, not a maximum: two lists of what someone physically
+       has are additive, and the no-regression rule means never dropping one you already had. */
+    if (inc.ownedVol){
+      const merged = mergeOwned(cur.ownedVol, inc.ownedVol);
+      if (merged !== (cur.ownedVol || "")){ cur.ownedVol = merged; changed = true; }
+    }
     if ((inc.n||0)  > (cur.n||0))   cur.n  = inc.n;
     if (!cur.al && inc.al){ cur.al = inc.al; byAl.set(String(inc.al), cur); changed = true; }
     /* a manual total is an explicit user decision — adopt it only if we have none */

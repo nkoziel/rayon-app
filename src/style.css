@@ -185,3 +185,11 @@ dd{margin:0}
 .hidden{display:none!important}
 .foot{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding-top:26px;line-height:1.9}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- tomes possedes ---------- */
+.volgrid{display:flex;flex-wrap:wrap;gap:5px;padding:8px 0}
+.vol{font-family:'Space Mono',monospace;font-size:12px;min-width:36px;height:36px;padding:0 6px;
+     border:1.5px solid var(--dim);background:transparent;color:var(--dim);cursor:pointer}
+.vol.own{background:var(--ink);border-color:var(--ink);color:var(--paper-hi)}
+.vol:focus-visible{outline:2px solid var(--press);outline-offset:2px}
+.remain.zero,.rmeta.zero{color:var(--press)}

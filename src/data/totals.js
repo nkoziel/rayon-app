@@ -5,6 +5,7 @@
 
 import { norm } from '../core/norm.js';
 import { META, MDCACHE, state } from '../core/state.js';
+import { countVolumes } from '../core/volumes.js';
 
 /* ---- totaux effectifs, avec provenance ----
    priorité : saisie manuelle > MangaDex > AniList (séries terminées) > chapitres de la source Mihon */
@@ -46,7 +47,9 @@ export function progressOf(d){
   const t = totals(d);
   const unit = unitOf(d);
   if (unit === "vol"){
-    const read = d.rv || 0, tot = t.vol || 0;
+        /* On the volume axis "read" means OWNED: chapters track reading, volumes track the
+       physical collection. See core/volumes.js. */
+    const read = countVolumes(d.ownedVol), tot = t.vol || 0;
     return {read, tot, pct: tot ? Math.min(100, Math.round(read/tot*100)) : 0,
             label: read + (tot ? "/"+tot : "") + " tomes", remain: tot ? tot-read : null, unit:"tomes", t};
   }
