@@ -28,7 +28,8 @@ tools/                  build publish step and the verification harness
 ```bash
 npm install
 npm run build      # src/ -> one self-contained index.html at the root
-npm run verify     # syntax + case tables, zero dependencies
+npm test           # Vitest
+npm run verify     # tests + module structure + the published bundle
 npm run dev        # Vite dev server
 ```
 

@@ -108,19 +108,25 @@ is how every behavioural check on this app has been done.
 ## Verifying a change
 
 ```
-node tools/verify.js
+npm run verify      # all three of the below
+npm test            # Vitest — behaviour
+npm run structure   # free variables + import cycles
+node tools/verify.js   # module syntax + the published bundle
 ```
 
-Zero dependencies. Parses `src/main.js` so syntax errors surface without a browser, checks the
-published root `index.html` is still self-contained and not stale, then extracts the pure
-functions **by source** and runs case tables against them — so it tests the code that actually
-ships, not a copy that can drift.
+**`npm test`** — 55 tests over `norm` (§1.1, including the `パパ`/`ハハ` collision the NFC step
+prevents), the totals provenance cascade, the merge rules (§1.5, "progress never moves
+backwards"), and i18n completeness. Add a case whenever you fix a logic bug; that is how these
+stopped being able to regress silently.
 
-Run it after every edit, and add a row whenever you fix a logic bug: that is how §1.1 and the
-merge rules stopped being able to regress. When the module split lands, these tables move to
-Vitest unchanged.
+**`npm run structure`** — Rollup resolves imports but says nothing about a name that used to be
+a global and is now neither declared nor imported: it bundles fine and throws at runtime. Also
+fails on import cycles.
 
-Anything involving the DOM, storage or the network still needs a real browser.
+**`node tools/verify.js`** — the part Vitest cannot see: every module parses, and the published
+root `index.html` is still one self-contained file that has not fallen behind `src/`.
+
+Anything involving real storage, the network, or the service worker still needs a browser.
 
 ## Environment
 
