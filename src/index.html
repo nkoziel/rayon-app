@@ -77,15 +77,25 @@
     <div id="discoverBox"></div>
   </section>
 
-  <p class="foot">
-    Recommandations : API AniList, votées par les lecteurs.<br>
-    Tout est stocké dans ce navigateur. Aucune donnée n'est envoyée ailleurs.
-  </p>
+  <!-- ===== onglet courses ===== -->
+  <section id="viewShop" class="hidden" role="tabpanel" aria-labelledby="tabShop">
+    <div class="stats" id="shopStats"></div>
+    <div class="toolbar">
+      <div class="row">
+        <button class="btn ghost" id="shopPrice" data-i18n="shop.setPrice">Prix par tome</button>
+        <span class="rmeta" id="shopPriceNote"></span>
+      </div>
+    </div>
+    <div id="shopResults"></div>
+  </section>
+
+  <p class="foot" id="foot"></p>
 </div>
 
 <nav class="tabs" role="tablist" data-i18n-attr="aria-label:tabs.label">
   <button class="tab" role="tab" id="tabLibrary" aria-selected="true" aria-controls="viewLibrary"><span class="badge" id="tabLibN">0</span><span data-i18n="tab.library">Bibliothèque</span></button>
   <button class="tab" role="tab" id="tabDiscover" aria-selected="false" aria-controls="viewDiscover"><span class="badge" id="tabDiscN">—</span><span data-i18n="tab.discover">Découvrir</span></button>
+  <button class="tab" role="tab" id="tabShop" aria-selected="false" aria-controls="viewShop"><span class="badge" id="tabShopN">0</span><span data-i18n="tab.shopping">Courses</span></button>
   <!-- NOT a tab: it opens a modal and controls no panel. Announcing it as one made the whole
        widget wrong for assistive technology (REVIEW.md §6). -->
   <button class="tab" id="tabAdd"><span class="badge">＋</span><span data-i18n="tab.add">Ajouter</span></button>

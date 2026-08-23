@@ -12,6 +12,7 @@ import { mihonAvailable, openInMihon } from './ui/mihon.js';
 import { addFromMedia, openAddModal } from './ui/add.js';
 import { runDiscover, renderDiscover, visibleDiscover } from './ui/discover.js';
 import { onLibraryChanged } from './ui/refresh.js';
+import { renderShopping, shoppingRows, askPrice, defaultPrice } from './ui/shopping.js';
 import { renderLibrary, libRows, shelfTest, typeOf, updateFilterSummary, SHELVES, SORTS, TYPES, LIBTYPES, DSORTS, MEDIA_TYPE } from './ui/library.js';
 import { openSheet, closeSheet } from './ui/sheet.js';
 import { progressOf } from './data/totals.js';
@@ -40,9 +41,12 @@ function setTab(tab){
   state.tab = tab;
   $("viewLibrary").classList.toggle("hidden", tab !== "library");
   $("viewDiscover").classList.toggle("hidden", tab !== "discover");
+  $("viewShop").classList.toggle("hidden", tab !== "shopping");
   $("tabLibrary").setAttribute("aria-selected", String(tab === "library"));
   $("tabDiscover").setAttribute("aria-selected", String(tab === "discover"));
+  $("tabShop").setAttribute("aria-selected", String(tab === "shopping"));
   if (tab === "library") renderLibrary();
+  if (tab === "shopping") renderShopping();
   if (tab === "discover"){
     renderDiscover();
     if (!store.get("seenDFilters:v1")){
@@ -64,6 +68,15 @@ function onboardHTML(){
       <button class="btn ghost" id="onbImport">${esc(T("onboard.import"))}</button>
     </div>
   </div>`;
+}
+
+/* The old footer claimed "no data is sent anywhere", which was never true: the page pulls
+   its fonts from Google, so Google sees every visitor's IP (REVIEW.md §5). Say so until the
+   fonts are self-hosted. It also credited AniList for recommendations that now come from
+   MangaBaka, whose licence requires the credit anyway. */
+function renderFoot(){
+  const f = $("foot");
+  if (f) f.innerHTML = esc(T("foot.sources")) + "<br>" + esc(T("foot.privacy"));
 }
 
 function boot(){
@@ -105,7 +118,10 @@ function boot(){
   };
   draw();
   renderLibrary();
+  renderFoot();
   if (DISCOVER) $("tabDiscN").textContent = visibleDiscover().length || "—";
+  const shop = shoppingRows();
+  $("tabShopN").textContent = shop.cont.reduce((s, r) => s + r.missing.length, 0) || "—";
 }
 
 const SEEDCHOICES = [12, 25, 50, "all"];
@@ -192,6 +208,8 @@ $("mdBatch").onclick = async () => {
 $("file").addEventListener("change", e=>{ if (e.target.files && e.target.files[0]) importFile(e.target.files[0], afterImport); e.target.value = ""; });
 $("tabLibrary").onclick = () => setTab("library");
 $("tabDiscover").onclick = () => setTab("discover");
+$("tabShop").onclick = () => setTab("shopping");
+$("shopPrice").onclick = () => { if (askPrice()) renderShopping(); };
 $("tabAdd").onclick = () => openAddModal("");
 $("runDiscover").onclick = runDiscover;
 $("resetDismissed").onclick = () => { DISMISSED.clear(); saveDismissed(); renderDiscover(); toast("Titres écartés réaffichés"); };
@@ -221,7 +239,10 @@ $("unitBtn").textContent = T(state.unit === "ch" ? "unit.chapters" : "unit.volum
    import layer does not have to reach back up into the UI. */
 /* One place says what "the library changed" means; ui/refresh.js lets any module ask for it
    without importing this file. */
-onLibraryChanged(() => { boot(); });
+onLibraryChanged(() => {
+  boot();
+  if (state.tab === "shopping") renderShopping();
+});
 
 function afterImport(){ boot(); hydrate(renderLibrary); }
 

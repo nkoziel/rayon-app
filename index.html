@@ -223,7 +223,27 @@ const en = {
   "reco.seeOn": "See {title}",
   "reco.allOwned": "All {n} titles recommended here are already yours.",
   "reco.add": "Add to my list",
-  "reco.added": "Added"
+  "reco.added": "Added",
+  "tab.shopping": "Shopping",
+  "shop.setPrice": "Price per volume",
+  "shop.pricePrompt": "Roughly how much does one volume cost? Used only to estimate.",
+  "shop.priceSet": "Estimating at {price} per volume",
+  "shop.continue": "Continue a collection",
+  "shop.continueNote": "{cost} to complete everything",
+  "shop.start": "Start a collection",
+  "shop.startNote": "read, owned in print: nothing yet",
+  "shop.missing": "Missing:",
+  "shop.ownedOf": "{n} of {total} volumes",
+  "shop.gap": { "one": "{n} gap", "other": "{n} gaps" },
+  "shop.volumesOwned": "Volumes owned",
+  "shop.volumesMissing": "Missing",
+  "shop.complete": "Complete",
+  "shop.estimatedValue": "Estimated value",
+  "shop.completeNote": { "one": "{n} collection is complete.", "other": "{n} collections are complete." },
+  "shop.empty": "No series is tracked by volume yet. Switch a series to Volumes in its sheet to start a collection.",
+  "shop.priceNote": "Estimated at {price} per volume — no database publishes prices.",
+  "foot.sources": "Records and recommendations: MangaBaka (CC BY-NC-SA 4.0), AniList, MangaDex.",
+  "foot.privacy": "Your library stays in this browser. Only the titles you look up are sent, plus your IP to Google Fonts."
 };
 const fr = {
   "app.title": "Rayon",
@@ -362,7 +382,27 @@ const fr = {
   "reco.seeOn": "Voir {title}",
   "reco.allOwned": "Les {n} titres recommandés ici sont déjà chez toi.",
   "reco.add": "Ajouter à ma liste",
-  "reco.added": "Ajouté"
+  "reco.added": "Ajouté",
+  "tab.shopping": "Courses",
+  "shop.setPrice": "Prix par tome",
+  "shop.pricePrompt": "Combien coûte un tome environ ? Sert uniquement à estimer.",
+  "shop.priceSet": "Estimation à {price} par tome",
+  "shop.continue": "Continuer une collection",
+  "shop.continueNote": "{cost} pour tout compléter",
+  "shop.start": "Commencer une collection",
+  "shop.startNote": "lus, possédés en papier : rien encore",
+  "shop.missing": "Manquants :",
+  "shop.ownedOf": "{n} tomes sur {total}",
+  "shop.gap": { "one": "{n} trou", "other": "{n} trous" },
+  "shop.volumesOwned": "Tomes possédés",
+  "shop.volumesMissing": "Manquants",
+  "shop.complete": "Complètes",
+  "shop.estimatedValue": "Valeur estimée",
+  "shop.completeNote": { "one": "{n} collection est complète.", "other": "{n} collections sont complètes." },
+  "shop.empty": "Aucune série n'est suivie en tomes. Bascule une série sur Tomes dans sa fiche pour commencer une collection.",
+  "shop.priceNote": "Estimé à {price} par tome — aucune base ne publie les prix.",
+  "foot.sources": "Fiches et recommandations : MangaBaka (CC BY-NC-SA 4.0), AniList, MangaDex.",
+  "foot.privacy": "Ta bibliothèque reste dans ce navigateur. Seuls les titres consultés sont envoyés, et ton IP à Google Fonts."
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -995,6 +1035,15 @@ function missingVolumes(str, total) {
   for (let i = 1; i <= total; i++) if (!owned.has(i)) out.push(i);
   return out;
 }
+function gapVolumes(str) {
+  const owned = parseVolumes(str);
+  if (owned.length < 2) return [];
+  const have = new Set(owned);
+  const out = [];
+  for (let i = owned[0]; i < owned[owned.length - 1]; i++) if (!have.has(i)) out.push(i);
+  return out;
+}
+const isComplete = (str, total) => !!total && missingVolumes(str, total).length === 0;
 const ORDER = ["mihon", "import", "mangadex", "anilist", "mangabaka", "manuel"];
 const rank = (src) => ORDER.indexOf(src);
 function totals(d) {
@@ -2080,6 +2129,110 @@ function renderDiscover(partial, isPartial) {
     };
   });
 }
+const PRICE_KEY = "volprice:v1";
+const defaultPrice = () => Number(store.get(PRICE_KEY)) || 7.5;
+const setDefaultPrice = (v) => store.set(PRICE_KEY, Number(v) || 7.5);
+const priceOf = (d) => Number(d.volPrice) || defaultPrice();
+function inShopping(d) {
+  if (d.shop === true) return true;
+  if (d.shop === false) return false;
+  return unitOf(d) === "vol";
+}
+function shoppingRow(d) {
+  const tot = totals(d).vol;
+  const owned = countVolumes(d.ownedVol);
+  const missing = missingVolumes(d.ownedVol, tot);
+  const gaps = gapVolumes(d.ownedVol);
+  return {
+    d,
+    tot,
+    owned,
+    missing,
+    gaps,
+    complete: isComplete(d.ownedVol, tot),
+    cost: missing.length * priceOf(d),
+    /* how close to finished, for sorting: a series missing one volume comes first */
+    ratio: tot ? owned / tot : 0
+  };
+}
+function shoppingRows() {
+  const rows = LIB.entries.filter(inShopping).map(shoppingRow);
+  const cont = rows.filter((r) => r.owned > 0 && r.missing.length > 0).sort((a, b) => b.ratio - a.ratio);
+  const start2 = rows.filter((r) => r.owned === 0).sort((a, b) => (b.d.r || 0) - (a.d.r || 0));
+  const done = rows.filter((r) => r.complete);
+  return { rows, cont, start: start2, done };
+}
+const money = (n) => new Intl.NumberFormat(locale(), { style: "currency", currency: "EUR" }).format(n);
+function runs(list) {
+  const out = [];
+  let a = null, prev = null;
+  for (const n of list) {
+    if (a === null) {
+      a = prev = n;
+      continue;
+    }
+    if (n === prev + 1) {
+      prev = n;
+      continue;
+    }
+    out.push(a === prev ? String(a) : `${a}-${prev}`);
+    a = prev = n;
+  }
+  if (a !== null) out.push(a === prev ? String(a) : `${a}-${prev}`);
+  return out;
+}
+function rowHTML(r, showGaps) {
+  const meta = recordOf(r.d);
+  const cover = meta && meta.cover;
+  const gapBadge = showGaps && r.gaps.length ? `<span class="agree">${esc(t("shop.gap", { n: r.gaps.length }))}</span>` : "";
+  return `<button class="shoprow" data-id="${esc(r.d.id)}">
+    ${cover ? `<img src="${esc(cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
+    <span class="si">
+      <span class="st">${esc(r.d.t)}</span>
+      <span class="sm">${r.tot ? esc(t("shop.ownedOf", { n: r.owned, total: r.tot })) : esc(t("vol.noTotal"))}</span>
+      ${r.missing.length ? `<span class="sv">${esc(t("shop.missing"))} ${esc(runs(r.missing).join(", "))}</span>` : ""}
+    </span>
+    <span class="sc">${r.missing.length ? esc(money(r.cost)) : ""}${gapBadge}</span>
+  </button>`;
+}
+function renderShopping() {
+  const box = $("shopResults");
+  if (!box) return;
+  const note = $("shopPriceNote");
+  if (note) note.textContent = t("shop.priceNote", { price: money(defaultPrice()) });
+  const { rows, cont, start: start2, done } = shoppingRows();
+  if (!rows.length) {
+    box.innerHTML = `<p class="note">${esc(t("shop.empty"))}</p>`;
+    $("shopStats").innerHTML = "";
+    return;
+  }
+  const ownedTotal = rows.reduce((s, r) => s + r.owned, 0);
+  const missingTotal = rows.reduce((s, r) => s + r.missing.length, 0);
+  const costTotal = rows.reduce((s, r) => s + r.cost, 0);
+  const valueOwned = rows.reduce((s, r) => s + r.owned * priceOf(r.d), 0);
+  $("shopStats").innerHTML = [
+    [ownedTotal, t("shop.volumesOwned")],
+    [done.length + "/" + rows.length, t("shop.complete")],
+    [missingTotal, t("shop.volumesMissing")],
+    [money(valueOwned), t("shop.estimatedValue")]
+  ].map(([v, l]) => `<div class="stat"><b>${esc(String(v))}</b><small>${esc(l)}</small></div>`).join("");
+  const section = (title, list, note2, showGaps) => !list.length ? "" : `
+    <div class="seclabel"><span>${esc(title)}</span><span class="rmeta">${esc(note2)}</span></div>
+    ${list.map((r) => rowHTML(r, showGaps)).join("")}`;
+  box.innerHTML = section(t("shop.continue"), cont, t("shop.continueNote", { cost: money(costTotal) }), true) + section(t("shop.start"), start2, t("shop.startNote"), false) + (done.length ? `<p class="note">${esc(t("shop.completeNote", { n: done.length }))}</p>` : "");
+  [...box.querySelectorAll("[data-id]")].forEach((el) => {
+    el.onclick = () => openSheet(LIB.entries.find((x) => x.id === el.dataset.id));
+  });
+}
+function askPrice() {
+  const v = prompt(t("shop.pricePrompt"), String(defaultPrice()));
+  if (v === null) return false;
+  const n = parseFloat(String(v).replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0) return false;
+  setDefaultPrice(n);
+  toast(t("shop.priceSet", { price: money(n) }));
+  return true;
+}
 function chips(el, values, currentVal, onPick, counts, label = (v) => v) {
   el.innerHTML = values.map((v) => {
     const n = counts ? counts(v) : null;
@@ -2091,9 +2244,12 @@ function setTab(tab) {
   state.tab = tab;
   $("viewLibrary").classList.toggle("hidden", tab !== "library");
   $("viewDiscover").classList.toggle("hidden", tab !== "discover");
+  $("viewShop").classList.toggle("hidden", tab !== "shopping");
   $("tabLibrary").setAttribute("aria-selected", String(tab === "library"));
   $("tabDiscover").setAttribute("aria-selected", String(tab === "discover"));
+  $("tabShop").setAttribute("aria-selected", String(tab === "shopping"));
   if (tab === "library") renderLibrary();
+  if (tab === "shopping") renderShopping();
   if (tab === "discover") {
     renderDiscover();
     if (!store.get("seenDFilters:v1")) {
@@ -2114,6 +2270,10 @@ function onboardHTML() {
       <button class="btn ghost" id="onbImport">${esc(t("onboard.import"))}</button>
     </div>
   </div>`;
+}
+function renderFoot() {
+  const f = $("foot");
+  if (f) f.innerHTML = esc(t("foot.sources")) + "<br>" + esc(t("foot.privacy"));
 }
 function boot() {
   const lib = LIB.entries;
@@ -2188,7 +2348,10 @@ function boot() {
   };
   draw();
   renderLibrary();
+  renderFoot();
   if (DISCOVER) $("tabDiscN").textContent = visibleDiscover().length || "—";
+  const shop = shoppingRows();
+  $("tabShopN").textContent = shop.cont.reduce((s, r) => s + r.missing.length, 0) || "—";
 }
 const SEEDCHOICES = [12, 25, 50, "all"];
 function drawDiscoverChips() {
@@ -2318,6 +2481,10 @@ $("file").addEventListener("change", (e) => {
 });
 $("tabLibrary").onclick = () => setTab("library");
 $("tabDiscover").onclick = () => setTab("discover");
+$("tabShop").onclick = () => setTab("shopping");
+$("shopPrice").onclick = () => {
+  if (askPrice()) renderShopping();
+};
 $("tabAdd").onclick = () => openAddModal("");
 $("runDiscover").onclick = runDiscover;
 $("resetDismissed").onclick = () => {
@@ -2358,6 +2525,7 @@ state.unit = store.get("unit:v1") || "ch";
 $("unitBtn").textContent = t(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
 onLibraryChanged(() => {
   boot();
+  if (state.tab === "shopping") renderShopping();
 });
 function afterImport() {
   boot();
@@ -2480,7 +2648,7 @@ button{font:inherit}
 .stat small{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 
 /* ---------- navigation basse ---------- */
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(3,1fr);
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);
   background:var(--ink);border-top:3px solid var(--ink);padding-bottom:var(--safe-b)}
 .tab{background:var(--ink);color:#a5a294;border:0;padding:12px 4px;font-family:'Space Mono',monospace;font-size:10.5px;
   letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-right:1px solid #2c2a22}
@@ -2639,7 +2807,22 @@ dd{margin:0}
 .remain.zero,.rmeta.zero{color:var(--press)}
 /* les deux signaux de recommandation concordent : le signal le plus fort disponible */
 .agree{font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;
-       background:var(--press);color:var(--paper-hi);padding:1px 5px;white-space:nowrap}</style>
+       background:var(--press);color:var(--paper-hi);padding:1px 5px;white-space:nowrap}
+
+/* ---------- courses ---------- */
+/* Read at arm's length in a shop: big row, big type, no hover-only information. */
+.shoprow{display:flex;gap:11px;align-items:center;width:100%;text-align:left;background:none;
+  border:0;border-bottom:1.5px solid rgba(22,21,15,.25);padding:10px 4px;cursor:pointer;color:inherit}
+.shoprow:hover{background:var(--paper-hi)}
+.shoprow img,.shoprow .ph{width:42px;height:60px;object-fit:cover;border:1.5px solid var(--ink);
+  flex:0 0 auto;background:var(--paper-hi)}
+.shoprow .si{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px}
+.shoprow .st{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:15px;line-height:1.05;
+  overflow-wrap:anywhere}
+.shoprow .sm{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim)}
+.shoprow .sv{font-family:'Space Mono',monospace;font-size:13px;color:var(--vermilion)}
+.shoprow .sc{margin-left:auto;flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;
+  gap:4px;font-family:'Space Mono',monospace;font-size:12px}</style>
 </head>
 <body>
 <div class="wrap">
@@ -2702,15 +2885,25 @@ dd{margin:0}
     <div id="discoverBox"></div>
   </section>
 
-  <p class="foot">
-    Recommandations : API AniList, votées par les lecteurs.<br>
-    Tout est stocké dans ce navigateur. Aucune donnée n'est envoyée ailleurs.
-  </p>
+  <!-- ===== onglet courses ===== -->
+  <section id="viewShop" class="hidden" role="tabpanel" aria-labelledby="tabShop">
+    <div class="stats" id="shopStats"></div>
+    <div class="toolbar">
+      <div class="row">
+        <button class="btn ghost" id="shopPrice" data-i18n="shop.setPrice">Prix par tome</button>
+        <span class="rmeta" id="shopPriceNote"></span>
+      </div>
+    </div>
+    <div id="shopResults"></div>
+  </section>
+
+  <p class="foot" id="foot"></p>
 </div>
 
 <nav class="tabs" role="tablist" data-i18n-attr="aria-label:tabs.label">
   <button class="tab" role="tab" id="tabLibrary" aria-selected="true" aria-controls="viewLibrary"><span class="badge" id="tabLibN">0</span><span data-i18n="tab.library">Bibliothèque</span></button>
   <button class="tab" role="tab" id="tabDiscover" aria-selected="false" aria-controls="viewDiscover"><span class="badge" id="tabDiscN">—</span><span data-i18n="tab.discover">Découvrir</span></button>
+  <button class="tab" role="tab" id="tabShop" aria-selected="false" aria-controls="viewShop"><span class="badge" id="tabShopN">0</span><span data-i18n="tab.shopping">Courses</span></button>
   <!-- NOT a tab: it opens a modal and controls no panel. Announcing it as one made the whole
        widget wrong for assistive technology (REVIEW.md §6). -->
   <button class="tab" id="tabAdd"><span class="badge">＋</span><span data-i18n="tab.add">Ajouter</span></button>
