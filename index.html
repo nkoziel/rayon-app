@@ -1960,7 +1960,17 @@ loadRootHandle().then(h => { if (h){ FSROOT = h; if (CATALOG) renderLibrary(); }
 
 /* service worker : uniquement en http(s) */
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
-  navigator.serviceWorker.register("sw.js").catch(()=>{});
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+    /* prévenir quand une nouvelle version est prête (cf. REVUE.md §1.3) */
+    reg.addEventListener("updatefound", () => {
+      const sw = reg.installing;
+      if (!sw) return;
+      sw.addEventListener("statechange", () => {
+        if (sw.state === "installed" && navigator.serviceWorker.controller)
+          toast("Nouvelle version — recharge la page");
+      });
+    });
+  }).catch(()=>{});
 }
 </script>
 </body>
