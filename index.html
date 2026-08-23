@@ -1554,6 +1554,16 @@ function wireTracker(d){
       $("trackwrap").appendChild(box);
     }
   };
+  /* removeBtn lives inside trackerHTML(), so refreshTracker() destroys and recreates it on
+     every counter change. It MUST be wired here and not in openSheet(), otherwise it is dead
+     after the first "+" click. See REVIEW.md §1.4. Same goes for any button added to
+     trackerHTML() later. */
+  $("removeBtn").onclick = () => {
+    if (!confirm("Retirer « "+d.t+" » de ta bibliothèque ?")) return;
+    LIB.entries = LIB.entries.filter(x=>x.id !== d.id);
+    saveLib(); closeSheet(); boot();
+    toast("Série retirée");
+  };
 }
 
 function openSheet(d){
@@ -1605,13 +1615,7 @@ function openSheet(d){
     const el = $("desc"); el.classList.toggle("clamped");
     moreBtn.textContent = el.classList.contains("clamped") ? "Lire la suite" : "Replier";
   };
-  wireTracker(d);
-  $("removeBtn").onclick = () => {
-    if (!confirm("Retirer « "+d.t+" » de ta bibliothèque ?")) return;
-    LIB.entries = LIB.entries.filter(x=>x.id !== d.id);
-    saveLib(); closeSheet(); boot();
-    toast("Série retirée");
-  };
+  wireTracker(d);   // also wires removeBtn — see REVIEW.md §1.4
   renderChapters(d);
   fillRecos(d, false);
 }
