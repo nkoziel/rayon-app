@@ -156,6 +156,7 @@ section('mergeLibraries — importer ne doit jamais faire reculer une progressio
   const normStart = srcLines.findIndex(l => declares(l, 'norm'));
   /* drop the `export ` prefix: this is evaluated as a script, not a module */
   const normSrc = srcLines.slice(normStart, normStart + 4).join('\n').replace(/^export\s+/, '');
+  const before = failures;   // judge this block on its own, not on earlier failures
   if (!src) fail('mergeLibraries indisponible');
   else {
     const sb = { console };
@@ -201,7 +202,7 @@ section('mergeLibraries — importer ne doit jamais faire reculer une progressio
     r = merge([{ t: 'Bleach', al: 11, r: 5 }], [{ t: 'Bleach', al: 22, r: 7 }]);
     if (r.entries.length !== 2) fail('deux ids AniList differents fusionnes a tort');
 
-    if (failures === 0) console.log('  OK   8 regles de fusion respectees');
+    if (failures === before) console.log('  OK   8 regles de fusion respectees');
   }
 }
 
@@ -215,7 +216,7 @@ function extractFunction(name) {
   let end = start;
   while (end < srcLines.length && srcLines[end] !== '}') end++;
   if (end >= srcLines.length) { fail(`fin de ${name} introuvable`); return null; }
-  return srcLines.slice(start, end + 1).join('\n');
+  return srcLines.slice(start, end + 1).join('\n').replace(/^export\s+/, '');
 }
 
 function makeSandbox(kvShouldFail) {
@@ -243,9 +244,11 @@ const constLine = (name) => {
   const i = srcLines.findIndex(l => declares(l, name));
   return i === -1 ? null : srcLines[i];
 };
-const cacheKeysSrc = [constLine('CACHE_KEYS'), constLine('DEAD_KEYS')].filter(Boolean).join('\n');
+const cacheKeysSrc = [constLine('CACHE_KEYS'), constLine('DEAD_KEYS')]
+  .filter(Boolean).map(l => l.replace(/^export\s+/, '')).join('\n');
 
 section('migrateCaches — les caches quittent localStorage sans perte');
+const mBefore = failures;
 if (!migrateSrc || !cacheKeysSrc) fail('migrateCaches ou CACHE_KEYS indisponible');
 else {
   /* nominal case: everything moves across, preferences stay put */
@@ -266,7 +269,7 @@ else {
     });
     if (!sb.ls.has('lib:v1')) fail('lib:v1 a ete deplace alors qu il doit rester');
     if (!sb.ls.has('unit:v1')) fail('unit:v1 (preference) a ete deplace');
-    if (failures === 0) console.log('  OK   caches deplaces, bibliotheque et preferences intactes');
+    if (failures === mBefore) console.log('  OK   caches deplaces, bibliotheque et preferences intactes');
 
     /* failure case: if the new store refuses the write, the original must survive */
     const sb2 = makeSandbox(true);

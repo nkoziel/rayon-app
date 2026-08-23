@@ -3,29 +3,11 @@
 import { $, esc, stripTags, sleep, uid, toast } from './core/dom.js';
 import { norm } from './core/norm.js';
 import { store, db, forgetDb, kvGet, kvSet, kvDel, DB_NAME } from './core/store.js';
-
-/* ============================================================
-   État
-   ============================================================ */
-/* LIB stays in localStorage: small, precious, and needed synchronously at boot.
-   META and the other caches are loaded from IndexedDB by loadCaches() before first render. */
-let LIB = store.get("lib:v1") || { label:"Bibliothèque locale", entries:[] };
-let META = {};
-let DISMISSED = new Set(store.get("dismissed:v1") || []);
-let metaDirty = false;
-
-const saveLib = () => { const ok = store.set("lib:v1", LIB); refreshOwned(); return ok; };
-const saveMeta = () => { if (metaDirty){ metaDirty = false; kvSet("meta:v2", META); } };
-setInterval(saveMeta, 4000);
-window.addEventListener("beforeunload", saveMeta);
-
-let OWNED = new Set();
-function refreshOwned(){
-  OWNED = new Set();
-  LIB.entries.forEach(e=>{ OWNED.add(norm(e.t)); if (e.al) OWNED.add("id:"+e.al); });
-}
-refreshOwned();
-const isOwned = r => OWNED.has("id:"+r.id) || OWNED.has(norm(r.titre)) || OWNED.has(norm(r.romaji));
+import {
+  LIB, setLib, saveLib, META, MDCACHE, DISCOVER, setDiscover, markMetaDirty, saveMeta,
+  OWNED, refreshOwned, isOwned, DISMISSED, saveDismissed, state,
+  migrateCaches, loadCaches, CACHE_KEYS, DEAD_KEYS
+} from './core/state.js';
 
 /* ============================================================
    API AniList
@@ -89,7 +71,7 @@ async function searchBatch(entries){
     const m = shapeMedia(data["m"+i]);
     META[norm(e.t)] = m || {missing:true};
     if (m && !e.al) e.al = m.id;
-    metaDirty = true;
+    markMetaDirty();
   });
   saveLib();
 }
@@ -109,7 +91,7 @@ async function hydrate(){
         const data = await gql(BY_IDS_Q,{ids:chunk.map(d=>d.al)});
         const byId = {}; (data.Page.media||[]).forEach(m=>{ byId[m.id]=shapeMedia(m); });
         chunk.forEach(d=>{ META[norm(d.t)] = byId[d.al] || {missing:true}; });
-        metaDirty = true;
+        markMetaDirty();
       }catch(e){ $("statusline").textContent = e.message; await sleep(2500); }
       done += chunk.length; renderLibrary(); await sleep(700);
     }
@@ -155,7 +137,6 @@ async function loadRecos(entry, force){
    MangaDex : structure en tomes et dernier chapitre publié
    ============================================================ */
 const MD = "https://api.mangadex.org";
-let MDCACHE = {};
 
 async function mdGet(path){
   let res;
@@ -414,7 +395,7 @@ async function importFile(file){
        that can wipe everything — a stray drag-and-drop reaches here directly. */
     let msg;
     if (!LIB.entries.length){
-      LIB = { label, entries };
+      setLib({ label, entries });
       msg = entries.length + " séries importées";
     } else {
       const mode = await askImportMode(entries);
@@ -422,16 +403,16 @@ async function importFile(file){
       if (mode === "merge"){
         const m = mergeLibraries(LIB.entries, entries);
         m.entries.sort((a,b)=>(b.f-a.f)||a.t.localeCompare(b.t,"fr"));
-        LIB = { label: LIB.label, entries: m.entries };
+        setLib({ label: LIB.label, entries: m.entries });
         msg = `${m.added} ajoutée(s), ${m.updated} mise(s) à jour`;
       } else {
-        LIB = { label, entries };
+        setLib({ label, entries });
         msg = entries.length + " séries importées";
       }
     }
 
     saveLib();
-    DISCOVER = null; kvDel("discover:v1");   // the previous run's results describe another library
+    setDiscover(null); kvDel("discover:v1");   // the previous run's results describe another library
     boot();
     toast(msg);
     hydrate();
@@ -490,7 +471,7 @@ function openInMihon(title){
 async function purgeSeriesData(entry){
   const key = norm(entry.t);
   try{
-    if (META[key]){ delete META[key]; metaDirty = true; saveMeta(); }
+    if (META[key]){ delete META[key]; markMetaDirty(); saveMeta(); }
     if (MDCACHE[key]){ delete MDCACHE[key]; kvSet("md:v1", MDCACHE); }
     await kvDel("reco:v3:"+key);
   }catch(e){ console.error("[rayon] purge: caches", e); }
@@ -546,7 +527,7 @@ function addFromMedia(m, opts){
     ad: new Date().toISOString().slice(0,10), m: m.type === "Manhwa" ? "Webtoon" : "",
     al: m.id, f: 1, origin: "manuel"
   });
-  META[norm(m.titre)] = m; metaDirty = true;
+  META[norm(m.titre)] = m; markMetaDirty();
   saveLib(); saveMeta(); boot();
   toast("« "+m.titre+" » ajouté");
   return true;
@@ -610,9 +591,6 @@ function closeModal(){ $("modalHost").innerHTML = ""; }
 /* ============================================================
    Bibliothèque : filtres et rendu
    ============================================================ */
-const state = { q:"", shelf:"Tout", source:"Toutes", sort:"Lecture récente", view:"grid",
-                hideOwned:true, tab:"library", type:"Tous", dsort:"Pertinence", unit:"ch",
-                libType:"Tous types", seeds:25 };
 const SHELVES = ["Tout","En cours","À rattraper","Terminées","Jamais ouvertes","Ajoutées à la main"];
 const SORTS = ["Lecture récente","Titre","Chapitres lus","Progression","Note AniList"];
 const TYPES = ["Tous","Manga","Manhwa","Manhua"];
@@ -955,7 +933,6 @@ document.addEventListener("keydown", e => {
 /* ============================================================
    Découvrir
    ============================================================ */
-let DISCOVER = null;
 
 async function runDiscover(){
   const btn = $("runDiscover");
@@ -1005,7 +982,7 @@ async function runDiscover(){
     await sleep(700);
   }
   bar.firstElementChild.style.width = "100%";
-  DISCOVER = { at: new Date().toISOString(), seeds: seeds.map(s=>s.t), items: rankTally(tally).slice(0,60) };
+  setDiscover({ at: new Date().toISOString(), seeds: seeds.map(s=>s.t), items: rankTally(tally).slice(0,60) });
   kvSet("discover:v1", DISCOVER);
   $("discoverStatus").textContent = failures ? `Terminé · ${failures} série(s) sans fiche AniList` : "Analyse terminée";
   bar.classList.add("hidden");
@@ -1084,7 +1061,7 @@ function renderDiscover(partial, isPartial){
   [...box.querySelectorAll("[data-skip]")].forEach(b=>{
     b.onclick = () => {
       DISMISSED.add(+b.dataset.skip);
-      store.set("dismissed:v1", [...DISMISSED]);
+      saveDismissed();
       renderDiscover();
       $("tabDiscN").textContent = visibleDiscover().length || "—";
     };
@@ -1262,7 +1239,7 @@ $("tabLibrary").onclick = () => setTab("library");
 $("tabDiscover").onclick = () => setTab("discover");
 $("tabAdd").onclick = () => openAddModal("");
 $("runDiscover").onclick = runDiscover;
-$("resetDismissed").onclick = () => { DISMISSED = new Set(); store.set("dismissed:v1", []); renderDiscover(); toast("Titres écartés réaffichés"); };
+$("resetDismissed").onclick = () => { DISMISSED.clear(); saveDismissed(); renderDiscover(); toast("Titres écartés réaffichés"); };
 
 /* glisser-déposer */
 const dz = $("dropzone");
@@ -1281,42 +1258,6 @@ state.seeds = store.get("seeds:v1") || 25;
 drawDiscoverChips();
 state.unit = store.get("unit:v1") || "ch";
 $("unitBtn").textContent = state.unit === "ch" ? "Suivi : chapitres" : "Suivi : tomes";
-
-/* Move the big caches out of localStorage, once, then load them (REVIEW.md §1.2).
-   Existing installs carry several MB here; copying them across also frees the quota that was
-   silently blocking library saves. Anything that fails is only a cache — it regenerates. */
-const CACHE_KEYS = ["meta:v2", "md:v1", "discover:v1"];
-
-/* Keys from the removed reader. Never migrated, only dropped: nothing reads them any more. */
-const DEAD_KEYS = ["catalog:v1", "fsprog:v1", "pickindex:v1"];
-
-async function migrateCaches(){
-  for (const k of CACHE_KEYS){
-    const legacy = store.get(k);
-    if (legacy === null || legacy === undefined) continue;
-    if (await kvSet(k, legacy)) store.del(k);   // only drop the original once it is safely stored
-  }
-  for (const k of DEAD_KEYS){ store.del(k); await kvDel(k); }
-  /* per-series recommendation caches: the bulk of the overflow */
-  let recoKeys = [];
-  try{
-    for (let i = 0; i < localStorage.length; i++){
-      const k = localStorage.key(i);
-      if (k && k.startsWith("reco:v3:")) recoKeys.push(k);
-    }
-  }catch(e){}
-  for (const k of recoKeys){
-    const v = store.get(k);
-    if (v && await kvSet(k, v)) store.del(k);
-    else store.del(k);        // unreadable or unstorable: drop it, it rebuilds on demand
-  }
-}
-
-async function loadCaches(){
-  META     = (await kvGet("meta:v2"))     || {};
-  MDCACHE  = (await kvGet("md:v1"))       || {};
-  DISCOVER = (await kvGet("discover:v1")) || null;
-}
 
 (async function start(){
   /* The app must render even if IndexedDB never answers. It can hang rather than fail —
@@ -1360,7 +1301,7 @@ window.__rayon = {
   norm, mergeLibraries, resetEverything, purgeSeriesData,
   store, kvGet, kvSet, kvDel, db,
   importFile, saveLib, boot, hydrate, openSheet,
-  get LIB()      { return LIB; },   set LIB(v) { LIB = v; },
+  get LIB()      { return LIB; },   set LIB(v) { setLib(v); },
   get META()     { return META; },
   get MDCACHE()  { return MDCACHE; },
   get DISCOVER() { return DISCOVER; },

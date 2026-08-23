@@ -164,14 +164,25 @@ async function kvDel(k) {
   }
 }
 let LIB = store.get("lib:v1") || { label: "Bibliothèque locale", entries: [] };
-let META = {};
-let DISMISSED = new Set(store.get("dismissed:v1") || []);
-let metaDirty = false;
+function setLib(v) {
+  LIB = v;
+  refreshOwned();
+}
 const saveLib = () => {
   const ok = store.set("lib:v1", LIB);
   refreshOwned();
   return ok;
 };
+let META = {};
+let MDCACHE = {};
+let DISCOVER = null;
+function setDiscover(v) {
+  DISCOVER = v;
+}
+let metaDirty = false;
+function markMetaDirty() {
+  metaDirty = true;
+}
 const saveMeta = () => {
   if (metaDirty) {
     metaDirty = false;
@@ -190,6 +201,53 @@ function refreshOwned() {
 }
 refreshOwned();
 const isOwned = (r) => OWNED.has("id:" + r.id) || OWNED.has(norm(r.titre)) || OWNED.has(norm(r.romaji));
+const DISMISSED = new Set(store.get("dismissed:v1") || []);
+const saveDismissed = () => store.set("dismissed:v1", [...DISMISSED]);
+const state = {
+  q: "",
+  shelf: "Tout",
+  source: "Toutes",
+  sort: "Lecture récente",
+  view: "grid",
+  hideOwned: true,
+  tab: "library",
+  type: "Tous",
+  dsort: "Pertinence",
+  unit: "ch",
+  libType: "Tous types",
+  seeds: 25
+};
+const CACHE_KEYS = ["meta:v2", "md:v1", "discover:v1"];
+const DEAD_KEYS = ["catalog:v1", "fsprog:v1", "pickindex:v1"];
+async function migrateCaches() {
+  for (const k of CACHE_KEYS) {
+    const legacy = store.get(k);
+    if (legacy === null || legacy === void 0) continue;
+    if (await kvSet(k, legacy)) store.del(k);
+  }
+  for (const k of DEAD_KEYS) {
+    store.del(k);
+    await kvDel(k);
+  }
+  let recoKeys = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("reco:v3:")) recoKeys.push(k);
+    }
+  } catch (e) {
+  }
+  for (const k of recoKeys) {
+    const v = store.get(k);
+    if (v && await kvSet(k, v)) store.del(k);
+    else store.del(k);
+  }
+}
+async function loadCaches() {
+  META = await kvGet("meta:v2") || {};
+  MDCACHE = await kvGet("md:v1") || {};
+  DISCOVER = await kvGet("discover:v1") || null;
+}
 const API = "https://graphql.anilist.co";
 let cooldownUntil = 0;
 async function gql(query, variables) {
@@ -256,7 +314,7 @@ async function searchBatch(entries) {
     const m = shapeMedia(data["m" + i]);
     META[norm(e.t)] = m || { missing: true };
     if (m && !e.al) e.al = m.id;
-    metaDirty = true;
+    markMetaDirty();
   });
   saveLib();
 }
@@ -281,7 +339,7 @@ async function hydrate() {
         chunk.forEach((d) => {
           META[norm(d.t)] = byId[d.al] || { missing: true };
         });
-        metaDirty = true;
+        markMetaDirty();
       } catch (e) {
         $("statusline").textContent = e.message;
         await sleep(2500);
@@ -346,7 +404,6 @@ async function loadRecos(entry, force) {
   return payload;
 }
 const MD = "https://api.mangadex.org";
-let MDCACHE = {};
 async function mdGet(path) {
   let res;
   try {
@@ -660,7 +717,7 @@ async function importFile(file) {
     entries.sort((a, b) => b.f - a.f || a.t.localeCompare(b.t, "fr"));
     let msg;
     if (!LIB.entries.length) {
-      LIB = { label, entries };
+      setLib({ label, entries });
       msg = entries.length + " séries importées";
     } else {
       const mode = await askImportMode(entries);
@@ -671,15 +728,15 @@ async function importFile(file) {
       if (mode === "merge") {
         const m = mergeLibraries(LIB.entries, entries);
         m.entries.sort((a, b) => b.f - a.f || a.t.localeCompare(b.t, "fr"));
-        LIB = { label: LIB.label, entries: m.entries };
+        setLib({ label: LIB.label, entries: m.entries });
         msg = `${m.added} ajoutée(s), ${m.updated} mise(s) à jour`;
       } else {
-        LIB = { label, entries };
+        setLib({ label, entries });
         msg = entries.length + " séries importées";
       }
     }
     saveLib();
-    DISCOVER = null;
+    setDiscover(null);
     kvDel("discover:v1");
     boot();
     toast(msg);
@@ -711,7 +768,7 @@ async function purgeSeriesData(entry) {
   try {
     if (META[key]) {
       delete META[key];
-      metaDirty = true;
+      markMetaDirty();
       saveMeta();
     }
     if (MDCACHE[key]) {
@@ -787,7 +844,7 @@ function addFromMedia(m, opts) {
     origin: "manuel"
   });
   META[norm(m.titre)] = m;
-  metaDirty = true;
+  markMetaDirty();
   saveLib();
   saveMeta();
   boot();
@@ -866,20 +923,6 @@ function openAddModal(prefill) {
 function closeModal() {
   $("modalHost").innerHTML = "";
 }
-const state = {
-  q: "",
-  shelf: "Tout",
-  source: "Toutes",
-  sort: "Lecture récente",
-  view: "grid",
-  hideOwned: true,
-  tab: "library",
-  type: "Tous",
-  dsort: "Pertinence",
-  unit: "ch",
-  libType: "Tous types",
-  seeds: 25
-};
 const SHELVES = ["Tout", "En cours", "À rattraper", "Terminées", "Jamais ouvertes", "Ajoutées à la main"];
 const SORTS = ["Lecture récente", "Titre", "Chapitres lus", "Progression", "Note AniList"];
 const TYPES = ["Tous", "Manga", "Manhwa", "Manhua"];
@@ -1232,7 +1275,6 @@ document.addEventListener("keydown", (e) => {
   if ($("modalHost").innerHTML) closeModal();
   else if (current) closeSheet();
 });
-let DISCOVER = null;
 async function runDiscover() {
   const btn = $("runDiscover");
   const bar = $("discoverProgress");
@@ -1287,7 +1329,7 @@ async function runDiscover() {
     await sleep(700);
   }
   bar.firstElementChild.style.width = "100%";
-  DISCOVER = { at: (/* @__PURE__ */ new Date()).toISOString(), seeds: seeds.map((s) => s.t), items: rankTally(tally).slice(0, 60) };
+  setDiscover({ at: (/* @__PURE__ */ new Date()).toISOString(), seeds: seeds.map((s) => s.t), items: rankTally(tally).slice(0, 60) });
   kvSet("discover:v1", DISCOVER);
   $("discoverStatus").textContent = failures ? `Terminé · ${failures} série(s) sans fiche AniList` : "Analyse terminée";
   bar.classList.add("hidden");
@@ -1364,7 +1406,7 @@ function renderDiscover(partial, isPartial) {
   [...box.querySelectorAll("[data-skip]")].forEach((b) => {
     b.onclick = () => {
       DISMISSED.add(+b.dataset.skip);
-      store.set("dismissed:v1", [...DISMISSED]);
+      saveDismissed();
       renderDiscover();
       $("tabDiscN").textContent = visibleDiscover().length || "—";
     };
@@ -1590,8 +1632,8 @@ $("tabDiscover").onclick = () => setTab("discover");
 $("tabAdd").onclick = () => openAddModal();
 $("runDiscover").onclick = runDiscover;
 $("resetDismissed").onclick = () => {
-  DISMISSED = /* @__PURE__ */ new Set();
-  store.set("dismissed:v1", []);
+  DISMISSED.clear();
+  saveDismissed();
   renderDiscover();
   toast("Titres écartés réaffichés");
 };
@@ -1624,37 +1666,6 @@ state.seeds = store.get("seeds:v1") || 25;
 drawDiscoverChips();
 state.unit = store.get("unit:v1") || "ch";
 $("unitBtn").textContent = state.unit === "ch" ? "Suivi : chapitres" : "Suivi : tomes";
-const CACHE_KEYS = ["meta:v2", "md:v1", "discover:v1"];
-const DEAD_KEYS = ["catalog:v1", "fsprog:v1", "pickindex:v1"];
-async function migrateCaches() {
-  for (const k of CACHE_KEYS) {
-    const legacy = store.get(k);
-    if (legacy === null || legacy === void 0) continue;
-    if (await kvSet(k, legacy)) store.del(k);
-  }
-  for (const k of DEAD_KEYS) {
-    store.del(k);
-    await kvDel(k);
-  }
-  let recoKeys = [];
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith("reco:v3:")) recoKeys.push(k);
-    }
-  } catch (e) {
-  }
-  for (const k of recoKeys) {
-    const v = store.get(k);
-    if (v && await kvSet(k, v)) store.del(k);
-    else store.del(k);
-  }
-}
-async function loadCaches() {
-  META = await kvGet("meta:v2") || {};
-  MDCACHE = await kvGet("md:v1") || {};
-  DISCOVER = await kvGet("discover:v1") || null;
-}
 (async function start() {
   const CACHE_INIT_TIMEOUT = 5e3;
   try {
@@ -1703,7 +1714,7 @@ window.__rayon = {
     return LIB;
   },
   set LIB(v) {
-    LIB = v;
+    setLib(v);
   },
   get META() {
     return META;
