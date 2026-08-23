@@ -1,13 +1,12 @@
-/* Rayon — service worker : coquille hors ligne, réseau frais pour AniList */
+/* Rayon — service worker: offline shell, fresh network for AniList */
 
-/* IMPORTANT — incrémenter VERSION à CHAQUE livraison.
-   Sans cela, les navigateurs qui ont déjà installé l'app ne reçoivent jamais
-   les corrections : le SW ne se réinstalle que si ses propres octets changent.
-   Voir REVUE.md §1.3. */
+/* IMPORTANT — bump VERSION on EVERY release.
+   Without it, browsers that already installed the app never receive fixes:
+   the SW only reinstalls when its own bytes change. See REVIEW.md §1.3. */
 const VERSION = "2026-08-23.2";
 
-const CACHE   = `rayon-shell-${VERSION}`;  // purgé à chaque version
-const RUNTIME = "rayon-runtime";           // polices + couvertures, conservé entre versions
+const CACHE   = `rayon-shell-${VERSION}`;  // purged on every version bump
+const RUNTIME = "rayon-runtime";           // fonts + covers, kept across versions
 
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest",

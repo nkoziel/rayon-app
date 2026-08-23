@@ -1,61 +1,75 @@
-# Rayon — notes pour Claude Code
+# Rayon — notes for Claude Code
 
-Application web autonome (PWA) : bibliothèque manga, suivi de progression, recommandations
-croisées AniList. Aucun compte, aucun serveur, tout en local dans le navigateur.
+Standalone PWA: manga library, progress tracking, AniList cross-referenced recommendations.
+No account, no server, everything local in the browser.
 
-## État du code
+## Language policy
 
-`index.html` est un **fichier unique de ~1 970 lignes** (HTML + CSS + JS inline). Le découpage
-en modules est prévu (voir `REVUE.md` §8 phase 1) mais **pas encore fait**. Tant qu'il ne l'est
-pas : éditer par `Edit` ciblé, jamais par réécriture complète du fichier.
+**All code, comments, documentation and commit messages are in English.**
+The **user-facing UI strings stay French** — the app is a French-language product.
+Do not translate UI copy without being asked.
 
-## Invariants — à ne pas violer
+## State of the code
 
-1. **La clé d'une entrée est `al` (id AniList) sinon `id` (uid). JAMAIS le titre.**
-   Le code actuel indexe par `norm(titre)`, ce qui est le bug bloquant §1.1 de `REVUE.md` :
-   `norm()` supprime tout caractère non-ASCII, donc tout titre japonais/coréen/chinois donne
-   `""` et toutes ces séries s'écrasent entre elles. Toute nouvelle indexation doit utiliser
-   la clé stable, et `norm()` ne doit servir qu'au rapprochement flou (dossier Mihon).
+`index.html` is a **single ~1,970-line file** (HTML + CSS + inline JS). The module split is
+planned (see `REVIEW.md` §8 phase 1) but **not done yet**. Until it is: edit with targeted
+`Edit` calls, never rewrite the whole file.
 
-2. **`store.set()` renvoie `false` en cas de quota plein — cette valeur doit être lue.**
-   Aujourd'hui elle est ignorée partout, donc la bibliothèque cesse silencieusement d'être
-   sauvegardée dès ~5 Mo (§1.2).
+## Invariants — do not violate
 
-3. **`CACHE` dans `sw.js` doit être incrémenté à chaque livraison**, sinon aucun utilisateur
-   installé ne recevra jamais la mise à jour (§1.3). `index.html` devrait passer en
-   network-first.
+1. **An entry's key is `al` (AniList id) otherwise `id` (uid). NEVER the title.**
+   The original code indexed by `norm(title)`, which was blocking bug §1.1: `norm()` stripped
+   every non-ASCII character, so all Japanese/Korean/Chinese titles produced `""` and
+   overwrote each other. The unicode part is fixed; the stable key is still pending.
+   `norm()` must only ever serve fuzzy matching (Mihon folder), never cache indexing.
 
-4. **Pas de scraping d'agrégateurs.** Position explicite du projet, cf. `LISEZ-MOI.md`.
+2. **`norm()` must keep `.normalize("NFC")` before filtering.**
+   NFD decomposes `ピ` into `ヒ` + handakuten (U+309A), which is a mark and not a letter, so
+   `[^\p{L}\p{N}]` strips it: `ワンピース` → `ワンヒース`, and `パパ` collides with `ハハ`.
 
-5. **Ne pas casser l'ouverture directe du fichier.** `index.html` doit rester ouvrable sans
-   serveur. Si un build arrive, il produit un fichier unique (`vite-plugin-singlefile`).
+3. **`store.set()` returns `false` when the quota is full — that value must be read.**
+   Today it is ignored everywhere, so the library silently stops saving past ~5 MB (§1.2).
 
-## Pièges connus
+4. **Bump `VERSION` in `sw.js` on every release**, otherwise no installed user ever receives
+   the update (§1.3). Documents are served network-first.
 
-- `refreshTracker()` remplace `innerHTML` de `#trackwrap` puis appelle `wireTracker()`, qui ne
-  recâble **pas** `removeBtn` (câblé une seule fois dans `openSheet`). Tout bouton ajouté à
-  `trackerHTML()` doit être câblé dans `wireTracker()`.
-- `chapNumOf()` retombe sur « le premier nombre du nom de fichier » : `[2024] Vol.3 - 12.cbz`
-  renvoie `2024`, et `finish()` l'écrit dans la progression (§1.6).
-- AniList : 30 req/min. Le `sleep(700)` actuel fait ~85 req/min → 429 en rafale.
-- `norm()` est appelé des milliers de fois par rendu — mémoïser ou passer à la clé stable.
+5. **No aggregator scraping.** Legitimate sources (official MangaDex, the user's own files,
+   licensed publishers) are fine; a Mihon-style extension engine pointed at pirate
+   aggregators is not.
 
-## Sources de données
+6. **Do not break opening the file directly.** `index.html` must stay usable without a server.
+   If a build is introduced, it must emit a single file (`vite-plugin-singlefile`).
 
-| Source | Usage | Contrainte |
+## Known traps
+
+- `refreshTracker()` replaces `#trackwrap`'s `innerHTML` then calls `wireTracker()`, which does
+  **not** rewire `removeBtn` (wired once in `openSheet`). Any button added to `trackerHTML()`
+  must be wired in `wireTracker()`.
+- `chapNumOf()` falls back to "first number in the filename": `[2024] Vol.3 - 12.cbz` returns
+  `2024`, and `finish()` writes it into progress (§1.6).
+- AniList: 30 req/min. The current `sleep(700)` yields ~85 req/min → bursts of 429.
+- `norm()` is called thousands of times per render — memoise it or move to the stable key.
+
+## Data sources
+
+| Source | Use | Constraint |
 |---|---|---|
-| AniList GraphQL | fiches, recommandations | 30 req/min, sans clé |
-| MangaDex API | totaux, découpage en tomes | CORS OK sur `api.mangadex.org` ; le CDN d'images ne l'est pas |
-| MangaBaka | mappings inter-bases, dump nocturne | CC BY-NC-SA 4.0 — attribution obligatoire, non commercial |
+| AniList GraphQL | records, recommendations | 30 req/min, no key |
+| MangaDex API | totals, volume split | CORS fine on `api.mangadex.org`; the image CDN is not |
+| MangaBaka | cross-database ids, metadata, recommendations | base URL is `api.mangabaka.org` (**not** `.dev`, which is down); CC BY-NC-SA 4.0, attribution required, non-commercial |
 
-## Documents de référence
+## Environment
 
-- `REVUE.md` — revue technique complète, bugs numérotés (§1.1 à §6) et plan en phases.
-  Les numéros de section y font autorité dans les commits et discussions.
-- `LISEZ-MOI.md` — documentation utilisateur (français).
+- **Verify Node/npm before assuming a build step** — they were absent on this machine as of
+  2026-08-23 and were installed specifically for the APK work.
+- `git` 2.55 and `gh` 2.98 present; `gh` authenticated as `nkoziel`.
+- Repo lives at `C:\dev\rayon-app`. It was moved **out of Google Drive** — Drive rewrites
+  `.git/objects` mid-operation and corrupts repos.
+- Commit identity is the GitHub `noreply` address on purpose: the repo is public.
 
-## Environnement
+## Reference documents
 
-- Node/npm **ne sont pas installés** sur cette machine à ce jour — toute étape de build en
-  dépend et doit être annoncée avant.
-- Le projet a été déplacé hors de Google Drive vers `C:\dev\rayon-app` (Drive corrompt `.git`).
+- `REVIEW.md` — full technical review, numbered findings (§1.1 to §6). Those numbers are
+  authoritative in commits and discussion.
+- `README.md` — user documentation.
+- Vault notes: `G:\Mon Drive\NKO\Projects\rayon-app\` (roadmap, MangaBaka API findings).
