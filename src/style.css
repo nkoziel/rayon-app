@@ -211,3 +211,12 @@ dd{margin:0}
 .shoprow .sv{font-family:'Space Mono',monospace;font-size:13px;color:var(--vermilion)}
 .shoprow .sc{margin-left:auto;flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;
   gap:4px;font-family:'Space Mono',monospace;font-size:12px}
+
+/* ---------- pourquoi cette recommandation ----------
+   Trois natures de preuve, trois couleurs. Un titre qui en porte plusieurs est un titre
+   sur lequel des signaux independants concordent. */
+.why{display:inline-block;font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;
+     letter-spacing:.06em;padding:2px 6px;margin:2px 4px 0 0;border:1.5px solid;white-space:nowrap}
+.why-readers{color:var(--press);border-color:var(--press)}
+.why-tags{color:var(--ink-soft);border-color:var(--ink-soft)}
+.why-author{background:var(--vermilion);border-color:var(--vermilion);color:var(--paper-hi)}

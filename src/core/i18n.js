@@ -194,6 +194,11 @@ const en = {
   "shop.priceNote":            "Estimated at {price} per volume — no database publishes prices.",
   "foot.sources":              "Records and recommendations: MangaBaka (CC BY-NC-SA 4.0), AniList, MangaDex.",
   "foot.privacy":              "Your library stays in this browser. Nothing is sent anywhere except the titles you look up.",
+
+  "reco.badgeReaders":         "{n} readers",
+  "reco.badgeTags":            "{n} shared tags",
+  "reco.badgeTagsPlain":       "shared themes",
+  "reco.badgeAuthor":          "Same author",
 };
 
 const fr = {
@@ -370,6 +375,11 @@ const fr = {
   "shop.priceNote":            "Estimé à {price} par tome — aucune base ne publie les prix.",
   "foot.sources":              "Fiches et recommandations : MangaBaka (CC BY-NC-SA 4.0), AniList, MangaDex.",
   "foot.privacy":              "Ta bibliothèque reste dans ce navigateur. Rien n'est envoyé ailleurs, hormis les titres consultés.",
+
+  "reco.badgeReaders":         "{n} lecteurs",
+  "reco.badgeTags":            "{n} tags communs",
+  "reco.badgeTagsPlain":       "thèmes communs",
+  "reco.badgeAuthor":          "Même auteur",
 };
 
 const LOCALES = { en, fr };

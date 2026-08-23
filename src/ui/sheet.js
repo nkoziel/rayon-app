@@ -16,22 +16,37 @@ import { libraryChanged } from './refresh.js';
 let current = null;
 export function closeSheet(){ current = null; $("overlay").innerHTML = ""; document.body.style.overflow = ""; }
 
-/* Say WHY this was recommended, not just that it was.
-   MangaBaka knows the shared tags and the shared readers; AniList only ever knew a vote
-   count, so that is what it falls back to. */
+/* Say WHY this was recommended, as three colour-coded badges rather than a sentence.
+   The three reasons are genuinely different kinds of evidence and a reader should be able to
+   tell them apart at a glance:
+     .why-readers  who reads this also reads that — a social signal
+     .why-tags     shared themes — a content signal
+     .why-author   same author — the strongest and rarest
+   A title carrying several badges is one where independent signals agree, which is why the
+   badges are shown together rather than collapsed into a single "best" reason.
+
+   AniList only ever knew a vote count, so its fallback gets the readers badge alone. */
+function badge(kind, label, title){
+  return `<span class="why why-${kind}"${title ? ` title="${esc(title)}"` : ""}>${esc(label)}</span>`;
+}
+
 function whyHTML(r){
   const w = r.why;
-  if (!w) return `<b>${r.votes||0} ${esc(T("reco.readers"))}</b> ${esc(T("reco.madeLink"))}${r.genres && r.genres.length ? " · " + esc(r.genres.slice(0,3).join(", ")) : ""}`;
+  if (!w){
+    const n = r.votes || 0;
+    return badge("readers", T("reco.badgeReaders", { n }))
+      + (r.genres && r.genres.length ? " " + badge("tags", T("reco.badgeTagsPlain"), r.genres.slice(0,4).join(", ")) : "");
+  }
 
-  const bits = [];
-  if (w.sameAuthor) bits.push(`<b>${esc(T("reco.sameAuthor"))}</b>`);
-  if (w.tags && w.tags.length) bits.push(esc(T("reco.shares", { tags: w.tags.join(", ") })));
-  if (w.sharedUsers) bits.push(esc(T("reco.sharedReaders", { n: w.sharedUsers })));
-  if (!bits.length && w.tagsTotal) bits.push(esc(T("reco.sharedTags", { n: w.tagsTotal })));
-  /* The badge is its own element and needs a separator — without one it rendered as
-     "…ont les deuxtags et lecteurs concordent". */
-  const badge = w.both ? ` <span class="agree">${esc(T("reco.both"))}</span>` : "";
-  return bits.join(" · ") + badge;
+  const out = [];
+  if (w.sharedUsers) out.push(badge("readers", T("reco.badgeReaders", { n: w.sharedUsers })));
+  if (w.tags && w.tags.length)
+    /* The tag names go in the tooltip: the badge stays scannable, the detail stays reachable. */
+    out.push(badge("tags", T("reco.badgeTags", { n: w.tagsTotal || w.tags.length }), w.tags.join(", ")));
+  else if (w.tagsTotal)
+    out.push(badge("tags", T("reco.badgeTags", { n: w.tagsTotal })));
+  if (w.sameAuthor) out.push(badge("author", T("reco.badgeAuthor")));
+  return out.join(" ");
 }
 
 export function recoRowHTML(r){

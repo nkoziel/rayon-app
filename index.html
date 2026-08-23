@@ -240,7 +240,11 @@ const en = {
   "shop.empty": "No series is tracked by volume yet. Switch a series to Volumes in its sheet to start a collection.",
   "shop.priceNote": "Estimated at {price} per volume — no database publishes prices.",
   "foot.sources": "Records and recommendations: MangaBaka (CC BY-NC-SA 4.0), AniList, MangaDex.",
-  "foot.privacy": "Your library stays in this browser. Nothing is sent anywhere except the titles you look up."
+  "foot.privacy": "Your library stays in this browser. Nothing is sent anywhere except the titles you look up.",
+  "reco.badgeReaders": "{n} readers",
+  "reco.badgeTags": "{n} shared tags",
+  "reco.badgeTagsPlain": "shared themes",
+  "reco.badgeAuthor": "Same author"
 };
 const fr = {
   "app.title": "Rayon",
@@ -399,7 +403,11 @@ const fr = {
   "shop.empty": "Aucune série n'est suivie en tomes. Bascule une série sur Tomes dans sa fiche pour commencer une collection.",
   "shop.priceNote": "Estimé à {price} par tome — aucune base ne publie les prix.",
   "foot.sources": "Fiches et recommandations : MangaBaka (CC BY-NC-SA 4.0), AniList, MangaDex.",
-  "foot.privacy": "Ta bibliothèque reste dans ce navigateur. Rien n'est envoyé ailleurs, hormis les titres consultés."
+  "foot.privacy": "Ta bibliothèque reste dans ce navigateur. Rien n'est envoyé ailleurs, hormis les titres consultés.",
+  "reco.badgeReaders": "{n} lecteurs",
+  "reco.badgeTags": "{n} tags communs",
+  "reco.badgeTagsPlain": "thèmes communs",
+  "reco.badgeAuthor": "Même auteur"
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -1755,16 +1763,23 @@ function closeSheet() {
   $("overlay").innerHTML = "";
   document.body.style.overflow = "";
 }
+function badge(kind, label, title) {
+  return `<span class="why why-${kind}"${title ? ` title="${esc(title)}"` : ""}>${esc(label)}</span>`;
+}
 function whyHTML(r) {
   const w = r.why;
-  if (!w) return `<b>${r.votes || 0} ${esc(t("reco.readers"))}</b> ${esc(t("reco.madeLink"))}${r.genres && r.genres.length ? " · " + esc(r.genres.slice(0, 3).join(", ")) : ""}`;
-  const bits = [];
-  if (w.sameAuthor) bits.push(`<b>${esc(t("reco.sameAuthor"))}</b>`);
-  if (w.tags && w.tags.length) bits.push(esc(t("reco.shares", { tags: w.tags.join(", ") })));
-  if (w.sharedUsers) bits.push(esc(t("reco.sharedReaders", { n: w.sharedUsers })));
-  if (!bits.length && w.tagsTotal) bits.push(esc(t("reco.sharedTags", { n: w.tagsTotal })));
-  const badge = w.both ? ` <span class="agree">${esc(t("reco.both"))}</span>` : "";
-  return bits.join(" · ") + badge;
+  if (!w) {
+    const n = r.votes || 0;
+    return badge("readers", t("reco.badgeReaders", { n })) + (r.genres && r.genres.length ? " " + badge("tags", t("reco.badgeTagsPlain"), r.genres.slice(0, 4).join(", ")) : "");
+  }
+  const out = [];
+  if (w.sharedUsers) out.push(badge("readers", t("reco.badgeReaders", { n: w.sharedUsers })));
+  if (w.tags && w.tags.length)
+    out.push(badge("tags", t("reco.badgeTags", { n: w.tagsTotal || w.tags.length }), w.tags.join(", ")));
+  else if (w.tagsTotal)
+    out.push(badge("tags", t("reco.badgeTags", { n: w.tagsTotal })));
+  if (w.sameAuthor) out.push(badge("author", t("reco.badgeAuthor")));
+  return out.join(" ");
 }
 function recoRowHTML(r) {
   const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut, r.score ? r.score + "/100" : null].filter(Boolean).join(" · ");
@@ -2885,7 +2900,16 @@ dd{margin:0}
 .shoprow .sm{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim)}
 .shoprow .sv{font-family:'Space Mono',monospace;font-size:13px;color:var(--vermilion)}
 .shoprow .sc{margin-left:auto;flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;
-  gap:4px;font-family:'Space Mono',monospace;font-size:12px}</style>
+  gap:4px;font-family:'Space Mono',monospace;font-size:12px}
+
+/* ---------- pourquoi cette recommandation ----------
+   Trois natures de preuve, trois couleurs. Un titre qui en porte plusieurs est un titre
+   sur lequel des signaux independants concordent. */
+.why{display:inline-block;font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;
+     letter-spacing:.06em;padding:2px 6px;margin:2px 4px 0 0;border:1.5px solid;white-space:nowrap}
+.why-readers{color:var(--press);border-color:var(--press)}
+.why-tags{color:var(--ink-soft);border-color:var(--ink-soft)}
+.why-author{background:var(--vermilion);border-color:var(--vermilion);color:var(--paper-hi)}</style>
 </head>
 <body>
 <div class="wrap">
