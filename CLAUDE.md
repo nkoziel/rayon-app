@@ -25,9 +25,12 @@ Consequences while that migration is in progress:
 
 | Path | What it is |
 |---|---|
-| `src/main.js` | **the application** — all the JS, source of truth |
-| `src/style.css` | all the CSS |
-| `src/index.html` | the page shell (markup only) |
+| `src/core/` | `dom`, `norm`, `store`, `state`, `i18n` — no UI, no app flow |
+| `src/data/` | `anilist`, `mangadex`, `totals` — fetching and deriving |
+| `src/import/` | `tachibk` (protobuf), `library` (import/merge/export/reset) |
+| `src/ui/` | `library`, `sheet`, `tracker`, `discover`, `add`, `mihon`, `refresh` |
+| `src/main.js` | wiring and boot only |
+| `src/style.css`, `src/index.html` | CSS and the page shell |
 | `index.html` (root) | generated single file, committed, served by Pages |
 | `sw.js`, `manifest.webmanifest`, `icons/` | PWA files, outside the bundle, edited directly |
 
@@ -35,7 +38,14 @@ Consequences while that migration is in progress:
 npm run build      # src/ -> dist/index.html -> copied to the repo root
 npm run verify     # zero-dependency checks, see below
 npm run dev        # Vite dev server on src/
+node tools/check-refs.js   # free variables + import cycles
 ```
+
+**The dependency graph is acyclic and must stay that way**: `main → ui → data → core`.
+When a UI module needs to tell the app "the library changed, redraw", call `libraryChanged()`
+from `ui/refresh.js` — do **not** import whatever owns rendering. `check-refs.js` fails on a
+cycle, because ES modules tolerate them for hoisted functions and then throw on a `const` in
+its temporal dead zone, on whichever path happens to run first.
 
 The root file is committed on purpose: GitHub Pages serves the repo root, and cloning the repo
 and double-clicking `index.html` has to keep working with no build step. **Rebuild and commit
