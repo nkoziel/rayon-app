@@ -2907,9 +2907,19 @@ dd{margin:0}
    sur lequel des signaux independants concordent. */
 .why{display:inline-block;font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;
      letter-spacing:.06em;padding:2px 6px;margin:2px 4px 0 0;border:1.5px solid;white-space:nowrap}
-.why-readers{color:var(--press);border-color:var(--press)}
-.why-tags{color:var(--ink-soft);border-color:var(--ink-soft)}
-.why-author{background:var(--vermilion);border-color:var(--vermilion);color:var(--paper-hi)}</style>
+
+/* These are 9px, so every pair was measured against the background it actually sits on rather
+   than assumed - the same discipline as --dim above (REVIEW.md 6).
+   --press (#0F6C99) and --vermilion (#C92D12) BOTH fail here: 4.01:1 and 3.75:1 on --paper.
+   They are fine as large buttons, not as small caps. Hence two badge-only darker shades. */
+.why-readers{color:#0B5A80;border-color:#0B5A80}                  /* 5.22:1 on --paper */
+.why-tags{color:var(--ink-soft);border-color:var(--ink-soft)}     /* 7.90:1 on --paper */
+/* Same author is the rarest and strongest signal, so it is the only filled one: it reads first
+   in a row of badges without needing a fourth colour. */
+.why-author{background:#A32410;border-color:#A32410;color:var(--paper-hi)}  /* 5.99:1 */
+
+/* Colour alone never carries the meaning - each badge also says what it is in words, which is
+   what keeps the row legible to a colour-blind reader. */</style>
 </head>
 <body>
 <div class="wrap">
