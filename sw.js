@@ -4,7 +4,7 @@
    Sans cela, les navigateurs qui ont déjà installé l'app ne reçoivent jamais
    les corrections : le SW ne se réinstalle que si ses propres octets changent.
    Voir REVUE.md §1.3. */
-const VERSION = "2026-08-23.1";
+const VERSION = "2026-08-23.2";
 
 const CACHE   = `rayon-shell-${VERSION}`;  // purgé à chaque version
 const RUNTIME = "rayon-runtime";           // polices + couvertures, conservé entre versions

@@ -301,7 +301,18 @@ dd{margin:0}
    Utilitaires
    ============================================================ */
 const $ = id => document.getElementById(id);
-const norm = s => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+/* Normalisation de titre pour le rapprochement flou.
+   ATTENTION : ne PAS revenir \u00e0 [^a-z0-9] \u2014 cela supprimait tout caract\u00e8re non-ASCII,
+   donc \u00ab \u9032\u6483\u306e\u5de8\u4eba \u00bb, \u00ab \ub098 \ud63c\uc790\ub9cc \ub808\ubca8\uc5c5 \u00bb et \u00ab \u30ef\u30f3\u30d4\u30fc\u30b9 \u00bb donnaient tous "" et
+   s'\u00e9crasaient mutuellement dans META, OWNED, MDCACHE et les caches reco. (REVUE.md \u00a71.1)
+
+   Le .normalize("NFC") n'est pas cosm\u00e9tique : NFD d\u00e9compose \u30d4 en \u30d2 + handakuten (U+309A),
+   qui est une marque et non une lettre \u2014 sans recomposition, [^\p{L}\p{N}] la supprime et
+   \u00ab \u30ef\u30f3\u30d4\u30fc\u30b9 \u00bb devient \u00ab \u30ef\u30f3\u30d2\u30fc\u30b9 \u00bb. Pire, \u30d1\u30d1 et \u30cf\u30cf se confondent. */
+const norm = s => (s||"").toLowerCase().normalize("NFD")
+  .replace(/[\u0300-\u036f]/g,"")            // diacritiques latins uniquement : \u00e9 -> e
+  .normalize("NFC")                  // RECOMPOSER avant de filtrer \u2014 voir ci-dessous
+  .replace(/[^\p{L}\p{N}]/gu,"");   // garde lettres et chiffres de TOUTES les \u00e9critures
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const stripTags = s => String(s||"").replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g,"").trim();
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
