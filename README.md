@@ -54,12 +54,9 @@ Both routes start from the public URL.
 
 The APK is a *Trusted Web Activity*: an Android shell displaying the app fullscreen.
 
-> **Note on Digital Asset Links.** For the APK to run without a Chrome address bar, Android
-> requires an `assetlinks.json` at the **domain root** — `https://nkoziel.github.io/.well-known/assetlinks.json`.
-> Since this app is a project page served from `/rayon-app/`, that file belongs to a separate
-> `nkoziel.github.io` repository. Without it the APK still works, but shows the address bar.
+### Bubblewrap (command line) — the route actually used
 
-### Bubblewrap (command line)
+An APK is already built and published this way: package `io.github.nkoziel.rayon`, ~0.9 MB.
 
 ```bash
 npm install -g @bubblewrap/cli
@@ -68,6 +65,19 @@ bubblewrap build          # produces app-release-signed.apk
 ```
 
 Requires JDK 17 and the Android SDK, which Bubblewrap offers to install for you.
+
+> **Digital Asset Links are set up.** For the APK to run without a Chrome address bar, Android
+> requires `assetlinks.json` at the **domain root** — not at `/rayon-app/`. It is served from
+> the separate [`nkoziel.github.io`](https://github.com/nkoziel/nkoziel.github.io) repository
+> and validates against
+> [Google's checker](https://developers.google.com/digital-asset-links/tools/generator).
+> **If the app is ever re-signed with a different key, that file must be updated**, or the TWA
+> silently falls back to showing the address bar.
+
+> **On Windows, Bubblewrap has sharp edges.** It cannot be driven non-interactively, it wants
+> the pre-2020 SDK layout, and it breaks on a JDK path containing spaces because it builds its
+> `apksigner` command by string concatenation. The working configuration and each workaround
+> are written up in the project roadmap.
 
 ### Capacitor (only if you want native later)
 
