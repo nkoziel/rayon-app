@@ -63,6 +63,7 @@ input[type=search]{flex:1 1 190px;min-width:0}
 .btn{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;border:2px solid var(--ink);background:var(--ink);color:var(--paper-hi);padding:8px 11px;cursor:pointer}
 .btn.ghost{background:transparent;color:var(--ink)}
 .btn.red{background:var(--vermilion);border-color:var(--vermilion)}
+.btn.ghost.danger{color:var(--vermilion);border-color:var(--vermilion)}
 .btn:disabled{opacity:.45;cursor:progress}
 .btn.sm{padding:5px 8px;font-size:10px}
 .chiprow{display:flex;gap:6px;overflow-x:auto;padding:8px 0;scrollbar-width:thin}
@@ -251,6 +252,7 @@ dd{margin:0}
         <input type="file" id="rootDir" class="hidden" webkitdirectory directory multiple>
         <button class="btn ghost" id="importBtn">Importer</button>
         <button class="btn ghost" id="exportBtn">Exporter</button>
+        <button class="btn ghost danger" id="resetBtn">Tout effacer</button>
         <input type="file" id="file" accept=".tachibk,.json,.gz" class="hidden">
       </div>
       <div class="statusline" id="statusline"></div>
@@ -694,6 +696,39 @@ function exportLib(){
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
   toast("Export téléchargé — partage ce fichier à qui tu veux");
+}
+
+/* Wipe every trace of Rayon and start over.
+   Two storage layers now hold data, so clearing one alone would leave a confusing half-state:
+   a fresh-looking library still backed by stale cached records. */
+const RAYON_LS_KEYS = ["lib:v1","meta:v2","md:v1","catalog:v1","fsprog:v1","pickindex:v1",
+  "discover:v1","dismissed:v1","seenDFilters:v1","panel:v1","seeds:v1","unit:v1",
+  "readmode:v1","rtl:v1"];
+
+async function resetEverything(){
+  /* localStorage is per-ORIGIN, and this origin also serves other projects on
+     nkoziel.github.io — so remove our own keys, never localStorage.clear(). */
+  try{
+    const reco = [];
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if (k && k.startsWith("reco:v3:")) reco.push(k);
+    }
+    [...RAYON_LS_KEYS, ...reco].forEach(k => store.del(k));
+  }catch(e){ console.error("[rayon] reset: localStorage", e); }
+
+  /* Close our own connection first: deleteDatabase does not fail while one is open,
+     it blocks silently and forever. Cap the wait so the UI can never be stuck here. */
+  try{
+    const d = await db().catch(() => null);
+    if (d) d.close();
+    dbp = null;
+    await new Promise(res => {
+      const req = indexedDB.deleteDatabase(DB_NAME);
+      req.onsuccess = req.onerror = req.onblocked = () => res();
+      setTimeout(res, 3000);
+    });
+  }catch(e){ console.error("[rayon] reset: IndexedDB", e); }
 }
 
 /* ============================================================
@@ -1979,6 +2014,27 @@ $("rootDir").addEventListener("change", e => {
 });
 $("importBtn").onclick = () => $("file").click();
 $("exportBtn").onclick = exportLib;
+$("resetBtn").onclick = async () => {
+  const n = LIB.entries.length;
+  /* The JSON export is the only backup there is, so offer it before destroying anything
+     rather than mentioning it afterwards. */
+  if (n && confirm(`Exporter ta bibliothèque avant de l'effacer ?\n\n${n} série(s). L'export est la seule sauvegarde possible.`))
+    exportLib();
+  if (!confirm(
+    `Effacer DÉFINITIVEMENT toutes les données de Rayon ?\n\n`
+    + `• ${n} série(s) et leur progression\n`
+    + `• Les chapitres hors ligne stockés sur l'appareil\n`
+    + `• Fiches, totaux et recommandations en cache\n`
+    + `• Tes préférences\n\n`
+    + `Cette action est irréversible.`)) return;
+  const btn = $("resetBtn");
+  btn.disabled = true; btn.textContent = "Effacement…";
+  await resetEverything();
+  toast("Données effacées — rechargement…");
+  /* Reload rather than reset the globals by hand: it is the only way to be sure nothing
+     stale survives in memory. */
+  setTimeout(() => location.reload(), 700);
+};
 $("mdBatch").onclick = async () => {
   const btn = $("mdBatch");
   const todo = libRows().filter(d => d.r > 0 && !(MDCACHE[norm(d.t)] && MDCACHE[norm(d.t)].at)).slice(0, 40);
