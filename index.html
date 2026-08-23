@@ -938,6 +938,9 @@ function db(){
     };
     req.onsuccess = () => res(req.result);
     req.onerror = () => rej(new Error("Stockage local indisponible."));
+    /* Another tab still holding an older version blocks the upgrade indefinitely.
+       Reject instead of hanging — callers must stay able to give up. */
+    req.onblocked = () => rej(new Error("Une autre fenêtre de Rayon bloque la mise à jour du stockage. Ferme-la puis recharge."));
   });
   return dbp;
 }
@@ -2056,8 +2059,19 @@ async function loadCaches(){
 }
 
 (async function start(){
-  try{ await migrateCaches(); await loadCaches(); }
-  catch(e){ console.error("[rayon] cache init failed, continuing without persisted caches", e); }
+  /* The app must render even if IndexedDB never answers. It can hang rather than fail —
+     an older tab blocking the version upgrade is the common case — and the library itself
+     lives in localStorage, so a cold cache is a slow start, not a broken app.
+     Never let storage keep the user staring at an empty screen. */
+  const CACHE_INIT_TIMEOUT = 5000;
+  try{
+    await Promise.race([
+      (async () => { await migrateCaches(); await loadCaches(); })(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("cache init timed out")), CACHE_INIT_TIMEOUT))
+    ]);
+  }catch(e){
+    console.error("[rayon] cache init failed, starting with cold caches", e);
+  }
   boot();
   hydrate();
   loadRootHandle().then(h => { if (h){ FSROOT = h; if (CATALOG) renderLibrary(); } });

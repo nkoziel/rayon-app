@@ -1,9 +1,9 @@
-/* Rayon — service worker: offline shell, fresh network for AniList */
+﻿/* Rayon â€” service worker: offline shell, fresh network for AniList */
 
-/* IMPORTANT — bump VERSION on EVERY release.
+/* IMPORTANT â€” bump VERSION on EVERY release.
    Without it, browsers that already installed the app never receive fixes:
-   the SW only reinstalls when its own bytes change. See REVIEW.md §1.3. */
-const VERSION = "2026-08-23.4";
+   the SW only reinstalls when its own bytes change. See REVIEW.md Â§1.3. */
+const VERSION = "2026-08-23.5";
 
 const CACHE   = `rayon-shell-${VERSION}`;  // purged on every version bump
 const RUNTIME = "rayon-runtime";           // fonts + covers, kept across versions
@@ -30,12 +30,12 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   const req = e.request;
-  if (req.method !== "GET") return;                     // les requêtes AniList sont en POST
+  if (req.method !== "GET") return;                     // les requÃªtes AniList sont en POST
   const url = new URL(req.url);
 
   if (url.origin === location.origin) {
-    // Le document : RÉSEAU D'ABORD, cache en repli.
-    // C'est ce qui permet à une correction d'atteindre une app déjà installée.
+    // Le document : RÃ‰SEAU D'ABORD, cache en repli.
+    // C'est ce qui permet Ã  une correction d'atteindre une app dÃ©jÃ  installÃ©e.
     if (req.mode === "navigate" || req.destination === "document") {
       e.respondWith(
         fetch(req)
@@ -49,7 +49,7 @@ self.addEventListener("fetch", e => {
       return;
     }
 
-    // Reste de la coquille : cache d'abord (purgé au changement de VERSION)
+    // Reste de la coquille : cache d'abord (purgÃ© au changement de VERSION)
     e.respondWith(
       caches.match(req).then(hit => hit || fetch(req).then(res => {
         const copy = res.clone();
@@ -60,8 +60,8 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // Polices et couvertures : cache d'abord, rafraîchi en arrière-plan.
-  // Cache séparé, non purgé : une mise à jour de l'app ne jette pas les couvertures.
+  // Polices et couvertures : cache d'abord, rafraÃ®chi en arriÃ¨re-plan.
+  // Cache sÃ©parÃ©, non purgÃ© : une mise Ã  jour de l'app ne jette pas les couvertures.
   if (/fonts\.(googleapis|gstatic)\.com|anilist\.co/.test(url.hostname)) {
     e.respondWith(
       caches.match(req).then(hit => {
