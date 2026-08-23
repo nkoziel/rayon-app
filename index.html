@@ -698,6 +698,37 @@ function exportLib(){
   toast("Export téléchargé — partage ce fichier à qui tu veux");
 }
 
+/* Everything a removed series leaves behind (REVIEW.md §2.5).
+   Removing an entry used to drop it from LIB.entries and nothing else, so its offline
+   chapters — potentially hundreds of MB of page Blobs — stayed in IndexedDB forever, along
+   with its cached record, MangaDex data, recommendations and folder reading progress.
+   Each step is independent: a failure in one must not prevent the others. */
+async function purgeSeriesData(entry){
+  const key = norm(entry.t);
+
+  /* by far the largest item */
+  try{
+    const chs = await chaptersOf(entry.id) || [];
+    for (const c of chs) await delChapter(c.id);
+  }catch(e){ console.error("[rayon] purge: chapters", e); }
+
+  /* Progress for chapters read from the Mihon or picked folder is keyed by source+title,
+     not by entry id — so ask the same resolvers the UI uses rather than guessing the keys. */
+  try{
+    const ids = [...folderChaptersFor(entry), ...pickedFor(entry)].map(c => c.id);
+    let touched = false;
+    ids.forEach(id => { if (id in FSPROG){ delete FSPROG[id]; touched = true; } });
+    if (touched) kvSet("fsprog:v1", FSPROG);
+  }catch(e){ console.error("[rayon] purge: FSPROG", e); }
+
+  /* cached metadata: all regenerable, all keyed by the normalised title */
+  try{
+    if (META[key]){ delete META[key]; metaDirty = true; saveMeta(); }
+    if (MDCACHE[key]){ delete MDCACHE[key]; kvSet("md:v1", MDCACHE); }
+    await kvDel("reco:v3:"+key);
+  }catch(e){ console.error("[rayon] purge: caches", e); }
+}
+
 /* Wipe every trace of Rayon and start over.
    Two storage layers now hold data, so clearing one alone would leave a confusing half-state:
    a fresh-looking library still backed by stale cached records. */
@@ -1683,11 +1714,13 @@ function wireTracker(d){
      every counter change. It MUST be wired here and not in openSheet(), otherwise it is dead
      after the first "+" click. See REVIEW.md §1.4. Same goes for any button added to
      trackerHTML() later. */
-  $("removeBtn").onclick = () => {
-    if (!confirm("Retirer « "+d.t+" » de ta bibliothèque ?")) return;
+  $("removeBtn").onclick = async () => {
+    if (!confirm("Retirer « "+d.t+" » de ta bibliothèque ?\n\nSes chapitres hors ligne et ses données en cache seront également supprimés.")) return;
     LIB.entries = LIB.entries.filter(x=>x.id !== d.id);
     saveLib(); closeSheet(); boot();
     toast("Série retirée");
+    /* after the UI has closed: the user should not wait on a cleanup they cannot see */
+    await purgeSeriesData(d);
   };
 }
 
