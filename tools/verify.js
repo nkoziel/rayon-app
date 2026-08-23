@@ -102,33 +102,11 @@ function table(name, fn, cases) {
   console.log(`  ${pass}/${cases.length} cas passent`);
 }
 
-/* ---------- 2. chapNumOf (REVIEW.md §1.6) ---------- */
-const chapNumOf = extract('chapNumOf');
-table('chapNumOf — un nombre dans le nom ne doit pas propulser la progression', chapNumOf, [
-  ['Chapter 145.cbz',              145],
-  ['one-piece-1102.cbz',          1102],
-  ['Solo Leveling 179 (2021).cbz', 179],
-  ['[2024] Vol.3 - 12.cbz',         12],   // etait 2024
-  ['Asura Scans 2024 - 05.cbz',      5],   // etait 2024
-  ['Volume 05.cbz',               null],   // un tome n'est pas un chapitre
-  ['Tome 4.cbz',                  null],
-  ['T01.cbz',                     null],
-  ['1984.cbz',                    null],   // annee seule : mieux vaut null qu'un faux numero
-  ['Ch. 115',                      115],
-  ['Chapitre 7.5.cbz',             7.5],
-  ['c012.cbz',                      12],
-  ['Ch.0001.cbz',                    1],
-  ['[Asura] Chapter 88 [1080p].cbz', 88],
-  ['Vol.2 Ch.15.cbz',               15],
-  ['Vol 12 - Chapter 3.cbz',         3],
-  ['Naruto 700.cbz',               700],
-  ['Berserk 364.cbz',              364],
-  ['2019-05-03 release 42.cbz',     42],
-  ['03.05.2019 - 88.cbz',           88],
-  ['no numbers here.cbz',         null],
-]);
+/* chapNumOf (REVIEW.md §1.6) is gone: the embedded reader was removed, so nothing parses
+   chapter numbers out of filenames any more. The safest fix for that class of bug turned out
+   to be deleting the feature. Its 21-case table is in git history if it ever comes back. */
 
-/* ---------- 3. norm (REVIEW.md §1.1) ---------- */
+/* ---------- 2. norm (REVIEW.md §1.1) ---------- */
 const norm = extract('norm');
 table('norm — les titres non latins ne doivent pas s\'ecraser', norm, [
   ['One Piece',        'onepiece'],
@@ -236,14 +214,16 @@ function makeSandbox(kvShouldFail) {
     del(k) { localStorage.removeItem(k); },
   };
   const kvSet = async (k, v) => { if (kvShouldFail) return false; kvStore.set(k, v); return true; };
-  return { ls, kvStore, localStorage, store, kvSet, console };
+  const kvDel = async (k) => { kvStore.delete(k); };
+  return { ls, kvStore, localStorage, store, kvSet, kvDel, console };
 }
 
 const migrateSrc = extractFunction('migrateCaches');
-const cacheKeysSrc = (() => {
-  const i = srcLines.findIndex(l => l.startsWith('const CACHE_KEYS = '));
+const constLine = (name) => {
+  const i = srcLines.findIndex(l => l.startsWith(`const ${name} = `));
   return i === -1 ? null : srcLines[i];
-})();
+};
+const cacheKeysSrc = [constLine('CACHE_KEYS'), constLine('DEAD_KEYS')].filter(Boolean).join('\n');
 
 section('migrateCaches — les caches quittent localStorage sans perte');
 if (!migrateSrc || !cacheKeysSrc) fail('migrateCaches ou CACHE_KEYS indisponible');

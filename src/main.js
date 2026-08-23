@@ -502,30 +502,41 @@ function exportLib(){
   toast("Export téléchargé — partage ce fichier à qui tu veux");
 }
 
+/* ---- Handing a title over to Mihon ----
+   Rayon does not read anything itself: Mihon is the reader. Its MainActivity declares
+   an exported action for exactly this, verified against the source:
+
+     const val INTENT_SEARCH       = "eu.kanade.tachiyomi.SEARCH"
+     const val INTENT_SEARCH_QUERY = "query"
+
+   which pushes GlobalSearchScreen(query) — the cross-source search.
+
+   No `package=` is set on purpose. Upstream Mihon is app.mihon, forks differ (app.mihon.sync
+   here), and pinning the wrong one silently fails; leaving it out lets Android pick or offer
+   a chooser among whatever is installed. */
+const isAndroid = () => /android/i.test(navigator.userAgent);
+
+/* There is no way to ask the browser whether an app is installed — that is deliberate, it
+   would be a fingerprinting vector. So this is a capability check, not a presence check:
+   show the button where the intent *can* work, and rely on browser_fallback_url when
+   nothing handles it. */
+const mihonAvailable = () => isAndroid();
+
+function openInMihon(title){
+  const fallback = "https://mihon.app/";
+  const url = "intent://#Intent;action=eu.kanade.tachiyomi.SEARCH"
+    + ";S.query=" + encodeURIComponent(title)
+    + ";S.browser_fallback_url=" + encodeURIComponent(fallback)
+    + ";end";
+  window.location.href = url;
+}
+
 /* Everything a removed series leaves behind (REVIEW.md §2.5).
-   Removing an entry used to drop it from LIB.entries and nothing else, so its offline
-   chapters — potentially hundreds of MB of page Blobs — stayed in IndexedDB forever, along
-   with its cached record, MangaDex data, recommendations and folder reading progress.
-   Each step is independent: a failure in one must not prevent the others. */
+   Since the reader was dropped there are no page Blobs to reclaim any more — only cached
+   metadata, which is regenerable. Kept as its own function so it stays the one place that
+   knows what a series owns. */
 async function purgeSeriesData(entry){
   const key = norm(entry.t);
-
-  /* by far the largest item */
-  try{
-    const chs = await chaptersOf(entry.id) || [];
-    for (const c of chs) await delChapter(c.id);
-  }catch(e){ console.error("[rayon] purge: chapters", e); }
-
-  /* Progress for chapters read from the Mihon or picked folder is keyed by source+title,
-     not by entry id — so ask the same resolvers the UI uses rather than guessing the keys. */
-  try{
-    const ids = [...folderChaptersFor(entry), ...pickedFor(entry)].map(c => c.id);
-    let touched = false;
-    ids.forEach(id => { if (id in FSPROG){ delete FSPROG[id]; touched = true; } });
-    if (touched) kvSet("fsprog:v1", FSPROG);
-  }catch(e){ console.error("[rayon] purge: FSPROG", e); }
-
-  /* cached metadata: all regenerable, all keyed by the normalised title */
   try{
     if (META[key]){ delete META[key]; metaDirty = true; saveMeta(); }
     if (MDCACHE[key]){ delete MDCACHE[key]; kvSet("md:v1", MDCACHE); }
@@ -536,6 +547,8 @@ async function purgeSeriesData(entry){
 /* Wipe every trace of Rayon and start over.
    Two storage layers now hold data, so clearing one alone would leave a confusing half-state:
    a fresh-looking library still backed by stale cached records. */
+/* catalog/fsprog/pickindex belonged to the removed reader — still listed so a reset also
+   clears them from installs that predate its removal. */
 const RAYON_LS_KEYS = ["lib:v1","meta:v2","md:v1","catalog:v1","fsprog:v1","pickindex:v1",
   "discover:v1","dismissed:v1","seenDFilters:v1","panel:v1","seeds:v1","unit:v1",
   "readmode:v1","rtl:v1"];
@@ -719,8 +732,7 @@ function posterHTML(d){
   const cover = meta && !meta.missing ? meta.cover : "";
   const score = meta && !meta.missing ? meta.score : null;
   const behind = p.remain;
-  const local = (CATALOG ? folderChaptersFor(d).length : 0) + (PICKED.size ? pickedFor(d).length : 0);
-  const tape = local ? local+" hors ligne" : (d.origin === "manuel" ? "Manuel" : (behind >= 5 ? "+"+behind+" "+(p.unit==="tomes"?"t.":"ch.") : (d.m === "Webtoon" ? "Webtoon" : "")));
+  const tape = d.origin === "manuel" ? "Manuel" : (behind >= 5 ? "+"+behind+" "+(p.unit==="tomes"?"t.":"ch.") : (d.m === "Webtoon" ? "Webtoon" : ""));
   return `<button class="card" data-id="${d.id}">
     <div class="poster">
       ${cover?`<img src="${esc(cover)}" alt="" loading="lazy" decoding="async">`:`<span class="fallback">${esc(d.t)}</span>`}
@@ -749,12 +761,6 @@ function renderLibrary(){
   const box = $("results");
   if (!LIB.entries.length){ box.innerHTML = ""; return; }
   if ($("filterSum")) updateFilterSummary();
-  const ps = $("pickSummary");
-  if (ps){
-    ps.innerHTML = pickSummaryHTML();
-    const rl = $("relink");
-    if (rl) rl.onclick = () => $("rootDir").click();
-  }
   const list = libRows();
   box.innerHTML = !list.length
     ? `<p class="empty">Aucune série ne correspond.</p>`
@@ -788,9 +794,9 @@ function recoRowHTML(r){
 
 
 /* ============================================================
-   Lecteur hors ligne : fichiers CBZ / images de l'utilisateur
+   Stockage local : base IndexedDB et cache clé/valeur
    ============================================================ */
-const DB_NAME = "rayon-reader", DB_VER = 3;
+const DB_NAME = "rayon-reader", DB_VER = 4;
 let dbp = null;
 function db(){
   if (dbp) return dbp;
@@ -798,13 +804,13 @@ function db(){
     const req = indexedDB.open(DB_NAME, DB_VER);
     req.onupgradeneeded = () => {
       const d = req.result;
-      if (!d.objectStoreNames.contains("chapters")){
-        const s = d.createObjectStore("chapters", {keyPath:"id"});
-        s.createIndex("entry", "entryId", {unique:false});
-      }
-      if (!d.objectStoreNames.contains("handles")) d.createObjectStore("handles", {keyPath:"id"});
       /* v3: metadata caches moved off localStorage (REVIEW.md §1.2) */
       if (!d.objectStoreNames.contains("cache")) d.createObjectStore("cache", {keyPath:"k"});
+      /* v4: the embedded reader is gone — Mihon is the reader. Drop its stores rather than
+         leaving them orphaned: "chapters" held whole CBZ pages as Blobs and can be hundreds
+         of MB. Exactly the leak §2.5 was about, so do not recreate it by omission. */
+      if (d.objectStoreNames.contains("chapters")) d.deleteObjectStore("chapters");
+      if (d.objectStoreNames.contains("handles"))  d.deleteObjectStore("handles");
     };
     req.onsuccess = () => res(req.result);
     req.onerror = () => rej(new Error("Stockage local indisponible."));
@@ -814,26 +820,12 @@ function db(){
   });
   return dbp;
 }
-async function idb(mode, fn){
-  const d = await db();
-  return new Promise((res, rej)=>{
-    const tx = d.transaction("chapters", mode);
-    const store = tx.objectStore("chapters");
-    let out;
-    try{ out = fn(store); }catch(e){ rej(e); return; }
-    tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
-    tx.onerror = () => rej(tx.error || new Error("Erreur de stockage."));
-  });
-}
-const chaptersOf = entryId => idb("readonly", s => s.index("entry").getAll(entryId));
-const putChapter = c => idb("readwrite", s => s.put(c));
-const delChapter = id => idb("readwrite", s => s.delete(id));
 
 /* ---- key/value cache on IndexedDB (REVIEW.md §1.2) ----
-   Holds what used to overflow localStorage: AniList records, MangaDex volume data,
-   recommendation caches, the Mihon folder catalogue and the picked-folder index.
-   All of it is regenerable, so failing to read it is survivable — these helpers fail soft
-   and the app keeps working without persistence rather than refusing to start. */
+   Holds what used to overflow localStorage: AniList records, MangaDex volume data and the
+   recommendation caches. All of it is regenerable, so failing to read it is survivable —
+   these helpers fail soft and the app keeps working without persistence rather than
+   refusing to start. */
 function kv(mode, fn){
   return db().then(d => new Promise((res, rej)=>{
     const tx = d.transaction("cache", mode);
@@ -859,552 +851,6 @@ async function kvSet(k, v){
 }
 async function kvDel(k){ try{ await kv("readwrite", s => s.delete(k)); }catch(e){} }
 
-
-/* ============================================================
-   Dossier de téléchargement Mihon : lecture directe sur l'appareil
-   ============================================================ */
-let FSROOT = null;                                   // FileSystemDirectoryHandle
-let CATALOG = null;                                  // arborescence relevée (IndexedDB)
-let FSPROG = {};                                     // progression des chapitres du dossier
-
-const IMG_RE = /\.(jpe?g|png|webp|gif|avif)$/i;
-const ARC_RE = /\.(cbz|zip)$/i;
-
-async function saveRootHandle(handle){
-  try{
-    const d = await db();
-    await new Promise((res,rej)=>{
-      const tx = d.transaction("handles","readwrite");
-      tx.objectStore("handles").put({id:"root", handle});
-      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-    });
-  }catch(e){ /* le handle ne survivra pas à la session, sans gravité */ }
-}
-async function loadRootHandle(){
-  try{
-    const d = await db();
-    const rec = await new Promise((res,rej)=>{
-      const tx = d.transaction("handles","readonly");
-      const r = tx.objectStore("handles").get("root");
-      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
-    });
-    if (!rec) return null;
-    const perm = await rec.handle.queryPermission({mode:"read"});
-    if (perm === "granted") return rec.handle;
-    return rec.handle;   // permission redemandée au moment de lire
-  }catch(e){ return null; }
-}
-
-/* parcourt <racine>/<source>/<série>/<chapitre> */
-async function scanMihonFolder(root){
-  const cat = {at:new Date().toISOString().slice(0,10), series:[]};
-  const setStat = t => { $("statusline").textContent = t; };
-  for await (const [srcName, srcHandle] of root.entries()){
-    if (srcHandle.kind !== "directory") continue;
-    setStat("Analyse · "+srcName);
-    for await (const [mangaName, mangaHandle] of srcHandle.entries()){
-      if (mangaHandle.kind !== "directory") continue;
-      const chapters = [];
-      for await (const [chapName, chapHandle] of mangaHandle.entries()){
-        if (chapHandle.kind === "directory") chapters.push({name:chapName, kind:"dir"});
-        else if (ARC_RE.test(chapName)) chapters.push({name:chapName, kind:"cbz"});
-      }
-      if (chapters.length) cat.series.push({source:srcName, title:mangaName, chapters});
-    }
-  }
-  cat.series.sort((a,b)=>a.title.localeCompare(b.title,"fr"));
-  return cat;
-}
-
-async function linkMihonFolder(){
-  if (!window.showDirectoryPicker){
-    toast("Ce navigateur ne sait pas ouvrir un dossier — utilise l'ajout de fichiers dans une fiche.");
-    return;
-  }
-  let root;
-  try{ root = await window.showDirectoryPicker({id:"mihon", mode:"read"}); }
-  catch(e){ return; }
-  FSROOT = root;
-  await saveRootHandle(root);
-  $("statusline").textContent = "Analyse du dossier…";
-  try{
-    CATALOG = await scanMihonFolder(root);
-    kvSet("catalog:v1", CATALOG);
-    const chapters = CATALOG.series.reduce((s,x)=>s+x.chapters.length,0);
-    const matched = CATALOG.series.filter(s=>matchEntry(s)).length;
-    $("statusline").textContent = `${CATALOG.series.length} séries · ${chapters} chapitres · ${matched} reconnues dans ta bibliothèque`;
-    toast(matched+" séries de ta bibliothèque ont des chapitres sur l'appareil");
-    renderLibrary();
-  }catch(e){
-    $("statusline").textContent = "Analyse impossible : "+e.message;
-  }
-}
-
-/* rapprochement dossier ↔ bibliothèque */
-function matchEntry(folderSeries){
-  const key = norm(folderSeries.title);
-  let hit = LIB.entries.find(e => norm(e.t) === key);
-  if (!hit) hit = LIB.entries.find(e => { const n = norm(e.t); return n.length > 6 && (key.includes(n) || n.includes(key)); });
-  return hit || null;
-}
-function folderChaptersFor(entry){
-  if (!CATALOG) return [];
-  const key = norm(entry.t);
-  const hit = CATALOG.series.find(s => norm(s.title) === key)
-    || CATALOG.series.find(s => { const k = norm(s.title); return k.length > 6 && (k.includes(key) || key.includes(k)); });
-  if (!hit) return [];
-  return hit.chapters.map(c => ({
-    id: "fs:"+hit.source+"/"+hit.title+"/"+c.name,
-    entryId: entry.id, name: c.name, num: chapNumOf(c.name),
-    fs: {source:hit.source, title:hit.title, chapter:c.name, kind:c.kind},
-    pages: [], at: 0,
-    lastPage: (FSPROG["fs:"+hit.source+"/"+hit.title+"/"+c.name]||{}).lastPage || 0,
-    done: !!(FSPROG["fs:"+hit.source+"/"+hit.title+"/"+c.name]||{}).done
-  })).sort((a,b)=>(a.num||0)-(b.num||0) || a.name.localeCompare(b.name,undefined,{numeric:true}));
-}
-
-/* charge les pages d'un chapitre du dossier, à la demande */
-async function loadFsPages(chapter){
-  if (!FSROOT) FSROOT = await loadRootHandle();
-  if (!FSROOT) throw new Error("Dossier non lié. Relie-le depuis ••• → Dossier Mihon.");
-  const perm = await FSROOT.requestPermission({mode:"read"});
-  if (perm !== "granted") throw new Error("Accès au dossier refusé.");
-  const src = await FSROOT.getDirectoryHandle(chapter.fs.source);
-  const manga = await src.getDirectoryHandle(chapter.fs.title);
-  if (chapter.fs.kind === "cbz"){
-    const fh = await manga.getFileHandle(chapter.fs.chapter);
-    return readZip(await fh.getFile());
-  }
-  const dir = await manga.getDirectoryHandle(chapter.fs.chapter);
-  const files = [];
-  for await (const [name, h] of dir.entries()){
-    if (h.kind === "file" && IMG_RE.test(name)) files.push({name, h});
-  }
-  files.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
-  if (!files.length) throw new Error("Aucune image dans ce chapitre.");
-  return Promise.all(files.map(f => f.h.getFile()));
-}
-
-function saveFsProgress(chapter){
-  FSPROG[chapter.id] = {lastPage: chapter.lastPage||0, done: !!chapter.done};
-  kvSet("fsprog:v1", FSPROG);
-}
-
-
-/* ============================================================
-   Dossier de téléchargement choisi en une fois (Android compris)
-   Arborescence Mihon : <racine>/<Source (LANG)>/<Série>/<Chapitre>/pages
-   ============================================================ */
-let PICKED = new Map();                          // clé "source|série" → {source, title, chapters:Map}
-let PICKINDEX = null;
-
-/* « Asura Scans (EN) » → « asurascans » */
-const srcKey = s => norm(String(s).replace(/\s*\([a-z]{2,3}\)\s*$/i, ""));
-
-function indexPickedFiles(fileList){
-  const map = new Map();
-  let skipped = 0;
-  for (const f of fileList){
-    const path = f.webkitRelativePath || f.name;
-    const segs = path.split("/").filter(Boolean);
-    const isArc = ARC_RE.test(f.name);
-    if (!isArc && !IMG_RE.test(f.name)){ skipped++; continue; }
-    // on compte depuis la fin : la profondeur de la racine choisie n'a pas d'importance
-    let source, title, chapter;
-    if (isArc){
-      chapter = segs[segs.length-1];
-      title   = segs[segs.length-2];
-      source  = segs[segs.length-3];
-    } else {
-      chapter = segs[segs.length-2];
-      title   = segs[segs.length-3];
-      source  = segs[segs.length-4];
-    }
-    if (!title || !chapter){ skipped++; continue; }
-    const key = srcKey(source||"")+"|"+norm(title);
-    if (!map.has(key)) map.set(key, {source: source||"", title, chapters: new Map()});
-    const rec = map.get(key);
-    if (!rec.chapters.has(chapter)) rec.chapters.set(chapter, []);
-    rec.chapters.get(chapter).push(f);
-  }
-  for (const rec of map.values()){
-    for (const files of rec.chapters.values()){
-      files.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true}));
-    }
-  }
-  return {map, skipped};
-}
-
-/* rapprochement : d'abord source + titre (les deux viennent de ta sauvegarde), sinon titre seul */
-function pickedFor(entry){
-  if (!PICKED.size) return [];
-  const tkey = norm(entry.t);
-  let rec = PICKED.get(srcKey(entry.s)+"|"+tkey);
-  if (!rec){
-    for (const [k, v] of PICKED){
-      if (k.endsWith("|"+tkey)){ rec = v; break; }
-    }
-  }
-  if (!rec){
-    for (const [, v] of PICKED){
-      const k = norm(v.title);
-      if (k.length > 6 && (k.includes(tkey) || tkey.includes(k))){ rec = v; break; }
-    }
-  }
-  if (!rec) return [];
-  return [...rec.chapters.entries()].map(([name, files]) => {
-    const id = "pf:"+srcKey(rec.source)+"/"+norm(rec.title)+"/"+norm(name);
-    const prog = FSPROG[id] || {};
-    return {
-      id, entryId: entry.id, name: name.replace(ARC_RE,""), num: chapNumOf(name),
-      pf: {files, isArc: files.length === 1 && ARC_RE.test(files[0].name)},
-      pages: [], at: 0, lastPage: prog.lastPage || 0, done: !!prog.done
-    };
-  }).sort((a,b)=>(a.num||0)-(b.num||0) || a.name.localeCompare(b.name, undefined, {numeric:true}));
-}
-
-async function loadPickedPages(chapter){
-  if (chapter.pf.isArc) return readZip(chapter.pf.files[0]);
-  return chapter.pf.files;
-}
-
-async function pickDownloadFolder(files){
-  $("statusline").textContent = "Analyse du dossier…";
-  await sleep(20);
-  const {map, skipped} = indexPickedFiles(files);
-  PICKED = map;
-  let matched = 0, chapters = 0;
-  const perSource = {};
-  LIB.entries.forEach(e => { if (pickedFor(e).length) matched++; });
-  for (const rec of map.values()){
-    chapters += rec.chapters.size;
-    const s = rec.source || "—";
-    perSource[s] = (perSource[s]||0) + 1;
-  }
-  PICKINDEX = {
-    at: new Date().toISOString().slice(0,10),
-    series: map.size, chapters, matched,
-    sources: perSource,
-    keys: [...map.keys()]
-  };
-  kvSet("pickindex:v1", PICKINDEX);
-  $("statusline").textContent = `${map.size} séries · ${chapters} chapitres · ${matched} reconnues dans ta bibliothèque`
-    + (skipped ? ` · ${skipped} fichiers ignorés` : "");
-  toast(matched+" séries de ta bibliothèque ont leurs chapitres sur l'appareil");
-  renderLibrary();
-}
-
-function pickSummaryHTML(){
-  if (!PICKINDEX) return "";
-  const live = PICKED.size > 0;
-  const src = Object.entries(PICKINDEX.sources||{}).sort((a,b)=>b[1]-a[1])
-    .map(([s,n])=>`${esc(s)} (${n})`).join(" · ");
-  return `<div class="note" style="margin-bottom:10px">
-    <b>Dossier de téléchargement</b> — relevé le ${esc(PICKINDEX.at)} : ${PICKINDEX.series} séries, ${PICKINDEX.chapters} chapitres, ${PICKINDEX.matched} reconnues.<br>
-    <span class="rmeta">${src}</span><br>
-    ${live ? '<span class="rmeta">Lecture directe active pour cette session.</span>'
-           : '<button class="btn sm" id="relink">Rouvrir le dossier</button> <span class="rmeta">Le navigateur oublie l\'accès à la fermeture ; un clic suffit à le rendre.</span>'}
-  </div>`;
-}
-
-/* --- lecture d'une archive CBZ (zip) sans bibliothèque externe --- */
-async function inflateRaw(bytes){
-  if (!("DecompressionStream" in window)) throw new Error("Ce navigateur ne sait pas décompresser les archives.");
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
-async function readZip(file){
-  const buf = new Uint8Array(await file.arrayBuffer());
-  const dv = new DataView(buf.buffer);
-  let eocd = -1;
-  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 66000); i--){
-    if (dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
-  }
-  if (eocd < 0) throw new Error("Archive illisible (ce n'est pas un CBZ/ZIP).");
-  const count = dv.getUint16(eocd + 10, true);
-  let ptr = dv.getUint32(eocd + 16, true);
-  const files = [];
-  for (let i = 0; i < count; i++){
-    if (dv.getUint32(ptr, true) !== 0x02014b50) break;
-    const method = dv.getUint16(ptr + 10, true);
-    const compSize = dv.getUint32(ptr + 20, true);
-    const nameLen = dv.getUint16(ptr + 28, true);
-    const extraLen = dv.getUint16(ptr + 30, true);
-    const commentLen = dv.getUint16(ptr + 32, true);
-    const localOff = dv.getUint32(ptr + 42, true);
-    const name = new TextDecoder().decode(buf.subarray(ptr + 46, ptr + 46 + nameLen));
-    files.push({name, method, compSize, localOff});
-    ptr += 46 + nameLen + extraLen + commentLen;
-  }
-  const imgs = files.filter(f => /\.(jpe?g|png|webp|gif|avif)$/i.test(f.name) && !/^__MACOSX/.test(f.name))
-    .sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true}));
-  if (!imgs.length) throw new Error("Aucune image dans cette archive.");
-  const pages = [];
-  for (const f of imgs){
-    const nameLen = dv.getUint16(f.localOff + 26, true);
-    const extraLen = dv.getUint16(f.localOff + 28, true);
-    const start = f.localOff + 30 + nameLen + extraLen;
-    const raw = buf.subarray(start, start + f.compSize);
-    const data = f.method === 0 ? raw : await inflateRaw(raw);
-    const ext = f.name.split(".").pop().toLowerCase();
-    const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" : ext === "avif" ? "image/avif" : "image/jpeg";
-    pages.push(new Blob([data], {type:mime}));
-  }
-  return pages;
-}
-
-/* Read a chapter number out of a filename.
-   The old version fell back to "first number in the name", which meant
-   "[2024] Vol.3 - 12.cbz" returned 2024 — and finish() writes that straight into progress,
-   irreversibly. Returning null is always safer than returning a wrong number: the caller
-   then just advances by one. See REVIEW.md §1.6. */
-const chapNumOf = name => {
-  let s = String(name).replace(/\.(cbz|zip|cbr|rar|7z|pdf)$/i, "");
-  /* bracketed groups hold scanlation tags, years, resolutions — never the chapter */
-  s = s.replace(/[\[\(\{][^\]\)\}]*[\]\)\}]/g, " ");
-  /* release dates, both orders — otherwise the month reads as a chapter number */
-  s = s.replace(/\b(?:19|20)\d{2}[-._/]\d{1,2}[-._/]\d{1,2}\b/g, " ")
-       .replace(/\b\d{1,2}[-._/]\d{1,2}[-._/](?:19|20)\d{2}\b/g, " ");
-
-  /* an explicit chapter marker always wins */
-  const m = s.match(/\bch(?:ap(?:ter|itre)?)?\.?[\s._-]*(\d+(?:\.\d+)?)/i);
-  if (m) return parseFloat(m[1]);
-
-  /* strip volume markers WITH their number, so the fallback cannot pick them up:
-     a volume number is not a chapter number */
-  const noVol = s
-    .replace(/\b(?:vol(?:ume)?|tome)\.?[\s._-]*\d+(?:\.\d+)?/ig, " ")
-    .replace(/\bt\.?\s?\d+(?:\.\d+)?/ig, " ");
-
-  /* fall back to the first bare number that is not a plausible year */
-  const nums = noVol.match(/\d+(?:\.\d+)?/g) || [];
-  const ok = nums.filter(n => !/^(?:19|20)\d{2}$/.test(n));
-  return ok.length ? parseFloat(ok[0]) : null;
-};
-
-async function addFiles(entry, fileList){
-  const files = [...fileList];
-  const zips = files.filter(f => /\.(cbz|zip)$/i.test(f.name));
-  const imgs = files.filter(f => /^image\//.test(f.type));
-  let added = 0;
-  for (const z of zips){
-    try{
-      const pages = await readZip(z);
-      await putChapter({id: uid(), entryId: entry.id, name: z.name.replace(/\.(cbz|zip)$/i,""),
-        num: chapNumOf(z.name), pages, at: Date.now(), lastPage: 0, done: false});
-      added++;
-    }catch(e){ toast(z.name+" : "+e.message); }
-  }
-  if (imgs.length){
-    imgs.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true}));
-    await putChapter({id: uid(), entryId: entry.id, name: imgs.length+" images importées",
-      num: chapNumOf(imgs[0].name), pages: imgs.map(f=>f), at: Date.now(), lastPage: 0, done: false});
-    added++;
-  }
-  toast(added ? added+" chapitre(s) ajouté(s) hors ligne" : "Aucun fichier exploitable");
-  renderChapters(entry);
-}
-
-async function addFolderFiles(entry, fileList){
-  const files = [...fileList].filter(f => IMG_RE.test(f.name) || ARC_RE.test(f.name));
-  if (!files.length){ toast("Aucune image ni archive dans ce dossier"); return; }
-  const groups = new Map();
-  files.forEach(f => {
-    const path = f.webkitRelativePath || f.name;
-    const parts = path.split("/");
-    const key = ARC_RE.test(f.name) ? path : parts.slice(0, -1).join("/") || "chapitre";
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(f);
-  });
-  let added = 0;
-  for (const [key, group] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}))){
-    const label = key.split("/").filter(Boolean).pop();
-    try{
-      let pages;
-      if (group.length === 1 && ARC_RE.test(group[0].name)) pages = await readZip(group[0]);
-      else pages = group.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
-      await putChapter({id: uid(), entryId: entry.id, name: label.replace(ARC_RE,""),
-        num: chapNumOf(label), pages, at: Date.now(), lastPage: 0, done: false});
-      added++;
-    }catch(e){ toast(label+" : "+e.message); }
-  }
-  toast(added+" chapitre(s) importés depuis le dossier");
-  renderChapters(entry);
-}
-
-async function renderChapters(entry){
-  const box = $("chapbox");
-  if (!box) return;
-  let stored = [];
-  try{ stored = await chaptersOf(entry.id) || []; }
-  catch(e){ box.innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
-  const fsList = folderChaptersFor(entry);
-  const pfList = pickedFor(entry);
-  const list = stored.concat(fsList, pfList);
-  list.sort((a,b)=> (a.num||0) - (b.num||0) || (a.at||0) - (b.at||0) || a.name.localeCompare(b.name,undefined,{numeric:true}));
-  const size = stored.reduce((s,c)=> s + c.pages.reduce((n,p)=>n+(p.size||0),0), 0);
-  box.innerHTML = `
-    <div class="filedrop" id="fileDrop">Ajouter des chapitres · CBZ, ZIP ou images<br>fichiers de ton appareil</div>
-    <input type="file" id="chapFile" class="hidden" multiple accept=".cbz,.zip,image/*">
-    <input type="file" id="chapDir" class="hidden" webkitdirectory directory multiple>
-    <p class="rmeta" style="margin:6px 0 10px"><button class="btn sm ghost" id="pickDir">Choisir un dossier de chapitres</button></p>
-    ${list.length ? list.map(c=>`
-      <div class="chapline ${c.done?"read":""}">
-        <span style="min-width:0">
-          <span class="cn">${esc(c.name)}</span><br>
-          <span class="cm">${c.fs ? "dossier Mihon"+(c.fs.kind==="cbz"?" · CBZ":"") : c.pf ? "dossier Mihon · "+(c.pf.isArc?"CBZ":c.pf.files.length+" pages") : c.pages.length+" pages"}${c.num?" · ch. "+c.num:""}${c.lastPage?" · page "+(c.lastPage+1):""}</span>
-        </span>
-        <span class="ca">
-          <button class="btn sm" data-read="${c.id}">Lire</button>
-          ${(c.fs || c.pf) ? "" : `<button class="btn sm ghost" data-del="${c.id}">✕</button>`}
-        </span>
-      </div>`).join("") : `<p class="rmeta" style="margin-top:8px">Aucun chapitre trouvé pour cette série. Ajoute des fichiers, ou relie ton dossier Mihon depuis ••• .</p>`}
-    ${size ? `<div class="storagebar">${(size/1048576).toFixed(1)} Mo importés dans ce navigateur</div>` : ""}
-    ${fsList.length+pfList.length ? `<div class="storagebar">${fsList.length+pfList.length} chapitre(s) lus directement depuis ton dossier Mihon, sans copie</div>` : ""}`;
-  $("fileDrop").onclick = () => $("chapFile").click();
-  $("chapFile").onchange = e => { if (e.target.files.length) addFiles(entry, e.target.files); e.target.value=""; };
-  $("pickDir").onclick = () => $("chapDir").click();
-  $("chapDir").onchange = e => { if (e.target.files.length) addFolderFiles(entry, e.target.files); e.target.value=""; };
-  [...box.querySelectorAll("[data-read]")].forEach(b=>{
-    b.onclick = async () => {
-      const c = list.find(x=>x.id===b.dataset.read);
-      if (!c) return;
-      if (!c.pages.length && (c.fs || c.pf)){
-        b.disabled = true; b.textContent = "…";
-        try{ c.pages = c.fs ? await loadFsPages(c) : await loadPickedPages(c); }
-        catch(e){ b.disabled = false; b.textContent = "Lire"; toast(e.message); return; }
-        b.disabled = false; b.textContent = "Lire";
-      }
-      openReader(entry, c, list);
-    };
-  });
-  [...box.querySelectorAll("[data-del]")].forEach(b=>{
-    b.onclick = async () => { await delChapter(b.dataset.del); renderChapters(entry); toast("Chapitre supprimé"); };
-  });
-}
-
-/* --- le lecteur --- */
-let readerState = null;
-function closeReader(){
-  if (!readerState) return;
-  readerState.urls.forEach(u=>URL.revokeObjectURL(u));
-  document.querySelector(".reader") && document.querySelector(".reader").remove();
-  const {entry} = readerState;
-  readerState = null;
-  document.body.style.overflow = "hidden";
-  renderChapters(entry);
-}
-
-function openReader(entry, chapter, all){
-  if (!chapter) return;
-  const urls = chapter.pages.map(p => URL.createObjectURL(p));
-  const mode = store.get("readmode:v1") || (entry.m === "Webtoon" ? "webtoon" : "paged");
-  const rtl = store.get("rtl:v1") !== false && mode === "paged" && entry.m !== "Webtoon";
-  readerState = {entry, chapter, urls, page: chapter.lastPage || 0, mode, rtl, all};
-  const el = document.createElement("div");
-  el.className = "reader" + (mode === "paged" ? " paged" : "");
-  el.innerHTML = `
-    <div class="rtop">
-      <button class="rbtn" id="rClose">✕</button>
-      <span class="rtxt">${esc(entry.t)} · ${esc(chapter.name)}</span>
-      <button class="rbtn ${mode==="webtoon"?"on":""}" id="rMode">${mode==="webtoon"?"Webtoon":"Pages"}</button>
-      ${mode==="paged"?`<button class="rbtn ${rtl?"on":""}" id="rDir">${rtl?"←":"→"}</button>`:""}
-    </div>
-    <div class="pages" id="rPages"></div>
-    ${mode==="paged"?'<div class="zone l" id="zl"></div><div class="zone r" id="zr"></div>':""}
-    <div class="rbar">
-      <span class="rtxt" id="rCount"></span>
-      <button class="rbtn" id="rDone">Marquer lu</button>
-    </div>`;
-  document.body.appendChild(el);
-  document.body.style.overflow = "hidden";
-  const pages = $("rPages");
-
-  const draw = () => {
-    if (readerState.mode === "webtoon"){
-      pages.innerHTML = urls.map((u,i)=>`<img src="${u}" alt="page ${i+1}" loading="${i<3?"eager":"lazy"}">`).join("");
-      $("rCount").textContent = urls.length + " pages · défilement continu";
-    } else {
-      pages.innerHTML = `<img src="${urls[readerState.page]}" alt="page ${readerState.page+1}">`;
-      $("rCount").textContent = `Page ${readerState.page+1} / ${urls.length}`;
-    }
-  };
-  const go = delta => {
-    const next = readerState.page + delta;
-    if (next < 0) return;
-    if (next >= urls.length){ finish(); return; }
-    readerState.page = next;
-    chapter.lastPage = next;
-    if (chapter.fs || chapter.pf) saveFsProgress(chapter); else putChapter(chapter);
-    draw();
-  };
-  const finish = async () => {
-    chapter.done = true; chapter.lastPage = 0;
-    if (chapter.fs || chapter.pf) saveFsProgress(chapter); else await putChapter(chapter);
-    const n = chapter.num;
-    const cur = entry.r || 0;
-    if (n && n > cur){
-      /* chapNumOf() is stricter now, but a filename can still lie in ways it cannot detect.
-         Overwriting progress is irreversible, so a big forward jump has to be confirmed
-         rather than applied silently. See REVIEW.md §1.6. */
-      const tot = totals(entry).ch || 0;
-      const suspicious = (n - cur > 5) || (tot && n > tot);
-      if (!suspicious || confirm(
-            `Ce fichier indique le chapitre ${n}, alors que ta progression est à ${cur}`
-            + (tot ? ` sur ${tot}` : "") + `.\n\nMettre ta progression à ${n} ?`))
-        entry.r = n;
-      else entry.r = cur + 1;
-    }
-    else if (!n) entry.r = cur + 1;
-    entry.d = new Date().toISOString().slice(0,10);
-    saveLib(); renderLibrary(); boot();
-    const idx = all.findIndex(c=>c.id===chapter.id);
-    const next = all[idx+1];
-    closeReader();
-    if (next && confirm("Chapitre terminé. Enchaîner sur « "+next.name+" » ?")){
-      if (!next.pages.length && (next.fs || next.pf)){
-        try{ next.pages = next.fs ? await loadFsPages(next) : await loadPickedPages(next); }
-        catch(e){ toast(e.message); return; }
-      }
-      openReader(entry, next, all);
-    }
-    else toast("Progression mise à jour : "+entry.r);
-  };
-
-  $("rClose").onclick = closeReader;
-  $("rDone").onclick = finish;
-  $("rMode").onclick = () => {
-    readerState.mode = readerState.mode === "webtoon" ? "paged" : "webtoon";
-    store.set("readmode:v1", readerState.mode);
-    el.classList.toggle("paged", readerState.mode === "paged");
-    closeReaderKeepState(el, entry, chapter, all);
-  };
-  const dir = $("rDir");
-  if (dir) dir.onclick = () => { store.set("rtl:v1", !readerState.rtl); readerState.rtl = !readerState.rtl; dir.textContent = readerState.rtl?"←":"→"; dir.classList.toggle("on", readerState.rtl); };
-  const zl = $("zl"), zr = $("zr");
-  if (zl) zl.onclick = () => go(readerState.rtl ? 1 : -1);
-  if (zr) zr.onclick = () => go(readerState.rtl ? -1 : 1);
-  el.tabIndex = -1; el.focus();
-  el.onkeydown = e => {
-    if (e.key === "Escape") closeReader();
-    if (readerState.mode !== "paged") return;
-    if (e.key === "ArrowRight") go(readerState.rtl ? -1 : 1);
-    if (e.key === "ArrowLeft") go(readerState.rtl ? 1 : -1);
-  };
-  if (readerState.mode === "webtoon"){
-    pages.onscroll = () => {
-      if (pages.scrollTop + pages.clientHeight >= pages.scrollHeight - 40) $("rDone").classList.add("on");
-    };
-  }
-  draw();
-}
-function closeReaderKeepState(el, entry, chapter, all){
-  const page = readerState.page;
-  readerState.urls.forEach(u=>URL.revokeObjectURL(u));
-  el.remove(); readerState = null;
-  chapter.lastPage = page;
-  openReader(entry, chapter, all);
-}
 
 /* ============================================================
    Suivi détaillé : chapitres ou tomes, totaux et provenance
@@ -1519,7 +965,7 @@ function wireTracker(d){
      after the first "+" click. See REVIEW.md §1.4. Same goes for any button added to
      trackerHTML() later. */
   $("removeBtn").onclick = async () => {
-    if (!confirm("Retirer « "+d.t+" » de ta bibliothèque ?\n\nSes chapitres hors ligne et ses données en cache seront également supprimés.")) return;
+    if (!confirm("Retirer « "+d.t+" » de ta bibliothèque ?\n\nSes données en cache seront également supprimées.")) return;
     LIB.entries = LIB.entries.filter(x=>x.id !== d.id);
     saveLib(); closeSheet(); boot();
     toast("Série retirée");
@@ -1554,6 +1000,7 @@ function openSheet(d){
           ${(meta?meta.genres:d.g).slice(0,8).map(g=>`<span class="pill">${esc(g)}</span>`).join("")}
         </div>
         <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
+        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">Chercher dans Mihon</button>` : ""}
         <dl>
           <dt>Dernière fois</dt><dd>${esc(d.d||"—")}</dd>
           <dt>Ajouté le</dt><dd>${esc(d.ad||"—")}</dd>
@@ -1562,8 +1009,6 @@ function openSheet(d){
           ${meta?`<dt>Fiche</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)} sur AniList</a></dd>`:""}
         </dl>
         ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
-        <div class="seclabel"><span>Chapitres hors ligne</span></div>
-        <div id="chapbox"></div>
         <div class="seclabel"><span>Ce que lisent ceux qui ont aimé</span><button class="btn ghost sm" id="refresh">Actualiser</button></div>
         <div id="recos"><p class="loading">Interrogation d'AniList</p></div>
       </div>
@@ -1578,7 +1023,8 @@ function openSheet(d){
     moreBtn.textContent = el.classList.contains("clamped") ? "Lire la suite" : "Replier";
   };
   wireTracker(d);   // also wires removeBtn — see REVIEW.md §1.4
-  renderChapters(d);
+  const mb = $("mihonBtn");
+  if (mb) mb.onclick = () => openInMihon(d.t);
   fillRecos(d, false);
 }
 
@@ -1877,14 +1323,6 @@ $("unitBtn").onclick = e => {
   renderLibrary();
   toast(state.unit === "ch" ? "Affichage par chapitres" : "Affichage par tomes — chaque série peut être réglée à part dans sa fiche");
 };
-$("folderBtn").onclick = () => {
-  if (window.showDirectoryPicker) linkMihonFolder();
-  else $("rootDir").click();
-};
-$("rootDir").addEventListener("change", e => {
-  if (e.target.files.length) pickDownloadFolder(e.target.files);
-  e.target.value = "";
-});
 $("importBtn").onclick = () => $("file").click();
 $("exportBtn").onclick = exportLib;
 $("resetBtn").onclick = async () => {
@@ -1896,7 +1334,6 @@ $("resetBtn").onclick = async () => {
   if (!confirm(
     `Effacer DÉFINITIVEMENT toutes les données de Rayon ?\n\n`
     + `• ${n} série(s) et leur progression\n`
-    + `• Les chapitres hors ligne stockés sur l'appareil\n`
     + `• Fiches, totaux et recommandations en cache\n`
     + `• Tes préférences\n\n`
     + `Cette action est irréversible.`)) return;
@@ -1955,7 +1392,10 @@ $("unitBtn").textContent = state.unit === "ch" ? "Suivi : chapitres" : "Suivi : 
 /* Move the big caches out of localStorage, once, then load them (REVIEW.md §1.2).
    Existing installs carry several MB here; copying them across also frees the quota that was
    silently blocking library saves. Anything that fails is only a cache — it regenerates. */
-const CACHE_KEYS = ["meta:v2", "md:v1", "catalog:v1", "fsprog:v1", "pickindex:v1", "discover:v1"];
+const CACHE_KEYS = ["meta:v2", "md:v1", "discover:v1"];
+
+/* Keys from the removed reader. Never migrated, only dropped: nothing reads them any more. */
+const DEAD_KEYS = ["catalog:v1", "fsprog:v1", "pickindex:v1"];
 
 async function migrateCaches(){
   for (const k of CACHE_KEYS){
@@ -1963,6 +1403,7 @@ async function migrateCaches(){
     if (legacy === null || legacy === undefined) continue;
     if (await kvSet(k, legacy)) store.del(k);   // only drop the original once it is safely stored
   }
+  for (const k of DEAD_KEYS){ store.del(k); await kvDel(k); }
   /* per-series recommendation caches: the bulk of the overflow */
   let recoKeys = [];
   try{
@@ -1979,12 +1420,9 @@ async function migrateCaches(){
 }
 
 async function loadCaches(){
-  META      = (await kvGet("meta:v2"))     || {};
-  MDCACHE   = (await kvGet("md:v1"))       || {};
-  CATALOG   = (await kvGet("catalog:v1"))  || null;
-  FSPROG    = (await kvGet("fsprog:v1"))   || {};
-  PICKINDEX = (await kvGet("pickindex:v1"))|| null;
-  DISCOVER  = (await kvGet("discover:v1")) || null;
+  META     = (await kvGet("meta:v2"))     || {};
+  MDCACHE  = (await kvGet("md:v1"))       || {};
+  DISCOVER = (await kvGet("discover:v1")) || null;
 }
 
 (async function start(){
@@ -2003,7 +1441,6 @@ async function loadCaches(){
   }
   boot();
   hydrate();
-  loadRootHandle().then(h => { if (h){ FSROOT = h; if (CATALOG) renderLibrary(); } });
 })();
 
 /* service worker: http(s) only */
@@ -2027,14 +1464,12 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
    by calling these directly. Getters rather than values, because loadCaches() reassigns the
    globals and a captured reference would go stale. */
 window.__rayon = {
-  norm, chapNumOf, mergeLibraries, resetEverything, purgeSeriesData,
+  norm, mergeLibraries, resetEverything, purgeSeriesData,
   store, kvGet, kvSet, kvDel, db,
   importFile, saveLib, boot, hydrate, openSheet,
   get LIB()      { return LIB; },   set LIB(v) { LIB = v; },
   get META()     { return META; },
   get MDCACHE()  { return MDCACHE; },
-  get CATALOG()  { return CATALOG; },
   get DISCOVER() { return DISCOVER; },
-  get FSPROG()   { return FSPROG; },
   get state()    { return state; },
 };

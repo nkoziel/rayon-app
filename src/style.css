@@ -162,26 +162,6 @@ dd{margin:0}
 .hit .act{margin-left:auto;flex:0 0 auto}
 
 
-/* ---------- lecteur ---------- */
-.chapline{display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1.5px solid rgba(22,21,15,.2)}
-.chapline .cn{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:14px;line-height:1.1;overflow-wrap:anywhere}
-.chapline .cm{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim)}
-.chapline .ca{margin-left:auto;display:flex;gap:5px;flex:0 0 auto}
-.chapline.read .cn{color:var(--dim)}
-.reader{position:fixed;inset:0;z-index:80;background:#0d0c09;display:flex;flex-direction:column}
-.reader .pages{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-.reader .pages img{display:block;width:100%;max-width:900px;margin:0 auto}
-.reader.paged .pages{overflow:hidden;display:flex;align-items:center;justify-content:center}
-.reader.paged .pages img{max-height:100%;width:auto;max-width:100%;object-fit:contain}
-.rbar{display:flex;gap:6px;align-items:center;padding:8px 10px;padding-bottom:calc(8px + var(--safe-b));background:#16150F;border-top:2px solid #33312a;overflow:hidden}
-.rbar .rtxt{min-width:0;flex:1 1 auto;font-family:'Space Mono',monospace;font-size:10.5px;color:#cfcbbd;margin-right:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rbtn{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;background:transparent;border:2px solid #cfcbbd;color:#cfcbbd;padding:6px 9px;cursor:pointer;flex:0 0 auto}
-.rbtn.on{background:#cfcbbd;color:#16150F}
-.rtop{display:flex;gap:6px;align-items:center;padding:8px 10px;background:#16150F;border-bottom:2px solid #33312a;overflow:hidden}
-.zone{position:absolute;top:0;bottom:58px;width:34%;z-index:2}
-.zone.l{left:0}.zone.r{right:0}
-.filedrop{border:2px dashed var(--dim);padding:12px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);cursor:pointer}
-.storagebar{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim);margin-top:6px}
 
 /* ---------- divers ---------- */
 .note{font-size:12.5px;line-height:1.45;color:var(--ink-soft);border:1.5px solid var(--dim);padding:10px}

@@ -3,7 +3,7 @@
 /* IMPORTANT — bump VERSION on EVERY release.
    Without it, browsers that already installed the app never receive fixes:
    the SW only reinstalls when its own bytes change. See REVIEW.md §1.3. */
-const VERSION = "2026-08-23.9";
+const VERSION = "2026-08-23.10";
 
 const CACHE   = `rayon-shell-${VERSION}`;  // purged on every version bump
 const RUNTIME = "rayon-runtime";           // fonts + covers, kept across versions
