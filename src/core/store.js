@@ -11,6 +11,7 @@
    localStorage again, and never ignore what `set()` returns. */
 
 import { toast } from './dom.js';
+import { t } from './i18n.js';
 
 let quotaWarned = false;
 
@@ -22,7 +23,7 @@ export const store = {
       /* Never swallow this again. Warn once per session rather than on every keystroke. */
       if (!quotaWarned){
         quotaWarned = true;
-        toast("Stockage plein — exporte ta bibliothèque pour ne rien perdre");
+        toast(t("storage.full"));
       }
       console.error("[rayon] localStorage write refused for", k, e);
       return false;
@@ -53,10 +54,10 @@ export function db(){
       if (d.objectStoreNames.contains("handles"))  d.deleteObjectStore("handles");
     };
     req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(new Error("Stockage local indisponible."));
+    req.onerror = () => rej(new Error(t("storage.unavailable")));
     /* Another tab still holding an older version blocks the upgrade indefinitely.
        Reject instead of hanging — callers must stay able to give up. */
-    req.onblocked = () => rej(new Error("Une autre fenêtre de Rayon bloque la mise à jour du stockage. Ferme-la puis recharge."));
+    req.onblocked = () => rej(new Error(t("storage.blocked")));
   });
   return dbp;
 }
@@ -71,7 +72,7 @@ function kv(mode, fn){
     let out;
     try{ out = fn(s); }catch(e){ rej(e); return; }
     tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
-    tx.onerror = () => rej(tx.error || new Error("Erreur de stockage."));
+    tx.onerror = () => rej(tx.error || new Error(t("storage.error")));
   }));
 }
 
@@ -87,7 +88,7 @@ export async function kvGet(k){
 export async function kvSet(k, v){
   try{ await kv("readwrite", s => s.put({k, v})); return true; }
   catch(e){
-    if (!cacheWarned){ cacheWarned = true; toast("Cache non enregistré — le stockage de l'appareil est plein"); }
+    if (!cacheWarned){ cacheWarned = true; toast(t("storage.cacheFull")); }
     console.error("[rayon] IndexedDB cache write failed for", k, e);
     return false;
   }

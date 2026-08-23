@@ -46,10 +46,11 @@
       <div class="morebar hidden" id="moreBar">
         <button class="btn ghost" id="viewBtn">Vue liste</button>
         <button class="btn ghost" id="unitBtn">Suivi : chapitres</button>
-        <button class="btn ghost" id="mdBatch">Vérifier les sorties</button>
-        <button class="btn ghost" id="importBtn">Importer</button>
-        <button class="btn ghost" id="exportBtn">Exporter</button>
-        <button class="btn ghost danger" id="resetBtn">Tout effacer</button>
+        <button class="btn ghost" id="mdBatch" data-i18n="btn.checkReleases">Vérifier les sorties</button>
+        <button class="btn ghost" id="importBtn" data-i18n="btn.import">Importer</button>
+        <button class="btn ghost" id="exportBtn" data-i18n="btn.export">Exporter</button>
+        <button class="btn ghost danger" id="resetBtn" data-i18n="btn.reset">Tout effacer</button>
+        <button class="btn ghost" id="langBtn">English</button>
         <input type="file" id="file" accept=".tachibk,.json,.gz" class="hidden">
       </div>
       <div class="statusline" id="statusline"></div>
@@ -90,7 +91,7 @@
 
 <div id="overlay"></div>
 <div id="modalHost"></div>
-<div class="dropzone hidden" id="dropzone">Dépose ta sauvegarde .tachibk ou ton export .json</div>
+<div class="dropzone hidden" id="dropzone" data-i18n="lib.dropzone">Dépose ta sauvegarde .tachibk ou ton export .json</div>
 
 <script type="module" src="./main.js"></script>
 </body>

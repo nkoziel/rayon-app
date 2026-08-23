@@ -2,6 +2,7 @@
 
 import { $, esc, stripTags, sleep, uid, toast } from './core/dom.js';
 import { norm } from './core/norm.js';
+import { t as T, setLocale, locale, AVAILABLE, applyStatic } from './core/i18n.js';
 import { store, db, forgetDb, kvGet, kvSet, kvDel, DB_NAME } from './core/store.js';
 import {
   LIB, setLib, saveLib, META, MDCACHE, DISCOVER, setDiscover, markMetaDirty, saveMeta,
@@ -396,7 +397,7 @@ async function importFile(file){
     let msg;
     if (!LIB.entries.length){
       setLib({ label, entries });
-      msg = entries.length + " séries importées";
+      msg = T("toast.imported", { n: entries.length });
     } else {
       const mode = await askImportMode(entries);
       if (!mode){ $("statusline").textContent = ""; return; }
@@ -404,10 +405,10 @@ async function importFile(file){
         const m = mergeLibraries(LIB.entries, entries);
         m.entries.sort((a,b)=>(b.f-a.f)||a.t.localeCompare(b.t,"fr"));
         setLib({ label: LIB.label, entries: m.entries });
-        msg = `${m.added} ajoutée(s), ${m.updated} mise(s) à jour`;
+        msg = T("toast.merged", { added: m.added, updated: m.updated });
       } else {
         setLib({ label, entries });
-        msg = entries.length + " séries importées";
+        msg = T("toast.imported", { n: entries.length });
       }
     }
 
@@ -429,7 +430,7 @@ function exportLib(){
   a.download = "ma-bibliotheque.json";
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
-  toast("Export téléchargé — partage ce fichier à qui tu veux");
+  toast(T("toast.exported"));
 }
 
 /* ---- Handing a title over to Mihon ----
@@ -693,7 +694,7 @@ function renderLibrary(){
   if ($("filterSum")) updateFilterSummary();
   const list = libRows();
   box.innerHTML = !list.length
-    ? `<p class="empty">Aucune série ne correspond.</p>`
+    ? `<p class="empty">${esc(T("lib.noMatch"))}</p>`
     : (state.view === "grid"
         ? `<div class="grid">${list.map(posterHTML).join("")}</div>`
         : `<div class="list">${list.map(listHTML).join("")}</div>`);
@@ -839,7 +840,7 @@ function wireTracker(d){
     if (!confirm("Retirer « "+d.t+" » de ta bibliothèque ?\n\nSes données en cache seront également supprimées.")) return;
     LIB.entries = LIB.entries.filter(x=>x.id !== d.id);
     saveLib(); closeSheet(); boot();
-    toast("Série retirée");
+    toast(T("toast.seriesRemoved"));
     /* after the UI has closed: the user should not wait on a cleanup they cannot see */
     await purgeSeriesData(d);
   };
@@ -1111,7 +1112,7 @@ function onboardHTML(){
 
 function boot(){
   const lib = LIB.entries;
-  $("kicker").textContent = lib.length ? LIB.label : "Bibliothèque locale";
+  $("kicker").textContent = lib.length ? LIB.label : T("lib.defaultLabel");
   $("vert").textContent = lib.length ? "全"+lib.length+"作品" : "空";
   $("tabLibN").textContent = lib.length;
   $("stats").innerHTML = [
@@ -1210,7 +1211,7 @@ $("resetBtn").onclick = async () => {
   const btn = $("resetBtn");
   btn.disabled = true; btn.textContent = "Effacement…";
   await resetEverything();
-  toast("Données effacées — rechargement…");
+  toast(T("toast.erased"));
   /* Reload rather than reset the globals by hand: it is the only way to be sure nothing
      stale survives in memory. */
   setTimeout(() => location.reload(), 700);
@@ -1257,7 +1258,7 @@ if (store.get("panel:v1")){ $("filterPanel").classList.remove("hidden"); $("filt
 state.seeds = store.get("seeds:v1") || 25;
 drawDiscoverChips();
 state.unit = store.get("unit:v1") || "ch";
-$("unitBtn").textContent = state.unit === "ch" ? "Suivi : chapitres" : "Suivi : tomes";
+$("unitBtn").textContent = T(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
 
 (async function start(){
   /* The app must render even if IndexedDB never answers. It can hang rather than fail —
@@ -1273,9 +1274,22 @@ $("unitBtn").textContent = state.unit === "ch" ? "Suivi : chapitres" : "Suivi : 
   }catch(e){
     console.error("[rayon] cache init failed, starting with cold caches", e);
   }
+  applyStatic();
   boot();
   hydrate();
 })();
+
+/* Language selector. Changing it re-renders rather than reloading, so nothing in progress
+   is lost — the static shell is retranslated and the dynamic views redrawn. */
+$("langBtn").onclick = () => {
+  const next = AVAILABLE[(AVAILABLE.indexOf(locale()) + 1) % AVAILABLE.length];
+  setLocale(next);
+  applyStatic();
+  $("langBtn").textContent = T("lang." + next);
+  $("unitBtn").textContent = T(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
+  boot();
+};
+$("langBtn").textContent = T("lang." + locale());
 
 /* service worker: http(s) only */
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
@@ -1286,7 +1300,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
       if (!sw) return;
       sw.addEventListener("statechange", () => {
         if (sw.state === "installed" && navigator.serviceWorker.controller)
-          toast("Nouvelle version — recharge la page");
+          toast(T("toast.newVersion"));
       });
     });
   }).catch(()=>{});

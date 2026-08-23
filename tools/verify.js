@@ -149,6 +149,34 @@ if (norm) {
   else console.log('  OK   パパ et ハハ restent distincts');
 }
 
+/* ---------- 3. i18n completeness ----------
+   French is a first-class locale, not a fallback with gaps: a missing key silently showing
+   English is a bug. Compares the two tables by parsing them out of the module source. */
+section('i18n — chaque locale doit etre complete');
+{
+  const isrc = sources.get('core/i18n.js');
+  if (!isrc) fail('core/i18n.js introuvable');
+  else {
+    const keysOf = (name) => {
+      const m = isrc.match(new RegExp(`const ${name} = \\{([\\s\\S]*?)\\n\\};`));
+      return m ? new Set([...m[1].matchAll(/^\s*"([^"]+)":/gm)].map(x => x[1])) : null;
+    };
+    const enKeys = keysOf('en'), frKeys = keysOf('fr');
+    if (!enKeys || !frKeys) fail('impossible de lire les tables en/fr');
+    else {
+      const missing = [...enKeys].filter(k => !frKeys.has(k));
+      const extra   = [...frKeys].filter(k => !enKeys.has(k));
+      missing.forEach(k => fail(`cle absente du francais : ${k}`));
+      extra.forEach(k   => fail(`cle francaise sans equivalent anglais : ${k}`));
+      if (!missing.length && !extra.length) console.log(`  OK   ${enKeys.size} cles, en et fr alignes`);
+    }
+    /* i18n must stay a leaf: store.js needs t(), so importing store here would be a cycle,
+       and the language is picked at module-init time — the TDZ would throw at boot. */
+    if (/^\s*import\s/m.test(isrc)) fail('core/i18n.js importe : risque de cycle avec store.js');
+    else console.log('  OK   aucun import (pas de cycle avec store.js)');
+  }
+}
+
 /* ---------- 4. mergeLibraries (REVIEW.md §1.5) ---------- */
 section('mergeLibraries — importer ne doit jamais faire reculer une progression');
 {
