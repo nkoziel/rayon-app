@@ -134,5 +134,79 @@ if (norm) {
   else console.log('  OK   パパ et ハハ restent distincts');
 }
 
-console.log(failures ? `\n${failures} echec(s)\n` : '\nTout passe.\n');
-process.exit(failures ? 1 : 0);
+/* ---------- 4. migrateCaches (REVIEW.md §1.2) ----------
+   Runs the real migration against fake storage. This cannot prove IndexedDB behaves, but it
+   does prove the ordering invariant that matters: a localStorage key is only dropped once its
+   value is safely stored elsewhere. Getting that wrong destroys libraries. */
+function extractFunction(name) {
+  const start = srcLines.findIndex(l => new RegExp(`^(async )?function ${name}\\(`).test(l));
+  if (start === -1) { fail(`fonction ${name} introuvable`); return null; }
+  let end = start;
+  while (end < srcLines.length && srcLines[end] !== '}') end++;
+  if (end >= srcLines.length) { fail(`fin de ${name} introuvable`); return null; }
+  return srcLines.slice(start, end + 1).join('\n');
+}
+
+function makeSandbox(kvShouldFail) {
+  const ls = new Map();
+  const kvStore = new Map();
+  const localStorage = {
+    get length() { return ls.size; },
+    key: (i) => [...ls.keys()][i],
+    getItem: (k) => (ls.has(k) ? ls.get(k) : null),
+    setItem: (k, v) => ls.set(k, String(v)),
+    removeItem: (k) => ls.delete(k),
+  };
+  const store = {
+    get(k) { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; },
+    set(k, v) { localStorage.setItem(k, JSON.stringify(v)); return true; },
+    del(k) { localStorage.removeItem(k); },
+  };
+  const kvSet = async (k, v) => { if (kvShouldFail) return false; kvStore.set(k, v); return true; };
+  return { ls, kvStore, localStorage, store, kvSet, console };
+}
+
+const migrateSrc = extractFunction('migrateCaches');
+const cacheKeysSrc = (() => {
+  const i = srcLines.findIndex(l => l.startsWith('const CACHE_KEYS = '));
+  return i === -1 ? null : srcLines[i];
+})();
+
+section('migrateCaches — les caches quittent localStorage sans perte');
+if (!migrateSrc || !cacheKeysSrc) fail('migrateCaches ou CACHE_KEYS indisponible');
+else {
+  /* nominal case: everything moves across, preferences stay put */
+  const sb = makeSandbox(false);
+  vm.createContext(sb);
+  sb.localStorage.setItem('meta:v2', JSON.stringify({ a: 1 }));
+  sb.localStorage.setItem('md:v1', JSON.stringify({ b: 2 }));
+  sb.localStorage.setItem('reco:v3:onepiece', JSON.stringify({ items: [] }));
+  sb.localStorage.setItem('lib:v1', JSON.stringify({ entries: [] }));   // must NOT move
+  sb.localStorage.setItem('unit:v1', JSON.stringify('vol'));            // must NOT move
+  vm.runInContext(cacheKeysSrc + '\n' + migrateSrc + '\nmigrateCaches();', sb);
+
+  setTimeout(() => {
+    const moved = ['meta:v2', 'md:v1', 'reco:v3:onepiece'];
+    moved.forEach(k => {
+      if (sb.ls.has(k)) fail(`${k} est reste dans localStorage`);
+      if (!sb.kvStore.has(k)) fail(`${k} n'a pas ete ecrit dans le cache`);
+    });
+    if (!sb.ls.has('lib:v1')) fail('lib:v1 a ete deplace alors qu il doit rester');
+    if (!sb.ls.has('unit:v1')) fail('unit:v1 (preference) a ete deplace');
+    if (failures === 0) console.log('  OK   caches deplaces, bibliotheque et preferences intactes');
+
+    /* failure case: if the new store refuses the write, the original must survive */
+    const sb2 = makeSandbox(true);
+    vm.createContext(sb2);
+    sb2.localStorage.setItem('meta:v2', JSON.stringify({ a: 1 }));
+    vm.runInContext(cacheKeysSrc + '\n' + migrateSrc + '\nmigrateCaches();', sb2);
+    setTimeout(() => {
+      if (!sb2.ls.has('meta:v2'))
+        fail('meta:v2 supprime alors que l ecriture du cache a echoue — perte de donnees');
+      else console.log('  OK   ecriture refusee : l original est conserve');
+
+      console.log(failures ? `\n${failures} echec(s)\n` : '\nTout passe.\n');
+      process.exit(failures ? 1 : 0);
+    }, 30);
+  }, 30);
+}
