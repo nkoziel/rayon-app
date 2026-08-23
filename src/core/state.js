@@ -50,8 +50,11 @@ refreshOwned();
 
 export const isOwned = r => OWNED.has("id:"+r.id) || OWNED.has(norm(r.titre)) || OWNED.has(norm(r.romaji));
 
-/* Titles the user dismissed in Discover. Cleared in place, never reassigned. */
-export const DISMISSED = new Set(store.get("dismissed:v1") || []);
+/* Titles the user dismissed in Discover. Cleared in place, never reassigned.
+   Keys are STRINGS. They used to be AniList numbers; MangaBaka ids arrive as strings, and a Set
+   holding both answers has("123") false for a stored 123 - which would silently un-dismiss
+   everything the user had already skipped. Normalising on load keeps old dismissals working. */
+export const DISMISSED = new Set((store.get("dismissed:v1") || []).map(String));
 export const saveDismissed = () => store.set("dismissed:v1", [...DISMISSED]);
 
 /* ---------- view state ----------

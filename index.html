@@ -244,7 +244,17 @@ const en = {
   "reco.badgeReaders": "{n} readers",
   "reco.badgeTags": "{n} shared tags",
   "reco.badgeTagsPlain": "shared themes",
-  "reco.badgeAuthor": "Same author"
+  "reco.badgeAuthor": "Same author",
+  "discover.because": "Because you read {seeds}",
+  "discover.skip": "Not for me",
+  "discover.needSeeds": "Add a few titles first, then run the analysis again.",
+  "discover.queueing": "{n} series to query · about {min} min",
+  "discover.done": "Analysis complete",
+  "discover.doneWithFailures": "Done · {n} series with no match",
+  "discover.emptyLib": "Your library is empty. Add a few titles from the Add tab, or import a backup, then run the analysis.",
+  "discover.noneLeft": "Nothing left to suggest with these filters. Change the type, show dismissed titles again, or run the analysis after reading something new.",
+  "discover.intro": "Run the analysis: each series you read is looked up, and the titles that come back from several of them rise to the top.",
+  "discover.crossed": "Crossed {n} series: {seeds}."
 };
 const fr = {
   "app.title": "Rayon",
@@ -407,7 +417,17 @@ const fr = {
   "reco.badgeReaders": "{n} lecteurs",
   "reco.badgeTags": "{n} tags communs",
   "reco.badgeTagsPlain": "thèmes communs",
-  "reco.badgeAuthor": "Même auteur"
+  "reco.badgeAuthor": "Même auteur",
+  "discover.because": "Parce que tu lis {seeds}",
+  "discover.skip": "Pas pour moi",
+  "discover.needSeeds": "Ajoute d'abord quelques titres, puis relance l'analyse.",
+  "discover.queueing": "{n} séries à interroger · environ {min} min",
+  "discover.done": "Analyse terminée",
+  "discover.doneWithFailures": "Terminé · {n} série(s) sans correspondance",
+  "discover.emptyLib": "Ta bibliothèque est vide. Ajoute quelques titres depuis l'onglet Ajouter, ou importe une sauvegarde, puis lance l'analyse.",
+  "discover.noneLeft": "Plus rien à proposer avec ces filtres. Change de type, réaffiche les écartés, ou relance l'analyse après avoir lu de nouveaux titres.",
+  "discover.intro": "Lance l'analyse : chaque série que tu lis est recherchée, et les titres qui reviennent depuis plusieurs d'entre elles remontent en tête.",
+  "discover.crossed": "Croisement de {n} séries : {seeds}."
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -588,7 +608,7 @@ function refreshOwned() {
 }
 refreshOwned();
 const isOwned = (r) => OWNED.has("id:" + r.id) || OWNED.has(norm(r.titre)) || OWNED.has(norm(r.romaji));
-const DISMISSED = new Set(store.get("dismissed:v1") || []);
+const DISMISSED = new Set((store.get("dismissed:v1") || []).map(String));
 const saveDismissed = () => store.set("dismissed:v1", [...DISMISSED]);
 const state = {
   q: "",
@@ -1757,14 +1777,25 @@ function wireTracker(d, onRemoved) {
     await purgeSeriesData(d);
   };
 }
-let current = null;
-function closeSheet() {
-  current = null;
-  $("overlay").innerHTML = "";
-  document.body.style.overflow = "";
-}
 function badge(kind, label, title) {
   return `<span class="why why-${kind}"${title ? ` title="${esc(title)}"` : ""}>${esc(label)}</span>`;
+}
+function mergeWhy(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    ...a,
+    score: Math.max(a.score || 0, b.score || 0),
+    sameAuthor: !!(a.sameAuthor || b.sameAuthor),
+    sharedUsers: Math.max(a.sharedUsers || 0, b.sharedUsers || 0),
+    tags: [.../* @__PURE__ */ new Set([...a.tags || [], ...b.tags || []])].slice(0, 6),
+    tagsTotal: Math.max(a.tagsTotal || 0, b.tagsTotal || 0)
+  };
+}
+function strengthOf(r) {
+  const w = r.why;
+  if (!w) return r.votes || 0;
+  return (w.sharedUsers || 0) + (w.score || 0) * 100 + (w.sameAuthor ? 25 : 0);
 }
 function whyHTML(r) {
   const w = r.why;
@@ -1780,6 +1811,12 @@ function whyHTML(r) {
     out.push(badge("tags", t("reco.badgeTags", { n: w.tagsTotal })));
   if (w.sameAuthor) out.push(badge("author", t("reco.badgeAuthor")));
   return out.join(" ");
+}
+let current = null;
+function closeSheet() {
+  current = null;
+  $("overlay").innerHTML = "";
+  document.body.style.overflow = "";
 }
 function recoRowHTML(r) {
   const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut, r.score ? r.score + "/100" : null].filter(Boolean).join(" · ");
@@ -2004,6 +2041,7 @@ function updateFilterSummary() {
     renderLibrary();
   };
 }
+const keyOf = (r) => String(r.mb ?? r.id);
 async function runDiscover() {
   const btn = $("runDiscover");
   const bar = $("discoverProgress");
@@ -2024,20 +2062,20 @@ async function runDiscover() {
   const limit = state.seeds === "all" ? 999 : state.seeds;
   const seeds = [...byAl.values()].sort((a, b) => (b.r || 1) - (a.r || 1)).slice(0, limit);
   if (!seeds.length) {
-    $("discoverBox").innerHTML = `<p class="note">Ajoute d'abord quelques titres, puis relance l'analyse.</p>`;
+    $("discoverBox").innerHTML = `<p class="note">${esc(t("discover.needSeeds"))}</p>`;
     btn.disabled = false;
     bar.classList.add("hidden");
     return;
   }
   const tally = /* @__PURE__ */ new Map();
   let failures = 0;
-  $("discoverStatus").textContent = `${seeds.length} séries à interroger · environ ${Math.ceil(seeds.length * 1.4 / 60)} min`;
+  $("discoverStatus").textContent = t("discover.queueing", { n: seeds.length, min: Math.ceil(seeds.length * 1.4 / 60) });
   for (let i = 0; i < seeds.length; i++) {
     $("discoverStatus").textContent = `${i + 1}/${seeds.length} · ${seeds[i].t}`;
     bar.firstElementChild.style.width = Math.round(i / seeds.length * 100) + "%";
     let payload;
     try {
-      payload = await loadRecos(seeds[i], false);
+      payload = await recosFor(seeds[i], false);
     } catch (e) {
       failures++;
       $("discoverStatus").textContent = e.message;
@@ -2046,13 +2084,16 @@ async function runDiscover() {
     }
     payload.items.forEach((r) => {
       if (isOwned(r)) return;
-      const prev = tally.get(r.id);
+      const k = keyOf(r);
+      const prev = tally.get(k);
       const weight = Math.max(1, seeds[i].r || 1);
+      const s = strengthOf(r);
       if (prev) {
-        prev.votes += r.votes;
-        prev.weight += r.votes * Math.log10(weight + 10);
+        prev.votes += s;
+        prev.weight += s * Math.log10(weight + 10);
+        prev.why = mergeWhy(prev.why, r.why);
         if (!prev.from.some((x) => norm(x) === norm(seeds[i].t))) prev.from.push(seeds[i].t);
-      } else tally.set(r.id, Object.assign({}, r, { from: [seeds[i].t], weight: r.votes * Math.log10(weight + 10) }));
+      } else tally.set(k, Object.assign({}, r, { votes: s, from: [seeds[i].t], weight: s * Math.log10(weight + 10) }));
     });
     renderDiscover(rankTally(tally), true);
     await sleep(700);
@@ -2060,7 +2101,7 @@ async function runDiscover() {
   bar.firstElementChild.style.width = "100%";
   setDiscover({ at: (/* @__PURE__ */ new Date()).toISOString(), seeds: seeds.map((s) => s.t), items: rankTally(tally).slice(0, 60) });
   kvSet("discover:v1", DISCOVER);
-  $("discoverStatus").textContent = failures ? `Terminé · ${failures} série(s) sans fiche AniList` : "Analyse terminée";
+  $("discoverStatus").textContent = failures ? t("discover.doneWithFailures", { n: failures }) : t("discover.done");
   bar.classList.add("hidden");
   btn.disabled = false;
   renderDiscover();
@@ -2074,6 +2115,7 @@ function rankTally(tally) {
     if (prev) {
       prev.votes += r.votes;
       prev.weight += r.weight;
+      prev.why = mergeWhy(prev.why, r.why);
       r.from.forEach((f) => {
         if (!prev.from.some((x) => norm(x) === norm(f))) prev.from.push(f);
       });
@@ -2084,7 +2126,7 @@ function rankTally(tally) {
 function visibleDiscover() {
   if (!DISCOVER) return [];
   return DISCOVER.items.filter((r) => {
-    if (DISMISSED.has(r.id)) return false;
+    if (DISMISSED.has(keyOf(r))) return false;
     if (isOwned(r)) return false;
     if (state.type !== "all" && r.type !== MEDIA_TYPE[state.type]) return false;
     return true;
@@ -2102,10 +2144,11 @@ function discoverCardHTML(r, i) {
       <div class="rank">${String(i + 1).padStart(2, "0")}${r.score ? ` · ${r.score}/100` : ""}</div>
       <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a></div>
       <div class="rmeta">${esc(meta)}</div>
-      <div class="rwhy">Parce que tu lis <b>${esc(r.from.slice(0, 3).join(", "))}</b>${r.from.length > 3 ? ` +${r.from.length - 3}` : ""} · ${r.votes} votes</div>
+      <div class="rseed">${esc(t("discover.because", { seeds: r.from.slice(0, 3).join(", ") }))}${r.from.length > 3 ? ` +${r.from.length - 3}` : ""}</div>
+      <div class="rwhy">${whyHTML(r)}</div>
       <div class="ractions">
-        <button class="btn sm" data-add="${r.id}">Ajouter</button>
-        <button class="btn sm ghost" data-skip="${r.id}">Pas pour moi</button>
+        <button class="btn sm" data-add="${esc(keyOf(r))}">${esc(t("reco.add"))}</button>
+        <button class="btn sm ghost" data-skip="${esc(keyOf(r))}">${esc(t("discover.skip"))}</button>
       </div>
     </div>
   </article>`;
@@ -2113,20 +2156,20 @@ function discoverCardHTML(r, i) {
 function renderDiscover(partial, isPartial) {
   if (state.tab !== "discover" && !isPartial) return;
   const box = $("discoverBox");
-  const items = isPartial ? partial.filter((r) => !DISMISSED.has(r.id)).slice(0, 30) : visibleDiscover();
+  const items = isPartial ? partial.filter((r) => !DISMISSED.has(keyOf(r))).slice(0, 30) : visibleDiscover();
   if (!LIB.entries.length) {
-    box.innerHTML = `<p class="note">Ta bibliothèque est vide. Ajoute quelques titres depuis l'onglet <b>Ajouter</b>, ou importe une sauvegarde, puis lance l'analyse.</p>`;
+    box.innerHTML = `<p class="note">${esc(t("discover.emptyLib"))}</p>`;
     return;
   }
   if (!items.length) {
-    box.innerHTML = DISCOVER ? `<p class="note">Plus rien à proposer avec ces filtres. Change de type, réaffiche les écartés, ou relance l'analyse après avoir lu de nouveaux titres.</p>` : `<p class="note">Lance l'analyse : chaque série que tu lis est envoyée à AniList, et les titres qui reviennent depuis plusieurs d'entre elles remontent en tête.</p>`;
+    box.innerHTML = DISCOVER ? `<p class="note">${esc(t("discover.noneLeft"))}</p>` : `<p class="note">${esc(t("discover.intro"))}</p>`;
     return;
   }
-  const seedLine = DISCOVER && !isPartial ? `<p class="note" style="margin-bottom:12px">Croisement de ${DISCOVER.seeds.length} séries : ${esc(DISCOVER.seeds.join(", "))}.</p>` : "";
+  const seedLine = DISCOVER && !isPartial ? `<p class="note" style="margin-bottom:12px">${esc(t("discover.crossed", { n: DISCOVER.seeds.length, seeds: DISCOVER.seeds.join(", ") }))}</p>` : "";
   box.innerHTML = seedLine + `<div class="recgrid">${items.map(discoverCardHTML).join("")}</div>`;
   [...box.querySelectorAll("[data-add]")].forEach((b) => {
     b.onclick = () => {
-      const r = items.find((x) => String(x.id) === b.dataset.add);
+      const r = items.find((x) => keyOf(x) === b.dataset.add);
       if (r && addFromMedia(r)) {
         renderDiscover();
       }
@@ -2134,7 +2177,7 @@ function renderDiscover(partial, isPartial) {
   });
   [...box.querySelectorAll("[data-skip]")].forEach((b) => {
     b.onclick = () => {
-      DISMISSED.add(+b.dataset.skip);
+      DISMISSED.add(b.dataset.skip);
       saveDismissed();
       renderDiscover();
       $("tabDiscN").textContent = visibleDiscover().length || "—";
@@ -2798,6 +2841,9 @@ input[type=search]{flex:1 1 190px;min-width:0}
 .rmeta{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim)}
 .rwhy{font-size:12px;line-height:1.4;color:var(--ink-soft)}
 .rwhy b{color:var(--press);font-family:'Space Mono',monospace;font-weight:400}
+/* Which of your series produced this suggestion - the seed, not the evidence. Sits above the
+   badges and stays quiet so they read first. */
+.rseed{font-size:11.5px;line-height:1.35;color:var(--dim);margin-top:2px}
 .ractions{display:flex;gap:5px;margin-top:auto;padding-top:5px;flex-wrap:wrap}
 .owned{display:inline-block;font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--press);border:1px solid var(--press);padding:0 4px;margin-left:5px;vertical-align:2px}
 

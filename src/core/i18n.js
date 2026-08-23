@@ -199,6 +199,17 @@ const en = {
   "reco.badgeTags":            "{n} shared tags",
   "reco.badgeTagsPlain":       "shared themes",
   "reco.badgeAuthor":          "Same author",
+
+  "discover.because":          "Because you read {seeds}",
+  "discover.skip":             "Not for me",
+  "discover.needSeeds":        "Add a few titles first, then run the analysis again.",
+  "discover.queueing":         "{n} series to query · about {min} min",
+  "discover.done":             "Analysis complete",
+  "discover.doneWithFailures": "Done · {n} series with no match",
+  "discover.emptyLib":         "Your library is empty. Add a few titles from the Add tab, or import a backup, then run the analysis.",
+  "discover.noneLeft":         "Nothing left to suggest with these filters. Change the type, show dismissed titles again, or run the analysis after reading something new.",
+  "discover.intro":            "Run the analysis: each series you read is looked up, and the titles that come back from several of them rise to the top.",
+  "discover.crossed":          "Crossed {n} series: {seeds}.",
 };
 
 const fr = {
@@ -380,6 +391,17 @@ const fr = {
   "reco.badgeTags":            "{n} tags communs",
   "reco.badgeTagsPlain":       "thèmes communs",
   "reco.badgeAuthor":          "Même auteur",
+
+  "discover.because":          "Parce que tu lis {seeds}",
+  "discover.skip":             "Pas pour moi",
+  "discover.needSeeds":        "Ajoute d'abord quelques titres, puis relance l'analyse.",
+  "discover.queueing":         "{n} séries à interroger · environ {min} min",
+  "discover.done":             "Analyse terminée",
+  "discover.doneWithFailures": "Terminé · {n} série(s) sans correspondance",
+  "discover.emptyLib":         "Ta bibliothèque est vide. Ajoute quelques titres depuis l'onglet Ajouter, ou importe une sauvegarde, puis lance l'analyse.",
+  "discover.noneLeft":         "Plus rien à proposer avec ces filtres. Change de type, réaffiche les écartés, ou relance l'analyse après avoir lu de nouveaux titres.",
+  "discover.intro":            "Lance l'analyse : chaque série que tu lis est recherchée, et les titres qui reviennent depuis plusieurs d'entre elles remontent en tête.",
+  "discover.crossed":          "Croisement de {n} séries : {seeds}.",
 };
 
 const LOCALES = { en, fr };
