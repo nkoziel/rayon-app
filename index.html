@@ -1125,6 +1125,10 @@ function openAddModal(prefill) {
     clearTimeout(timer);
     timer = setTimeout(run, 420);
   });
+  if (prefill) {
+    input.value = prefill;
+    run();
+  }
   input.focus();
 }
 async function runDiscover() {
@@ -1666,7 +1670,7 @@ function boot() {
   $("onboard").innerHTML = empty ? onboardHTML() : "";
   $("libTools").classList.toggle("hidden", empty);
   if (empty) {
-    $("onbAdd").onclick = () => openAddModal();
+    $("onbAdd").onclick = () => openAddModal("");
     $("onbImport").onclick = () => $("file").click();
     $("results").innerHTML = "";
     return;
@@ -1838,7 +1842,7 @@ $("file").addEventListener("change", (e) => {
 });
 $("tabLibrary").onclick = () => setTab("library");
 $("tabDiscover").onclick = () => setTab("discover");
-$("tabAdd").onclick = () => openAddModal();
+$("tabAdd").onclick = () => openAddModal("");
 $("runDiscover").onclick = runDiscover;
 $("resetDismissed").onclick = () => {
   DISMISSED.clear();
@@ -1936,6 +1940,12 @@ window.__rayon = {
   boot,
   hydrate,
   openSheet,
+  addFromMedia,
+  openAddModal,
+  runDiscover,
+  renderDiscover,
+  totals,
+  unitOf,
   get LIB() {
     return LIB;
   },

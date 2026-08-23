@@ -621,6 +621,7 @@ window.__rayon = {
   norm, mergeLibraries, resetEverything, purgeSeriesData,
   store, kvGet, kvSet, kvDel, db,
   importFile, saveLib, boot, hydrate, openSheet,
+  addFromMedia, openAddModal, runDiscover, renderDiscover, totals, unitOf,
   get LIB()      { return LIB; },   set LIB(v) { setLib(v); },
   get META()     { return META; },
   get MDCACHE()  { return MDCACHE; },
