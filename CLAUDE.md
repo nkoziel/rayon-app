@@ -42,9 +42,10 @@ and double-clicking `index.html` has to keep working with no build step. **Rebui
 the root file in the same commit as the `src/` change** — otherwise the deployed app silently
 lags behind the source. `npm run verify` fails if it detects that.
 
-`src/main.js` is still one ~2,000-line module; splitting it into `src/core`, `src/data`,
+`src/main.js` is still one ~1,470-line module; splitting it into `src/core`, `src/data`,
 `src/ui`… is the remaining part of phase 4. It runs as an ES module, so top-level declarations
-are **not** global — `window.__rayon` exposes them deliberately for console debugging.
+are **not** global — `window.__rayon` exposes them deliberately for console debugging, which
+is how every behavioural check on this app has been done.
 
 ## Invariants — do not violate
 
@@ -52,23 +53,30 @@ are **not** global — `window.__rayon` exposes them deliberately for console de
    The original code indexed by `norm(title)`, which was blocking bug §1.1: `norm()` stripped
    every non-ASCII character, so all Japanese/Korean/Chinese titles produced `""` and
    overwrote each other. The unicode part is fixed; the stable key is still pending.
-   `norm()` must only ever serve fuzzy matching (Mihon folder), never cache indexing.
+   `norm()` must only ever serve fuzzy matching and import merging, never cache indexing.
 
 2. **`norm()` must keep `.normalize("NFC")` before filtering.**
    NFD decomposes `ピ` into `ヒ` + handakuten (U+309A), which is a mark and not a letter, so
    `[^\p{L}\p{N}]` strips it: `ワンピース` → `ワンヒース`, and `パパ` collides with `ハハ`.
 
-3. **`store.set()` returns `false` when the quota is full — that value must be read.**
-   Today it is ignored everywhere, so the library silently stops saving past ~5 MB (§1.2).
+3. **`localStorage` holds only the library and small preferences.**
+   Every large, regenerable cache belongs in the IndexedDB `cache` store via `kvGet`/`kvSet`.
+   `store.set()` returns `false` when the quota is full and now warns — do not add a caller
+   that ignores it again (§1.2).
 
 4. **Bump `VERSION` in `sw.js` on every release**, otherwise no installed user ever receives
    the update (§1.3). Documents are served network-first.
 
-5. **No aggregator scraping.** Legitimate sources (official MangaDex, the user's own files,
+5. **Rayon does not read anything. Mihon is the reader.**
+   The embedded reader was removed on 2026-08-23 — no CBZ decoding, no offline chapter
+   storage, no folder scanning. A series sheet hands the title to Mihon through an Android
+   intent (`eu.kanade.tachiyomi.SEARCH`). Do not reintroduce in-app reading.
+
+6. **No aggregator scraping.** Legitimate sources (official MangaDex, the user's own files,
    licensed publishers) are fine; a Mihon-style extension engine pointed at pirate
    aggregators is not.
 
-6. **Do not break opening the file directly.** `index.html` must stay usable without a server.
+7. **Do not break opening the file directly.** `index.html` must stay usable without a server.
    If a build is introduced, it must emit a single file (`vite-plugin-singlefile`).
 
 ## Known traps
@@ -76,8 +84,6 @@ are **not** global — `window.__rayon` exposes them deliberately for console de
 - `refreshTracker()` replaces `#trackwrap`'s `innerHTML` then calls `wireTracker()`, which does
   **not** rewire `removeBtn` (wired once in `openSheet`). Any button added to `trackerHTML()`
   must be wired in `wireTracker()`.
-- `chapNumOf()` falls back to "first number in the filename": `[2024] Vol.3 - 12.cbz` returns
-  `2024`, and `finish()` writes it into progress (§1.6).
 - AniList: 30 req/min. The current `sleep(700)` yields ~85 req/min → bursts of 429.
 - `norm()` is called thousands of times per render — memoise it or move to the stable key.
 
@@ -95,13 +101,14 @@ are **not** global — `window.__rayon` exposes them deliberately for console de
 node tools/verify.js
 ```
 
-Zero dependencies. Parses the inline `<script>` so syntax errors surface without a browser,
-then extracts the pure functions **by source from `index.html`** and runs case tables against
-them — so it tests the code that actually ships, not a copy that can drift.
+Zero dependencies. Parses `src/main.js` so syntax errors surface without a browser, checks the
+published root `index.html` is still self-contained and not stale, then extracts the pure
+functions **by source** and runs case tables against them — so it tests the code that actually
+ships, not a copy that can drift.
 
-Run it after every edit to `index.html`. Add a row to the relevant table whenever you fix a
-parsing bug; that is how §1.1 and §1.6 stopped being able to regress. When the module split
-lands, these tables move to Vitest unchanged.
+Run it after every edit, and add a row whenever you fix a logic bug: that is how §1.1 and the
+merge rules stopped being able to regress. When the module split lands, these tables move to
+Vitest unchanged.
 
 Anything involving the DOM, storage or the network still needs a real browser.
 

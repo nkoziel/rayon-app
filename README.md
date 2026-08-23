@@ -1,8 +1,12 @@
 # Rayon — manga library & recommendations
 
-Standalone web app: a library of series, AniList metadata, and a **Discover** tab that
-cross-references reader-voted recommendations. No account, no server — everything is
-stored in your browser.
+Standalone web app: a library of series, AniList metadata, progress tracking, and a
+**Discover** tab that cross-references reader-voted recommendations. No account, no server —
+everything is stored in your browser.
+
+**Rayon does not read manga. [Mihon](https://mihon.app/) is the reader.** Each series sheet
+has a *Chercher dans Mihon* button that hands the title straight to the app's cross-source
+search. Rayon keeps track of what you read and helps you find what to read next.
 
 **Live:** https://nkoziel.github.io/rayon-app/
 
@@ -138,74 +142,16 @@ volume split.
 this environment yet. If *Check releases* returns a blocking error, everything else keeps
 working — AniList, your backup and manual entry cover the need.
 
-## Reading offline
+## Handing a title to Mihon
 
-Every sheet has an **Offline chapters** section. Drop files from your device — `.cbz`, `.zip`
-or a selection of images — and they are stored in the browser (IndexedDB), available without
-network.
+On Android, every series sheet shows **Chercher dans Mihon**. It fires an Android intent that
+Mihon declares for exactly this purpose (`eu.kanade.tachiyomi.SEARCH`), landing you in its
+cross-source search with the title already filled in.
 
-The reader follows Mihon conventions:
-
-- **Webtoon**: continuous vertical scroll, one image after another
-- **Paged**: one page at a time, left/right tap zones, keyboard arrows, switchable
-  **right-to-left** direction for Japanese manga
-- Resumes on the page where you stopped
-- "Mark as read" updates your progress: if the filename contains a number
-  (`Chapter 145.cbz`, `one-piece-1102.cbz`), that number is recorded, otherwise progress
-  advances by one
-- Next chapter is offered at the end
-
-Archives are decoded natively (`DecompressionStream`), with no external library. Accepted
-formats: CBZ/ZIP containing JPEG, PNG, WebP, GIF or AVIF. CBR (RAR) is not supported —
-convert it to CBZ.
-
-### Linking your Mihon folder
-
-**•••  → Mihon folder**. The app walks the `source / series / chapter` tree, matches it
-against your library by title, and chapters appear in each sheet marked "Mihon folder".
-Images are read **in place**, with no copy and no duplicated storage. Cards show an
-"N offline" badge.
-
-The folder stays linked between sessions; the browser asks for permission again on first read.
-
-**The Android constraint, to fix once.** Since Android 11, no application — browsers
-included — can open `Android/data/`, where Mihon stores downloads by default. The file
-picker refuses that path; there is no way around it.
-
-The fix is in Mihon: *Settings → Downloads → Download directory*, and pick an accessible
-folder such as `Documents/Mihon` or a `Mihon` folder at storage root. New downloads go there,
-and that folder the app can read. For already-downloaded chapters, move the old folder with a
-file manager.
-
-**On Android: pick the `Mihon/downloads` root in one go.**
-
-**•••  → Mihon folder**, navigate to `Mihon/downloads` and confirm with *Use this folder*.
-The app reads the whole tree and files each chapter under the right series:
-
-```
-downloads/Asura Scans (EN)/Absolute Regression/Ch. 115/001.jpg
-           └── source ──┘  └──── series ────┘  └ chapter ┘
-```
-
-Matching uses the **source name from your backup** — "Asura Scans" finds "Asura Scans (EN)",
-the language suffix is ignored — then the title. Failing that, the app falls back to the title
-alone. Both image folders and `.cbz` files are supported; `.nomedia` and foreign files are
-ignored.
-
-A summary appears above the grid: number of series, chapters, recognised series, and the
-breakdown by source.
-
-| Context | What works |
-|---|---|
-| Chrome / Edge on desktop | Persistent handle to the root: access survives restarts |
-| Chrome on Android | Root must be re-picked each session; a *Reopen folder* button is shown |
-| Firefox, Safari | `.cbz` files or images, series by series, with a copy |
-
-On Android the browser forgets the permission when the tab closes — a platform limitation,
-not a setting. The inventory itself is kept: "N offline" badges stay visible, and one click
-restores access.
-
-You can also use your own scans or your open-format purchases.
+The button is hidden elsewhere: a browser cannot ask whether an app is installed — deliberately,
+since that would be a fingerprinting vector — so it appears where the intent *can* work, and
+falls back to mihon.app if nothing handles it. No package name is pinned, so forks of Mihon work
+too.
 
 ## Sharing with others
 
@@ -221,9 +167,10 @@ You can also use your own scans or your open-format purchases.
   browser via `DecompressionStream`. Chrome, Edge, Firefox 113+, Safari 16.4+.
 - **AniList**: public GraphQL API, no key, limited to 30 requests per minute. The app batches
   its calls (50 entries per request) and caches everything.
-- **Storage**: `localStorage`. Expect well over the original 300 KB estimate for a real
-  library — a few hundred series with metadata and recommendation caches can approach the
-  ~5 MB origin quota. The JSON export is your only backup — redo it from time to time.
+- **Storage**: `localStorage` holds only your library and preferences. Metadata, MangaDex data
+  and recommendation caches live in IndexedDB, because they used to overflow the ~5 MB
+  localStorage quota and silently stop the library from saving at all. The JSON export is your
+  only backup — redo it from time to time, and note that **Tout effacer** offers it first.
 - **Privacy**: nothing is sent anywhere apart from the titles queried against AniList and
   MangaDex — **except** that the page currently loads its fonts from Google Fonts, which
   discloses your IP address to Google on every open. Self-hosting the fonts is planned.
