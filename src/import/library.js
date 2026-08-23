@@ -57,7 +57,7 @@ export function askImportMode(incoming){
   return new Promise(resolve => {
     $("modalHost").innerHTML = `
       <div class="modal" id="impScrim">
-        <div class="modalbox" role="dialog" aria-modal="true" aria-label="Importer une bibliothèque">
+        <div class="modalbox" role="dialog" aria-modal="true" aria-label="${esc(T("import.dialogLabel"))}">
           <div class="modalhead">
             <h3>Importer ${incoming.length} série${incoming.length>1?"s":""}</h3>
             <p class="rmeta" style="margin:0">Ta bibliothèque en contient déjà ${cur}.</p>
@@ -91,22 +91,22 @@ export function askImportMode(incoming){
    never has to reach up into the UI. */
 export async function importFile(file, onImported = () => {}){
   try{
-    $("statusline").textContent = "Lecture de "+file.name+"…";
+    $("statusline").textContent = T("import.reading", { name: file.name });
     const raw = new Uint8Array(await file.arrayBuffer());
     let entries, label;
     if (raw[0]===0x1f && raw[1]===0x8b){
-      if (!("DecompressionStream" in window)) throw new Error("Ce navigateur ne décompresse pas le gzip (Chrome, Edge, Firefox 113+, Safari 16.4+ requis).");
+      if (!("DecompressionStream" in window)) throw new Error(T("import.noGzip"));
       const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"));
       entries = parseBackup(new Uint8Array(await new Response(stream).arrayBuffer()));
-      label = "Sauvegarde Mihon · "+file.name;
+      label = T("import.mihonBackup", { name: file.name });
     } else {
       const json = JSON.parse(new TextDecoder().decode(raw));
       const list = Array.isArray(json) ? json : json.entries;
-      if (!Array.isArray(list)) throw new Error("Fichier JSON non reconnu.");
+      if (!Array.isArray(list)) throw new Error(T("import.badJson"));
       entries = list.map(e=>Object.assign({id:uid(),a:"",s:"Import",st:"Inconnu",g:[],r:0,n:0,d:"",ad:"",m:"",al:0,f:1,origin:"import"}, e));
-      label = json.label || "Liste importée · "+file.name;
+      label = json.label || T("import.jsonList", { name: file.name });
     }
-    if (!entries.length) throw new Error("Aucune série trouvée dans ce fichier.");
+    if (!entries.length) throw new Error(T("import.noSeries"));
     entries.sort((a,b)=>(b.f-a.f)||a.t.localeCompare(b.t,"fr"));
 
     /* An empty library has nothing to lose, so do not nag. Otherwise this is the one gesture
@@ -135,7 +135,7 @@ export async function importFile(file, onImported = () => {}){
     onImported();
   }catch(e){
     $("statusline").textContent = "";
-    alert("Import impossible : "+e.message);
+    alert(T("import.failed", { msg: e.message }));
   }
 }
 
@@ -205,7 +205,7 @@ export async function resetEverything(){
     });
 
     if (outcome !== "deleted"){
-      toast("Ferme les autres onglets de Rayon puis réessaie — le stockage est encore ouvert ailleurs.");
+      toast(T("reset.blocked"));
       return false;
     }
     return true;

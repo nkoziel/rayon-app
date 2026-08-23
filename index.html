@@ -121,7 +121,34 @@ const en = {
   "storage.cacheFull": "Cache not saved — the device storage is full",
   "storage.unavailable": "Local storage unavailable.",
   "storage.error": "Storage error.",
-  "storage.blocked": "Another Rayon window is blocking the storage upgrade. Close it and reload."
+  "storage.blocked": "Another Rayon window is blocking the storage upgrade. Close it and reload.",
+  "net.anilistUnreachable": "Could not reach AniList. Check your connection.",
+  "net.anilistRateLimited": "AniList is rate limiting ({s}s to wait).",
+  "net.anilistBadResponse": "Unreadable response from AniList.",
+  "net.anilistError": "AniList error.",
+  "net.anilistNoMatch": "No AniList entry matches this title.",
+  "net.anilistNotFound": "AniList entry not found.",
+  "net.mdUnreachable": "MangaDex unreachable from this browser (CORS or network).",
+  "net.mdRateLimited": "MangaDex is rate limiting, try again in a minute.",
+  "net.mdStatus": "MangaDex answered {code}.",
+  "net.mdNotFound": "This series is not listed on MangaDex.",
+  "import.reading": "Reading {name}…",
+  "import.mihonBackup": "Mihon backup · {name}",
+  "import.jsonList": "Imported list · {name}",
+  "import.noSeries": "No series found in this file.",
+  "import.badJson": "Unrecognised JSON file.",
+  "import.noGzip": "This browser cannot decompress gzip (Chrome, Edge, Firefox 113+, Safari 16.4+ required).",
+  "import.failed": "Import failed: {msg}",
+  "import.dialogLabel": "Import a library",
+  "reset.blocked": "Close the other Rayon tabs and try again — storage is still open elsewhere.",
+  "backup.unknownSource": "Unknown source",
+  "filter.type": "Type",
+  "filter.shelf": "Shelf",
+  "filter.source": "Source",
+  "filter.sort": "Sort",
+  "discover.resetDismissed": "Show dismissed again",
+  "discover.seriesAnalysed": "Series analysed",
+  "add.searchPlaceholder": "Manga, manhwa or webtoon name…"
 };
 const fr = {
   "app.title": "Rayon",
@@ -158,7 +185,34 @@ const fr = {
   "storage.cacheFull": "Cache non enregistré — le stockage de l'appareil est plein",
   "storage.unavailable": "Stockage local indisponible.",
   "storage.error": "Erreur de stockage.",
-  "storage.blocked": "Une autre fenêtre de Rayon bloque la mise à jour du stockage. Ferme-la puis recharge."
+  "storage.blocked": "Une autre fenêtre de Rayon bloque la mise à jour du stockage. Ferme-la puis recharge.",
+  "net.anilistUnreachable": "Impossible de joindre AniList. Vérifie ta connexion.",
+  "net.anilistRateLimited": "AniList limite les requêtes ({s} s d'attente).",
+  "net.anilistBadResponse": "Réponse illisible d'AniList.",
+  "net.anilistError": "Erreur AniList.",
+  "net.anilistNoMatch": "Aucune fiche AniList ne correspond à ce titre.",
+  "net.anilistNotFound": "Fiche AniList introuvable.",
+  "net.mdUnreachable": "MangaDex injoignable depuis ce navigateur (blocage CORS ou réseau).",
+  "net.mdRateLimited": "MangaDex limite les requêtes, réessaie dans une minute.",
+  "net.mdStatus": "MangaDex a répondu {code}.",
+  "net.mdNotFound": "Cette série n'est pas référencée sur MangaDex.",
+  "import.reading": "Lecture de {name}…",
+  "import.mihonBackup": "Sauvegarde Mihon · {name}",
+  "import.jsonList": "Liste importée · {name}",
+  "import.noSeries": "Aucune série trouvée dans ce fichier.",
+  "import.badJson": "Fichier JSON non reconnu.",
+  "import.noGzip": "Ce navigateur ne décompresse pas le gzip (Chrome, Edge, Firefox 113+, Safari 16.4+ requis).",
+  "import.failed": "Import impossible : {msg}",
+  "import.dialogLabel": "Importer une bibliothèque",
+  "reset.blocked": "Ferme les autres onglets de Rayon puis réessaie — le stockage est encore ouvert ailleurs.",
+  "backup.unknownSource": "Source inconnue",
+  "filter.type": "Type",
+  "filter.shelf": "Rayon",
+  "filter.source": "Source",
+  "filter.sort": "Tri",
+  "discover.resetDismissed": "Réafficher les écartés",
+  "discover.seriesAnalysed": "Séries analysées",
+  "add.searchPlaceholder": "Nom du manga, manhwa, webtoon…"
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -394,16 +448,16 @@ async function gql(query, variables) {
   try {
     res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) });
   } catch (e) {
-    throw new Error("Impossible de joindre AniList. Vérifie ta connexion.");
+    throw new Error(t("net.anilistUnreachable"));
   }
   if (res.status === 429) {
     const retry = parseInt(res.headers.get("Retry-After") || "60", 10);
     cooldownUntil = Date.now() + retry * 1e3;
-    throw new Error("AniList limite les requêtes (" + retry + " s d'attente).");
+    throw new Error(t("net.anilistRateLimited", { s: retry }));
   }
   const json = await res.json().catch(() => null);
-  if (!json) throw new Error("Réponse illisible d'AniList.");
-  if (json.errors && json.errors.length) throw new Error(json.errors[0].message || "Erreur AniList.");
+  if (!json) throw new Error(t("net.anilistBadResponse"));
+  if (json.errors && json.errors.length) throw new Error(json.errors[0].message || t("net.anilistError"));
   return json.data;
 }
 const FIELDS = `
@@ -520,12 +574,12 @@ async function loadRecos(entry, force) {
   if (!id) {
     await searchBatch([entry]);
     const m = META[norm(entry.t)];
-    if (!m || m.missing) throw new Error("Aucune fiche AniList ne correspond à ce titre.");
+    if (!m || m.missing) throw new Error(t("net.anilistNoMatch"));
     id = m.id;
   }
   const data = await gql(RECO_Q, { id });
   const media = data && data.Media;
-  if (!media) throw new Error("Fiche AniList introuvable.");
+  if (!media) throw new Error(t("net.anilistNotFound"));
   const payload = {
     source: media.siteUrl,
     matched: media.title.english || media.title.romaji,
@@ -547,10 +601,10 @@ async function mdGet(path) {
   try {
     res = await fetch(MD + path, { headers: { Accept: "application/json" } });
   } catch (e) {
-    throw new Error("MangaDex injoignable depuis ce navigateur (blocage CORS ou réseau).");
+    throw new Error(t("net.mdUnreachable"));
   }
-  if (res.status === 429) throw new Error("MangaDex limite les requêtes, réessaie dans une minute.");
-  if (!res.ok) throw new Error("MangaDex a répondu " + res.status + ".");
+  if (res.status === 429) throw new Error(t("net.mdRateLimited"));
+  if (!res.ok) throw new Error(t("net.mdStatus", { code: res.status }));
   return res.json();
 }
 async function mdResolve(entry) {
@@ -573,7 +627,7 @@ async function mdResolve(entry) {
 async function mdAggregate(entry) {
   const key = norm(entry.t);
   const id = await mdResolve(entry);
-  if (!id) throw new Error("Cette série n'est pas référencée sur MangaDex.");
+  if (!id) throw new Error(t("net.mdNotFound"));
   const data = await mdGet(`/manga/${id}/aggregate?translatedLanguage[]=en`);
   const volumes = data.volumes || {};
   const vols = [];
@@ -712,7 +766,7 @@ function parseBackup(bytes) {
   const sources = {};
   top.filter((x) => x.f === 101).forEach((x) => {
     const g = group(pbParse(x.v, 0, x.v.length));
-    if (g[2]) sources[String(g[2][0].v)] = g[1] && dec.decode(g[1][0].v) || "Source inconnue";
+    if (g[2]) sources[String(g[2][0].v)] = g[1] && dec.decode(g[1][0].v) || t("backup.unknownSource");
   });
   const entries = [];
   top.filter((x) => x.f === 1).forEach((x) => {
@@ -731,7 +785,7 @@ function parseBackup(bytes) {
       id: uid(),
       t: str(3),
       a: str(5) || str(4),
-      s: sources[String(g[1] ? g[1][0].v : "")] || "Source inconnue",
+      s: sources[String(g[1] ? g[1][0].v : "")] || t("backup.unknownSource"),
       st: MSTATUS[g[8] ? Number(g[8][0].v) : 0] || "Inconnu",
       g: (g[7] || []).map((y) => dec.decode(y.v)).slice(0, 6),
       r: read,
@@ -797,7 +851,7 @@ function askImportMode(incoming) {
   return new Promise((resolve) => {
     $("modalHost").innerHTML = `
       <div class="modal" id="impScrim">
-        <div class="modalbox" role="dialog" aria-modal="true" aria-label="Importer une bibliothèque">
+        <div class="modalbox" role="dialog" aria-modal="true" aria-label="${esc(t("import.dialogLabel"))}">
           <div class="modalhead">
             <h3>Importer ${incoming.length} série${incoming.length > 1 ? "s" : ""}</h3>
             <p class="rmeta" style="margin:0">Ta bibliothèque en contient déjà ${cur}.</p>
@@ -837,22 +891,22 @@ function askImportMode(incoming) {
 async function importFile(file, onImported = () => {
 }) {
   try {
-    $("statusline").textContent = "Lecture de " + file.name + "…";
+    $("statusline").textContent = t("import.reading", { name: file.name });
     const raw = new Uint8Array(await file.arrayBuffer());
     let entries, label;
     if (raw[0] === 31 && raw[1] === 139) {
-      if (!("DecompressionStream" in window)) throw new Error("Ce navigateur ne décompresse pas le gzip (Chrome, Edge, Firefox 113+, Safari 16.4+ requis).");
+      if (!("DecompressionStream" in window)) throw new Error(t("import.noGzip"));
       const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"));
       entries = parseBackup(new Uint8Array(await new Response(stream).arrayBuffer()));
-      label = "Sauvegarde Mihon · " + file.name;
+      label = t("import.mihonBackup", { name: file.name });
     } else {
       const json = JSON.parse(new TextDecoder().decode(raw));
       const list = Array.isArray(json) ? json : json.entries;
-      if (!Array.isArray(list)) throw new Error("Fichier JSON non reconnu.");
+      if (!Array.isArray(list)) throw new Error(t("import.badJson"));
       entries = list.map((e) => Object.assign({ id: uid(), a: "", s: "Import", st: "Inconnu", g: [], r: 0, n: 0, d: "", ad: "", m: "", al: 0, f: 1, origin: "import" }, e));
-      label = json.label || "Liste importée · " + file.name;
+      label = json.label || t("import.jsonList", { name: file.name });
     }
-    if (!entries.length) throw new Error("Aucune série trouvée dans ce fichier.");
+    if (!entries.length) throw new Error(t("import.noSeries"));
     entries.sort((a, b) => b.f - a.f || a.t.localeCompare(b.t, "fr"));
     let msg;
     if (!LIB.entries.length) {
@@ -881,7 +935,7 @@ async function importFile(file, onImported = () => {
     onImported();
   } catch (e) {
     $("statusline").textContent = "";
-    alert("Import impossible : " + e.message);
+    alert(t("import.failed", { msg: e.message }));
   }
 }
 function exportLib() {
@@ -948,7 +1002,7 @@ async function resetEverything() {
       req.onblocked = () => res("blocked");
     });
     if (outcome !== "deleted") {
-      toast("Ferme les autres onglets de Rayon puis réessaie — le stockage est encore ouvert ailleurs.");
+      toast(t("reset.blocked"));
       return false;
     }
     return true;
@@ -2094,10 +2148,10 @@ dd{margin:0}
       </div>
       <div class="filtersum" id="filterSum"></div>
       <div class="panel hidden" id="filterPanel">
-        <div class="chiprow" id="typeLibRow" role="group" aria-label="Type"></div>
-        <div class="chiprow" id="shelfRow" role="group" aria-label="Rayon"></div>
-        <div class="chiprow" id="srcRow" role="group" aria-label="Source"></div>
-        <div class="chiprow" id="sortRow" role="group" aria-label="Tri"></div>
+        <div class="chiprow" id="typeLibRow" role="group" aria-label="Type" data-i18n-attr="aria-label:filter.type"></div>
+        <div class="chiprow" id="shelfRow" role="group" aria-label="Rayon" data-i18n-attr="aria-label:filter.shelf"></div>
+        <div class="chiprow" id="srcRow" role="group" aria-label="Source" data-i18n-attr="aria-label:filter.source"></div>
+        <div class="chiprow" id="sortRow" role="group" aria-label="Tri" data-i18n-attr="aria-label:filter.sort"></div>
       </div>
       <div class="morebar hidden" id="moreBar">
         <button class="btn ghost" id="viewBtn">Vue liste</button>
@@ -2120,7 +2174,7 @@ dd{margin:0}
       <div class="row">
         <button class="btn" id="runDiscover">Analyser</button>
         <button class="btn ghost" id="dFilterBtn" aria-expanded="false">Filtres</button>
-        <button class="btn ghost" id="resetDismissed">Réafficher les écartés</button>
+        <button class="btn ghost" id="resetDismissed" data-i18n="discover.resetDismissed">Réafficher les écartés</button>
       </div>
       <div class="panel hidden" id="dFilterPanel">
         <div class="chiprow" id="seedRow" role="group" aria-label="Séries analysées"></div>

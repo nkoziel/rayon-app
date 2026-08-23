@@ -15,15 +15,15 @@ export async function gql(query, variables){
   let res;
   try{
     res = await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({query,variables})});
-  }catch(e){ throw new Error("Impossible de joindre AniList. Vérifie ta connexion."); }
+  }catch(e){ throw new Error(t("net.anilistUnreachable")); }
   if (res.status === 429){
     const retry = parseInt(res.headers.get("Retry-After")||"60",10);
     cooldownUntil = Date.now()+retry*1000;
-    throw new Error("AniList limite les requêtes ("+retry+" s d'attente).");
+    throw new Error(t("net.anilistRateLimited", { s: retry }));
   }
   const json = await res.json().catch(()=>null);
-  if (!json) throw new Error("Réponse illisible d'AniList.");
-  if (json.errors && json.errors.length) throw new Error(json.errors[0].message||"Erreur AniList.");
+  if (!json) throw new Error(t("net.anilistBadResponse"));
+  if (json.errors && json.errors.length) throw new Error(json.errors[0].message||t("net.anilistError"));
   return json.data;
 }
 
@@ -109,12 +109,12 @@ export async function loadRecos(entry, force){
   if (!id){
     await searchBatch([entry]);
     const m = META[norm(entry.t)];
-    if (!m || m.missing) throw new Error("Aucune fiche AniList ne correspond à ce titre.");
+    if (!m || m.missing) throw new Error(t("net.anilistNoMatch"));
     id = m.id;
   }
   const data = await gql(RECO_Q,{id});
   const media = data && data.Media;
-  if (!media) throw new Error("Fiche AniList introuvable.");
+  if (!media) throw new Error(t("net.anilistNotFound"));
   const payload = {
     source: media.siteUrl, matched: media.title.english||media.title.romaji,
     items: (media.recommendations.nodes||[]).map(n=>{
@@ -129,6 +129,7 @@ export async function loadRecos(entry, force){
 
 
 import { sleep } from '../core/dom.js';
+import { t } from '../core/i18n.js';
 import { norm } from '../core/norm.js';
 import { META, markMetaDirty, LIB } from '../core/state.js';
 import { kvGet, kvSet } from '../core/store.js';

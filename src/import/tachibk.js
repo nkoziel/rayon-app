@@ -3,6 +3,7 @@
    per varint (REVIEW.md §2.4) — a Web Worker is the textbook fix if imports get slow. */
 
 import { uid } from '../core/dom.js';
+import { t } from '../core/i18n.js';
 
 /* ============================================================
    Lecture d'une sauvegarde Mihon (.tachibk : gzip + protobuf)
@@ -33,7 +34,7 @@ export function parseBackup(bytes){
   const sources = {};
   top.filter(x=>x.f===101).forEach(x=>{
     const g = group(pbParse(x.v,0,x.v.length));
-    if (g[2]) sources[String(g[2][0].v)] = (g[1] && dec.decode(g[1][0].v)) || "Source inconnue";
+    if (g[2]) sources[String(g[2][0].v)] = (g[1] && dec.decode(g[1][0].v)) || t("backup.unknownSource");
   });
   const entries = [];
   top.filter(x=>x.f===1).forEach(x=>{
@@ -50,7 +51,7 @@ export function parseBackup(bytes){
     });
     entries.push({
       id: uid(), t: str(3), a: str(5)||str(4),
-      s: sources[String(g[1]?g[1][0].v:"")] || "Source inconnue",
+      s: sources[String(g[1]?g[1][0].v:"")] || t("backup.unknownSource"),
       st: MSTATUS[g[8]?Number(g[8][0].v):0] || "Inconnu",
       g: (g[7]||[]).map(y=>dec.decode(y.v)).slice(0,6),
       r: read, n: chapters.length,

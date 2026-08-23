@@ -10,9 +10,9 @@ const MD = "https://api.mangadex.org";
 async function mdGet(path){
   let res;
   try{ res = await fetch(MD+path, {headers:{Accept:"application/json"}}); }
-  catch(e){ throw new Error("MangaDex injoignable depuis ce navigateur (blocage CORS ou réseau)."); }
-  if (res.status === 429) throw new Error("MangaDex limite les requêtes, réessaie dans une minute.");
-  if (!res.ok) throw new Error("MangaDex a répondu "+res.status+".");
+  catch(e){ throw new Error(t("net.mdUnreachable")); }
+  if (res.status === 429) throw new Error(t("net.mdRateLimited"));
+  if (!res.ok) throw new Error(t("net.mdStatus", { code: res.status }));
   return res.json();
 }
 
@@ -39,7 +39,7 @@ export async function mdResolve(entry){
 export async function mdAggregate(entry){
   const key = norm(entry.t);
   const id = await mdResolve(entry);
-  if (!id) throw new Error("Cette série n'est pas référencée sur MangaDex.");
+  if (!id) throw new Error(t("net.mdNotFound"));
   const data = await mdGet(`/manga/${id}/aggregate?translatedLanguage[]=en`);
   const volumes = data.volumes || {};
   const vols = [];
@@ -66,5 +66,6 @@ export async function mdAggregate(entry){
 
 
 import { norm } from '../core/norm.js';
+import { t } from '../core/i18n.js';
 import { MDCACHE } from '../core/state.js';
 import { kvSet } from '../core/store.js';
