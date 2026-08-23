@@ -1,0 +1,32 @@
+# Dépendances / build
+node_modules/
+dist/
+*.log
+
+# Secrets & signature Android — ne JAMAIS committer
+.env
+.env.*
+*.keystore
+*.jks
+android.keystore
+twa-manifest.json.bak
+signing-key-info.txt
+
+# Artefacts Android
+android/
+*.apk
+*.aab
+
+# Dumps MangaBaka (volumineux, régénérables, CC BY-NC-SA)
+data/*.sqlite
+data/*.json
+data/*.jsonl
+data/*.tar.gz
+data/*.zst
+
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

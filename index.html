@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rayon — bibliothèque manga & recommandations</title>
+<meta name="description" content="Ta bibliothèque manga, webtoon et manhwa, et les recommandations votées par les lecteurs d'AniList.">
+<meta name="theme-color" content="#16150F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#16150F; --ink-soft:#3B392E; --paper:#D9D7CA; --paper-hi:#E9E7DC;
+  --vermilion:#C92D12; --press:#0F6C99; --dim:#726F5F;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:'Zen Kaku Gothic New',system-ui,sans-serif;
+  background-image:radial-gradient(var(--ink) .5px,transparent .6px);background-size:5px 5px;
+  padding-bottom:calc(78px + var(--safe-b));-webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:0 15px;overflow-x:clip}
+a{color:var(--press)}
+:focus-visible{outline:3px solid var(--press);outline-offset:2px}
+button{font:inherit}
+
+/* ---------- entête ---------- */
+.mast{border-bottom:4px solid var(--ink);padding:14px 0 9px;display:flex;align-items:flex-end;justify-content:space-between;gap:14px}
+.mast h1{font-family:'Anton',Impact,sans-serif;font-size:clamp(26px,7.5vw,56px);line-height:.84;margin:0;text-transform:uppercase;position:relative;isolation:isolate}
+@media(max-width:520px){.vert{display:none}.stat{padding:8px 7px}}
+.mast h1 .ghost{position:absolute;inset:0;color:var(--vermilion);transform:translate(3px,-2px);mix-blend-mode:multiply;opacity:.5;z-index:-1}
+.kicker{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0 0 8px}
+.vert{writing-mode:vertical-rl;font-family:'Anton',sans-serif;font-size:12px;letter-spacing:.3em;border-left:2px solid var(--ink);padding-left:6px;color:var(--ink-soft);white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid var(--ink);font-family:'Space Mono',monospace}
+.stat{padding:10px 9px;border-right:1px solid rgba(22,21,15,.25)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-size:clamp(16px,4.2vw,24px);line-height:1.05}
+.stat small{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+
+/* ---------- navigation basse ---------- */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(3,1fr);
+  background:var(--ink);border-top:3px solid var(--ink);padding-bottom:var(--safe-b)}
+.tab{background:var(--ink);color:#a5a294;border:0;padding:12px 4px;font-family:'Space Mono',monospace;font-size:10.5px;
+  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-right:1px solid #2c2a22}
+.tab:last-child{border-right:0}
+.tab[aria-selected=true]{background:var(--paper-hi);color:var(--ink);font-weight:700}
+.tab .badge{display:block;font-family:'Anton',sans-serif;font-size:15px;letter-spacing:0;margin-bottom:2px}
+
+/* ---------- barre d'outils ---------- */
+.toolbar{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:2px solid var(--ink);padding:9px 0 2px;
+  box-shadow:0 0 0 15px var(--paper)}
+.row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+input[type=search],input[type=text],input[type=number]{font:15px 'Zen Kaku Gothic New',sans-serif;padding:9px 11px;border:2px solid var(--ink);background:var(--paper-hi);color:var(--ink);border-radius:0;-webkit-appearance:none}
+input[type=search]{flex:1 1 190px;min-width:0}
+.btn{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;border:2px solid var(--ink);background:var(--ink);color:var(--paper-hi);padding:8px 11px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.red{background:var(--vermilion);border-color:var(--vermilion)}
+.btn:disabled{opacity:.45;cursor:progress}
+.btn.sm{padding:5px 8px;font-size:10px}
+.chiprow{display:flex;gap:6px;overflow-x:auto;padding:8px 0;scrollbar-width:thin}
+.chiprow::-webkit-scrollbar{height:3px}.chiprow::-webkit-scrollbar-thumb{background:var(--dim)}
+.chip{flex:0 0 auto;font-family:'Space Mono',monospace;font-size:11px;padding:6px 10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;text-transform:uppercase;white-space:nowrap}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--paper-hi)}
+.chip .n{opacity:.55;margin-left:5px}
+.statusline{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);padding:2px 0 7px;min-height:14px}
+.filtersum{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);padding:4px 0 7px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.filtersum b{color:var(--ink);font-weight:400}
+.panel{border-top:1.5px solid rgba(22,21,15,.25);margin-top:4px}
+.morebar{display:flex;gap:7px;flex-wrap:wrap;padding:8px 0 4px;border-top:1.5px solid rgba(22,21,15,.25);margin-top:6px}
+.filterbtn{position:relative}
+.filterbtn .dot{position:absolute;top:-4px;right:-4px;width:9px;height:9px;background:var(--vermilion);border:1.5px solid var(--paper)}
+.progress{height:4px;background:rgba(22,21,15,.15);margin-bottom:8px}
+.progress i{display:block;height:100%;background:var(--vermilion);transition:width .3s}
+
+/* ---------- grilles ---------- */
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(146px,1fr))}
+@media(min-width:700px){.grid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}}
+.card{position:relative;text-align:left;cursor:pointer;border:0;background:none;padding:0;color:inherit;display:flex;flex-direction:column;gap:6px}
+.poster{position:relative;aspect-ratio:2/3;border:2px solid var(--ink);background:var(--paper-hi);overflow:hidden;transition:transform .13s,box-shadow .13s}
+.card:hover .poster,.card:focus-visible .poster{transform:translate(-3px,-3px);box-shadow:5px 5px 0 var(--ink)}
+.poster img{width:100%;height:100%;object-fit:cover;display:block}
+.poster .fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:9px;font-family:'Anton',sans-serif;text-transform:uppercase;font-size:14px;line-height:1.05;color:var(--ink-soft);background:repeating-linear-gradient(45deg,rgba(22,21,15,.05) 0 6px,transparent 6px 12px)}
+.poster .tape{position:absolute;top:0;left:0;font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;background:var(--ink);color:var(--paper-hi);padding:2px 6px}
+.poster .score{position:absolute;top:0;right:0;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;background:var(--vermilion);color:var(--paper-hi);padding:2px 5px}
+.poster .prog{position:absolute;left:0;right:0;bottom:0;height:7px;background:rgba(233,231,220,.75);border-top:1.5px solid var(--ink)}
+.poster .prog i{display:block;height:100%;background:var(--ink)}
+.poster .prog i.done{background:var(--vermilion)}
+.ct{overflow-wrap:anywhere;font-family:'Anton',sans-serif;text-transform:uppercase;font-size:14px;line-height:1.05;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sub{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim);display:flex;justify-content:space-between;gap:6px;min-width:0}
+.sub .src{min-width:0;flex:1 1 auto;color:var(--press);text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list{display:flex;flex-direction:column;border-top:1.5px solid var(--ink)}
+.lrow{display:flex;gap:10px;align-items:center;padding:8px 4px;border:0;border-bottom:1.5px solid rgba(22,21,15,.25);cursor:pointer;text-align:left;color:inherit;background:none;width:100%}
+.lrow:hover{background:var(--paper-hi)}
+.lrow img,.lrow .ph{width:34px;height:48px;object-fit:cover;border:1.5px solid var(--ink);flex:0 0 auto;background:var(--paper-hi)}
+.lrow .lt{overflow-wrap:anywhere;font-family:'Anton',sans-serif;text-transform:uppercase;font-size:14px;line-height:1.1}
+.lrow .lm{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim)}
+.lrow .lp{margin-left:auto;font-family:'Space Mono',monospace;font-size:11px;flex:0 0 auto}
+
+/* ---------- cartes de recommandation ---------- */
+.recgrid{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:640px){.recgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1000px){.recgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.reccard{min-width:0;display:flex;gap:11px;border:2px solid var(--ink);background:var(--paper-hi);padding:10px}
+.reccard .cov,.reccard .ph{width:74px;height:106px;object-fit:cover;border:1.5px solid var(--ink);flex:0 0 auto;background:var(--paper)}
+.reccard .body{min-width:0;display:flex;flex-direction:column;gap:4px}
+.rank{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--vermilion);letter-spacing:.1em}
+.rtitle{overflow-wrap:anywhere;font-family:'Anton',sans-serif;text-transform:uppercase;font-size:15px;line-height:1.06}
+.rtitle a{color:inherit;text-decoration:none;border-bottom:1.5px solid var(--vermilion)}
+.rmeta{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim)}
+.rwhy{font-size:12px;line-height:1.4;color:var(--ink-soft)}
+.rwhy b{color:var(--press);font-family:'Space Mono',monospace;font-weight:400}
+.ractions{display:flex;gap:5px;margin-top:auto;padding-top:5px;flex-wrap:wrap}
+.owned{display:inline-block;font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--press);border:1px solid var(--press);padding:0 4px;margin-left:5px;vertical-align:2px}
+
+/* ---------- fiche ---------- */
+.scrim{position:fixed;inset:0;background:rgba(22,21,15,.6);z-index:40}
+.sheet{position:fixed;z-index:41;max-width:100vw;background:var(--paper-hi);border:3px solid var(--ink);inset:auto 0 0 0;max-height:90vh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-bottom:var(--safe-b)}
+@media(min-width:860px){.sheet{inset:0 0 0 auto;width:520px;max-height:none;border-width:0 0 0 3px}}
+.hero{position:relative;border-bottom:2px solid var(--ink);background:var(--ink)}
+.hero .banner{width:100%;height:128px;object-fit:cover;opacity:.55;display:block}
+.hero .noban{height:92px;background:repeating-linear-gradient(45deg,#1d1c15 0 8px,#22211a 8px 16px)}
+.hero .front{display:flex;gap:12px;padding:0 15px 12px;margin-top:-50px;position:relative;align-items:flex-end;z-index:2}
+.hero .front img,.hero .front .ph{width:86px;height:124px;object-fit:cover;border:2px solid var(--ink);background:var(--paper-hi);flex:0 0 auto}
+.hero h2{overflow-wrap:anywhere;font-family:'Anton',sans-serif;text-transform:uppercase;font-size:22px;line-height:1;margin:0 0 5px;color:var(--paper-hi);text-shadow:0 1px 0 rgba(0,0,0,.5)}
+.hero .hmeta{font-family:'Space Mono',monospace;font-size:10px;color:#cfcbbd}
+.sheetbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;background:var(--ink);
+  padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));border-bottom:2px solid #33312a;overflow:hidden}
+.sheetbar .sbt{min-width:0;flex:1 1 auto;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#cfcbbd;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.close{margin-left:auto;flex:0 0 auto;border:2px solid var(--paper-hi);background:transparent;color:var(--paper-hi);
+  font-family:'Space Mono',monospace;font-size:12px;padding:5px 11px;cursor:pointer}
+.sbody{padding:14px 15px 40px}
+.pill{display:inline-block;font-family:'Space Mono',monospace;font-size:9.5px;text-transform:uppercase;border:1px solid var(--ink-soft);color:var(--ink-soft);padding:1px 6px;margin:0 4px 4px 0}
+.pill.hi{border-color:var(--press);color:var(--press)}
+dl{display:grid;grid-template-columns:90px 1fr;gap:5px 10px;font-size:13px;margin:12px 0 14px}
+dt{font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;color:var(--dim);padding-top:2px}
+dd{margin:0}
+.desc{font-size:13px;line-height:1.55;color:var(--ink-soft);border-left:2px solid var(--dim);padding-left:10px}
+.desc.clamped{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.more{font-family:'Space Mono',monospace;font-size:10px;background:none;border:0;color:var(--press);cursor:pointer;padding:4px 0;text-transform:uppercase}
+.seclabel{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;border-bottom:2px solid var(--ink);padding-bottom:4px;margin:18px 0 12px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.tracker{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:2px solid var(--ink);padding:9px;background:var(--paper)}
+.tracker input{width:74px;text-align:center}
+.seg{display:flex;border:2px solid var(--ink)}
+.seg button{background:transparent;border:0;border-right:2px solid var(--ink);padding:6px 10px;font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;cursor:pointer;color:var(--ink)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--paper-hi)}
+.prov{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim);margin-top:6px;line-height:1.5}
+.prov b{color:var(--press);font-weight:400}
+.prov .warn{color:var(--vermilion)}
+.trackwrap{display:flex;flex-direction:column;gap:8px;border:2px solid var(--ink);padding:10px;background:var(--paper)}
+.trackline{display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:0}
+.trackwrap input[type=number]{max-width:80px}
+.remain{font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase}
+.remain.zero{color:var(--press)}
+.rec{display:flex;gap:10px;border-left:3px solid var(--vermilion);padding:2px 0 2px 10px;margin-bottom:13px}
+.rec .cover,.rec .ph{width:56px;height:80px;object-fit:cover;border:1.5px solid var(--ink);flex:0 0 auto;background:var(--paper)}
+
+/* ---------- ajout manuel ---------- */
+.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:0}
+.modalbox{background:var(--paper-hi);border:3px solid var(--ink);width:min(620px,100%);max-height:100vh;overflow-y:auto;padding-bottom:var(--safe-b)}
+@media(min-width:700px){.modal{padding:40px 16px}.modalbox{max-height:86vh}}
+.modalhead{padding:14px 15px;border-bottom:2px solid var(--ink);position:sticky;top:0;background:var(--paper-hi);z-index:2}
+.modalhead h3{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:21px;margin:0 0 9px}
+.hit{display:flex;gap:10px;padding:10px 15px;border-bottom:1.5px solid rgba(22,21,15,.2);align-items:center}
+.hit img,.hit .ph{width:44px;height:63px;object-fit:cover;border:1.5px solid var(--ink);flex:0 0 auto;background:var(--paper)}
+.hit .ht{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:14px;line-height:1.1}
+.hit .hm{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim)}
+.hit .act{margin-left:auto;flex:0 0 auto}
+
+
+/* ---------- lecteur ---------- */
+.chapline{display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1.5px solid rgba(22,21,15,.2)}
+.chapline .cn{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:14px;line-height:1.1;overflow-wrap:anywhere}
+.chapline .cm{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim)}
+.chapline .ca{margin-left:auto;display:flex;gap:5px;flex:0 0 auto}
+.chapline.read .cn{color:var(--dim)}
+.reader{position:fixed;inset:0;z-index:80;background:#0d0c09;display:flex;flex-direction:column}
+.reader .pages{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.reader .pages img{display:block;width:100%;max-width:900px;margin:0 auto}
+.reader.paged .pages{overflow:hidden;display:flex;align-items:center;justify-content:center}
+.reader.paged .pages img{max-height:100%;width:auto;max-width:100%;object-fit:contain}
+.rbar{display:flex;gap:6px;align-items:center;padding:8px 10px;padding-bottom:calc(8px + var(--safe-b));background:#16150F;border-top:2px solid #33312a;overflow:hidden}
+.rbar .rtxt{min-width:0;flex:1 1 auto;font-family:'Space Mono',monospace;font-size:10.5px;color:#cfcbbd;margin-right:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rbtn{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;background:transparent;border:2px solid #cfcbbd;color:#cfcbbd;padding:6px 9px;cursor:pointer;flex:0 0 auto}
+.rbtn.on{background:#cfcbbd;color:#16150F}
+.rtop{display:flex;gap:6px;align-items:center;padding:8px 10px;background:#16150F;border-bottom:2px solid #33312a;overflow:hidden}
+.zone{position:absolute;top:0;bottom:58px;width:34%;z-index:2}
+.zone.l{left:0}.zone.r{right:0}
+.filedrop{border:2px dashed var(--dim);padding:12px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);cursor:pointer}
+.storagebar{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim);margin-top:6px}
+
+/* ---------- divers ---------- */
+.note{font-size:12.5px;line-height:1.45;color:var(--ink-soft);border:1.5px solid var(--dim);padding:10px}
+.err{font-size:12.5px;color:var(--vermilion);border:1.5px solid var(--vermilion);padding:10px}
+.loading{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim)}
+.loading::after{content:'▍';animation:blink .9s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.empty{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);padding:36px 0;text-align:center;grid-column:1/-1}
+.onboard{border:3px solid var(--ink);background:var(--paper-hi);padding:20px 16px;margin:18px 0}
+.onboard h2{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:clamp(20px,5vw,30px);margin:0 0 8px;line-height:1}
+.onboard p{font-size:13.5px;line-height:1.55;color:var(--ink-soft);margin:0 0 14px;max-width:62ch}
+.onboard .row{gap:8px}
+.dropzone{position:fixed;inset:0;z-index:60;background:rgba(22,21,15,.88);color:var(--paper-hi);display:flex;align-items:center;justify-content:center;font-family:'Anton',sans-serif;text-transform:uppercase;font-size:clamp(19px,5vw,32px);text-align:center;padding:24px;border:6px dashed var(--paper-hi)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--safe-b));z-index:70;background:var(--ink);color:var(--paper-hi);font-family:'Space Mono',monospace;font-size:11.5px;padding:9px 14px;border:2px solid var(--paper-hi);max-width:90vw}
+.hidden{display:none!important}
+.foot{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding-top:26px;line-height:1.9}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <div>
+      <p class="kicker" id="kicker">Bibliothèque locale</p>
+      <h1 id="mastTitle">Rayon<span class="ghost" aria-hidden="true">Rayon</span></h1>
+    </div>
+    <div class="vert" aria-hidden="true" id="vert"></div>
+  </header>
+  <div class="stats" id="stats"></div>
+
+  <!-- ===== onglet bibliothèque ===== -->
+  <section id="viewLibrary">
+    <div id="onboard"></div>
+    <div class="toolbar" id="libTools">
+      <div class="row">
+        <input type="search" id="q" placeholder="Titre, auteur, genre…" aria-label="Chercher">
+        <button class="btn ghost filterbtn" id="filterBtn" aria-expanded="false">Filtres<span class="dot hidden" id="filterDot"></span></button>
+        <button class="btn ghost" id="moreBtn2" aria-expanded="false">•••</button>
+      </div>
+      <div class="filtersum" id="filterSum"></div>
+      <div class="panel hidden" id="filterPanel">
+        <div class="chiprow" id="typeLibRow" role="group" aria-label="Type"></div>
+        <div class="chiprow" id="shelfRow" role="group" aria-label="Rayon"></div>
+        <div class="chiprow" id="srcRow" role="group" aria-label="Source"></div>
+        <div class="chiprow" id="sortRow" role="group" aria-label="Tri"></div>
+      </div>
+      <div class="morebar hidden" id="moreBar">
+        <button class="btn ghost" id="viewBtn">Vue liste</button>
+        <button class="btn ghost" id="unitBtn">Suivi : chapitres</button>
+        <button class="btn ghost" id="mdBatch">Vérifier les sorties</button>
+        <button class="btn ghost" id="folderBtn">Dossier Mihon</button>
+        <input type="file" id="rootDir" class="hidden" webkitdirectory directory multiple>
+        <button class="btn ghost" id="importBtn">Importer</button>
+        <button class="btn ghost" id="exportBtn">Exporter</button>
+        <input type="file" id="file" accept=".tachibk,.json,.gz" class="hidden">
+      </div>
+      <div class="statusline" id="statusline"></div>
+    </div>
+    <div id="pickSummary"></div>
+    <div id="results"></div>
+  </section>
+
+  <!-- ===== onglet découvrir ===== -->
+  <section id="viewDiscover" class="hidden">
+    <div class="toolbar">
+      <div class="row">
+        <button class="btn" id="runDiscover">Analyser</button>
+        <button class="btn ghost" id="dFilterBtn" aria-expanded="false">Filtres</button>
+        <button class="btn ghost" id="resetDismissed">Réafficher les écartés</button>
+      </div>
+      <div class="panel hidden" id="dFilterPanel">
+        <div class="chiprow" id="seedRow" role="group" aria-label="Séries analysées"></div>
+        <div class="chiprow" id="typeRow" role="group" aria-label="Type"></div>
+        <div class="chiprow" id="dsortRow" role="group" aria-label="Tri"></div>
+      </div>
+      <div class="progress hidden" id="discoverProgress"><i style="width:0%"></i></div>
+      <div class="statusline" id="discoverStatus"></div>
+    </div>
+    <div id="discoverBox"></div>
+  </section>
+
+  <p class="foot">
+    Recommandations : API AniList, votées par les lecteurs.<br>
+    Tout est stocké dans ce navigateur. Aucune donnée n'est envoyée ailleurs.
+  </p>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" id="tabLibrary" aria-selected="true"><span class="badge" id="tabLibN">0</span>Bibliothèque</button>
+  <button class="tab" role="tab" id="tabDiscover" aria-selected="false"><span class="badge" id="tabDiscN">—</span>Découvrir</button>
+  <button class="tab" role="tab" id="tabAdd" aria-selected="false"><span class="badge">＋</span>Ajouter</button>
+</nav>
+
+<div id="overlay"></div>
+<div id="modalHost"></div>
+<div class="dropzone hidden" id="dropzone">Dépose ta sauvegarde .tachibk ou ton export .json</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Utilitaires
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const norm = s => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const stripTags = s => String(s||"").replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g,"").trim();
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+const store = {
+  get(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+
+let toastTimer = null;
+function toast(msg){
+  const old = document.querySelector(".toast");
+  if (old) old.remove();
+  const el = document.createElement("div");
+  el.className = "toast"; el.textContent = msg;
+  document.body.appendChild(el);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.remove(), 3200);
+}
+
+/* ============================================================
+   État
+   ============================================================ */
+let LIB = store.get("lib:v1") || { label:"Bibliothèque locale", entries:[] };
+let META = store.get("meta:v2") || {};
+let DISMISSED = new Set(store.get("dismissed:v1") || []);
+let metaDirty = false;
+
+const saveLib = () => { store.set("lib:v1", LIB); refreshOwned(); };
+const saveMeta = () => { if (metaDirty){ store.set("meta:v2", META); metaDirty = false; } };
+setInterval(saveMeta, 4000);
+window.addEventListener("beforeunload", saveMeta);
+
+let OWNED = new Set();
+function refreshOwned(){
+  OWNED = new Set();
+  LIB.entries.forEach(e=>{ OWNED.add(norm(e.t)); if (e.al) OWNED.add("id:"+e.al); });
+}
+refreshOwned();
+const isOwned = r => OWNED.has("id:"+r.id) || OWNED.has(norm(r.titre)) || OWNED.has(norm(r.romaji));
+
+/* ============================================================
+   API AniList
+   ============================================================ */
+const API = "https://graphql.anilist.co";
+let cooldownUntil = 0;
+
+async function gql(query, variables){
+  const wait = cooldownUntil - Date.now();
+  if (wait > 0) await sleep(wait);
+  let res;
+  try{
+    res = await fetch(API,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({query,variables})});
+  }catch(e){ throw new Error("Impossible de joindre AniList. Vérifie ta connexion."); }
+  if (res.status === 429){
+    const retry = parseInt(res.headers.get("Retry-After")||"60",10);
+    cooldownUntil = Date.now()+retry*1000;
+    throw new Error("AniList limite les requêtes ("+retry+" s d'attente).");
+  }
+  const json = await res.json().catch(()=>null);
+  if (!json) throw new Error("Réponse illisible d'AniList.");
+  if (json.errors && json.errors.length) throw new Error(json.errors[0].message||"Erreur AniList.");
+  return json.data;
+}
+
+const FIELDS = `
+  id siteUrl format status chapters volumes averageScore popularity genres countryOfOrigin
+  startDate{year} title{romaji english} coverImage{large medium} bannerImage description(asHtml:false)
+  staff(perPage:2, sort:RELEVANCE){ nodes{ name{full} } }`;
+const BY_IDS_Q = `query ($ids:[Int]){ Page(perPage:50){ media(id_in:$ids, type:MANGA){ ${FIELDS} } } }`;
+const SEARCH_PAGE_Q = `query ($s:String){ Page(perPage:8){ media(search:$s, type:MANGA, sort:SEARCH_MATCH){ ${FIELDS} } } }`;
+const RECO_Q = `query ($id:Int){ Media(id:$id, type:MANGA){ id siteUrl title{romaji english}
+  recommendations(sort:RATING_DESC, perPage:12){ nodes{ rating mediaRecommendation{ ${FIELDS} } } } } }`;
+
+const FORMAT = {MANGA:"Manga", NOVEL:"Light novel", ONE_SHOT:"One-shot"};
+const PSTATUS = {FINISHED:"Terminé", RELEASING:"En cours", NOT_YET_RELEASED:"À paraître", CANCELLED:"Annulé", HIATUS:"En pause"};
+const COUNTRY = {JP:"Manga", KR:"Manhwa", CN:"Manhua", TW:"Manhua"};
+
+function shapeMedia(m){
+  if (!m) return null;
+  return {
+    id:m.id, url:m.siteUrl,
+    titre:(m.title.english||m.title.romaji), romaji:m.title.romaji,
+    cover:(m.coverImage&&(m.coverImage.large||m.coverImage.medium))||"", banner:m.bannerImage||"",
+    type:COUNTRY[m.countryOfOrigin]||FORMAT[m.format]||"Manga",
+    format:FORMAT[m.format]||m.format||"", statut:PSTATUS[m.status]||"",
+    chapitres:m.chapters||null, volumes:m.volumes||null,
+    score:m.averageScore||null, pop:m.popularity||0,
+    annee:(m.startDate&&m.startDate.year)||null, genres:m.genres||[],
+    auteur:(m.staff&&m.staff.nodes.length)?m.staff.nodes.map(s=>s.name.full).join(", "):"",
+    desc:stripTags(m.description).slice(0,900)
+  };
+}
+
+async function searchBatch(entries){
+  const args = entries.map((e,i)=>`$s${i}:String`).join(", ");
+  const parts = entries.map((e,i)=>`m${i}: Media(search:$s${i}, type:MANGA, sort:SEARCH_MATCH){ ${FIELDS} }`);
+  const vars = {}; entries.forEach((e,i)=>{ vars["s"+i]=e.t; });
+  const data = await gql(`query (${args}){ ${parts.join("\n")} }`, vars);
+  entries.forEach((e,i)=>{
+    const m = shapeMedia(data["m"+i]);
+    META[norm(e.t)] = m || {missing:true};
+    if (m && !e.al) e.al = m.id;
+    metaDirty = true;
+  });
+  saveLib();
+}
+
+let hydrating = false;
+async function hydrate(){
+  if (hydrating || !LIB.entries.length) return;
+  hydrating = true;
+  try{
+    const todo = LIB.entries.filter(d => !META[norm(d.t)]);
+    const withId = todo.filter(d=>d.al), without = todo.filter(d=>!d.al);
+    const total = todo.length; let done = 0;
+    for (let i=0;i<withId.length;i+=50){
+      const chunk = withId.slice(i,i+50);
+      $("statusline").textContent = `Fiches AniList · ${done}/${total}`;
+      try{
+        const data = await gql(BY_IDS_Q,{ids:chunk.map(d=>d.al)});
+        const byId = {}; (data.Page.media||[]).forEach(m=>{ byId[m.id]=shapeMedia(m); });
+        chunk.forEach(d=>{ META[norm(d.t)] = byId[d.al] || {missing:true}; });
+        metaDirty = true;
+      }catch(e){ $("statusline").textContent = e.message; await sleep(2500); }
+      done += chunk.length; renderLibrary(); await sleep(700);
+    }
+    for (let i=0;i<without.length;i+=6){
+      const chunk = without.slice(i,i+6);
+      $("statusline").textContent = `Recherche des fiches · ${done}/${total}`;
+      try{ await searchBatch(chunk); }catch(e){ $("statusline").textContent = e.message; await sleep(3000); }
+      done += chunk.length; renderLibrary(); await sleep(900);
+    }
+    saveMeta();
+    const found = LIB.entries.filter(d=>{ const m=META[norm(d.t)]; return m && !m.missing; }).length;
+    $("statusline").textContent = `${found} fiches AniList sur ${LIB.entries.length} · en cache`;
+  } finally { hydrating = false; }
+}
+
+async function loadRecos(entry, force){
+  const key = "reco:v3:"+norm(entry.t);
+  if (!force){ const hit = store.get(key); if (hit) return hit; }
+  const meta = META[norm(entry.t)];
+  let id = entry.al || (meta && meta.id);
+  if (!id){
+    await searchBatch([entry]);
+    const m = META[norm(entry.t)];
+    if (!m || m.missing) throw new Error("Aucune fiche AniList ne correspond à ce titre.");
+    id = m.id;
+  }
+  const data = await gql(RECO_Q,{id});
+  const media = data && data.Media;
+  if (!media) throw new Error("Fiche AniList introuvable.");
+  const payload = {
+    source: media.siteUrl, matched: media.title.english||media.title.romaji,
+    items: (media.recommendations.nodes||[]).map(n=>{
+      const m = shapeMedia(n.mediaRecommendation);
+      if (!m) return null;
+      delete m.banner; m.desc = m.desc.slice(0,200); m.votes = n.rating; return m;
+    }).filter(Boolean)
+  };
+  store.set(key, payload);
+  return payload;
+}
+
+/* ============================================================
+   MangaDex : structure en tomes et dernier chapitre publié
+   ============================================================ */
+const MD = "https://api.mangadex.org";
+let MDCACHE = store.get("md:v1") || {};
+
+async function mdGet(path){
+  let res;
+  try{ res = await fetch(MD+path, {headers:{Accept:"application/json"}}); }
+  catch(e){ throw new Error("MangaDex injoignable depuis ce navigateur (blocage CORS ou réseau)."); }
+  if (res.status === 429) throw new Error("MangaDex limite les requêtes, réessaie dans une minute.");
+  if (!res.ok) throw new Error("MangaDex a répondu "+res.status+".");
+  return res.json();
+}
+
+/* retrouve l'identifiant MangaDex : par lien AniList si possible, sinon par titre */
+async function mdResolve(entry){
+  const key = norm(entry.t);
+  if (MDCACHE[key] && MDCACHE[key].id !== undefined) return MDCACHE[key].id;
+  const q = encodeURIComponent(entry.t.slice(0,60));
+  const data = await mdGet(`/manga?title=${q}&limit=5&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica`);
+  const hits = data.data || [];
+  let best = null;
+  if (entry.al) best = hits.find(h => h.attributes.links && String(h.attributes.links.al) === String(entry.al));
+  if (!best) best = hits.find(h => {
+    const titles = [h.attributes.title, ...(h.attributes.altTitles||[])].flatMap(t => Object.values(t||{}));
+    return titles.some(t => norm(t) === key);
+  });
+  const id = best ? best.id : null;
+  MDCACHE[key] = Object.assign(MDCACHE[key]||{}, {id, matched: best ? Object.values(best.attributes.title)[0] : null});
+  store.set("md:v1", MDCACHE);
+  return id;
+}
+
+/* structure tomes / chapitres */
+async function mdAggregate(entry){
+  const key = norm(entry.t);
+  const id = await mdResolve(entry);
+  if (!id) throw new Error("Cette série n'est pas référencée sur MangaDex.");
+  const data = await mdGet(`/manga/${id}/aggregate?translatedLanguage[]=en`);
+  const volumes = data.volumes || {};
+  const vols = [];
+  let maxCh = 0;
+  Object.keys(volumes).forEach(vk => {
+    const chapters = Object.keys(volumes[vk].chapters || {})
+      .map(c => parseFloat(c)).filter(n => !isNaN(n)).sort((a,b)=>a-b);
+    chapters.forEach(c => { if (c > maxCh) maxCh = c; });
+    const vnum = parseFloat(vk);
+    if (!isNaN(vnum)) vols.push({v:vnum, last: chapters.length ? chapters[chapters.length-1] : null, count: chapters.length});
+  });
+  vols.sort((a,b)=>a.v-b.v);
+  const info = {
+    id, vols,
+    maxCh: maxCh || null,
+    maxVol: vols.length ? vols[vols.length-1].v : null,
+    at: new Date().toISOString().slice(0,10),
+    matched: (MDCACHE[key]||{}).matched || entry.t
+  };
+  MDCACHE[key] = Object.assign(MDCACHE[key]||{}, info);
+  store.set("md:v1", MDCACHE);
+  return info;
+}
+
+/* ---- totaux effectifs, avec provenance ----
+   priorité : saisie manuelle > MangaDex > AniList (séries terminées) > chapitres de la source Mihon */
+function totals(d){
+  const meta = META[norm(d.t)];
+  const md = MDCACHE[norm(d.t)];
+  const out = {ch:null, chSrc:null, vol:null, volSrc:null, at: md && md.at};
+  if (md && md.maxCh){ out.ch = md.maxCh; out.chSrc = "mangadex"; }
+  if (md && md.maxVol){ out.vol = md.maxVol; out.volSrc = "mangadex"; }
+  if (meta && !meta.missing){
+    const fini = meta.statut === "Terminé";
+    if (meta.chapitres && (!out.ch || (fini && meta.chapitres > out.ch))){ out.ch = meta.chapitres; out.chSrc = "anilist"; }
+    if (meta.volumes && (!out.vol || fini)){ out.vol = meta.volumes; out.volSrc = "anilist"; }
+  }
+  if (!out.ch && d.n){ out.ch = d.n; out.chSrc = d.origin === "mihon" ? "mihon" : "import"; }
+  if (d.manCh){ out.ch = d.manCh; out.chSrc = "manuel"; }
+  if (d.manVol){ out.vol = d.manVol; out.volSrc = "manuel"; }
+  return out;
+}
+
+const SRCLABEL = {
+  mangadex:"MangaDex", anilist:"AniList", mihon:"chapitres de ta source", import:"fichier importé", manuel:"saisi à la main"
+};
+const SRCNOTE = {
+  mangadex:"structure des tomes et dernier chapitre traduit recensés par MangaDex",
+  anilist:"AniList ne renseigne les totaux que pour les séries achevées",
+  mihon:"nombre de chapitres présents chez ta source de lecture",
+  import:"valeur venue du fichier importé",
+  manuel:"ta saisie"
+};
+
+/* unité effective d'une série */
+function unitOf(d){ return d.unit || state.unit; }
+
+/* ============================================================
+   Lecture d'une sauvegarde Mihon (.tachibk : gzip + protobuf)
+   ============================================================ */
+function pbParse(buf, start, end){
+  const out = []; let i = start;
+  while (i < end){
+    let key=0n, shift=0n;
+    while(true){ const b=buf[i++]; key |= BigInt(b&0x7f)<<shift; if(!(b&0x80)) break; shift+=7n; }
+    const field=Number(key>>3n), wt=Number(key&7n);
+    if (wt===0){ let v=0n,s=0n; while(true){ const b=buf[i++]; v|=BigInt(b&0x7f)<<s; if(!(b&0x80)) break; s+=7n; } out.push({f:field,wt,v}); }
+    else if (wt===1){ out.push({f:field,wt,v:buf.slice(i,i+8)}); i+=8; }
+    else if (wt===2){ let n=0n,s=0n; while(true){ const b=buf[i++]; n|=BigInt(b&0x7f)<<s; if(!(b&0x80)) break; s+=7n; }
+      const len=Number(n); out.push({f:field,wt,v:buf.subarray(i,i+len)}); i+=len; }
+    else if (wt===5){ const dv=new DataView(buf.buffer, buf.byteOffset+i, 4); out.push({f:field,wt,v:dv.getFloat32(0,true)}); i+=4; }
+    else throw new Error("Format inattendu (wire type "+wt+").");
+  }
+  return out;
+}
+const dec = new TextDecoder("utf-8");
+const group = fields => { const g={}; fields.forEach(x=>{ (g[x.f]=g[x.f]||[]).push(x); }); return g; };
+const MSTATUS = {0:"Inconnu",1:"En cours",2:"Terminé",3:"Sous licence",4:"Publication terminée",5:"Annulé",6:"En pause"};
+const MMODE = {0:"",1:"Gauche→Droite",2:"Droite→Gauche",3:"Vertical",4:"Webtoon",5:"Vertical continu"};
+const isoDay = ms => ms ? new Date(Number(ms)).toISOString().slice(0,10) : "";
+
+function parseBackup(bytes){
+  const top = pbParse(bytes,0,bytes.length);
+  const sources = {};
+  top.filter(x=>x.f===101).forEach(x=>{
+    const g = group(pbParse(x.v,0,x.v.length));
+    if (g[2]) sources[String(g[2][0].v)] = (g[1] && dec.decode(g[1][0].v)) || "Source inconnue";
+  });
+  const entries = [];
+  top.filter(x=>x.f===1).forEach(x=>{
+    const g = group(pbParse(x.v,0,x.v.length));
+    const str = f => g[f] ? dec.decode(g[f][0].v) : "";
+    const chapters = (g[16]||[]).map(c=>group(pbParse(c.v,0,c.v.length)));
+    const read = chapters.filter(c=>c[4] && Number(c[4][0].v)===1).length;
+    const hist = (g[104]||[]).map(h=>group(pbParse(h.v,0,h.v.length))).map(h=>h[2]?Number(h[2][0].v):0).filter(Boolean);
+    let al = 0;
+    (g[18]||[]).forEach(t=>{
+      const tg = group(pbParse(t.v,0,t.v.length));
+      const m = (tg[4] ? dec.decode(tg[4][0].v) : "").match(/anilist\.co\/manga\/(\d+)/);
+      if (m) al = parseInt(m[1],10);
+    });
+    entries.push({
+      id: uid(), t: str(3), a: str(5)||str(4),
+      s: sources[String(g[1]?g[1][0].v:"")] || "Source inconnue",
+      st: MSTATUS[g[8]?Number(g[8][0].v):0] || "Inconnu",
+      g: (g[7]||[]).map(y=>dec.decode(y.v)).slice(0,6),
+      r: read, n: chapters.length,
+      d: hist.length ? isoDay(Math.max.apply(null,hist)) : "",
+      ad: g[13] ? isoDay(Number(g[13][0].v)) : "",
+      m: MMODE[g[14]?Number(g[14][0].v):0] || "",
+      al, f: (!g[100] || Number(g[100][0].v)!==0) ? 1 : 0,
+      rv: 0, origin: "mihon"
+    });
+  });
+  return entries;
+}
+
+async function importFile(file){
+  try{
+    $("statusline").textContent = "Lecture de "+file.name+"…";
+    const raw = new Uint8Array(await file.arrayBuffer());
+    let entries, label;
+    if (raw[0]===0x1f && raw[1]===0x8b){
+      if (!("DecompressionStream" in window)) throw new Error("Ce navigateur ne décompresse pas le gzip (Chrome, Edge, Firefox 113+, Safari 16.4+ requis).");
+      const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"));
+      entries = parseBackup(new Uint8Array(await new Response(stream).arrayBuffer()));
+      label = "Sauvegarde Mihon · "+file.name;
+    } else {
+      const json = JSON.parse(new TextDecoder().decode(raw));
+      const list = Array.isArray(json) ? json : json.entries;
+      if (!Array.isArray(list)) throw new Error("Fichier JSON non reconnu.");
+      entries = list.map(e=>Object.assign({id:uid(),a:"",s:"Import",st:"Inconnu",g:[],r:0,n:0,d:"",ad:"",m:"",al:0,f:1,origin:"import"}, e));
+      label = json.label || "Liste importée · "+file.name;
+    }
+    if (!entries.length) throw new Error("Aucune série trouvée dans ce fichier.");
+    entries.sort((a,b)=>(b.f-a.f)||a.t.localeCompare(b.t,"fr"));
+    LIB = { label, entries };
+    saveLib();
+    store.del("discover:v1");
+    boot();
+    toast(entries.length+" séries importées");
+    hydrate();
+  }catch(e){
+    $("statusline").textContent = "";
+    alert("Import impossible : "+e.message);
+  }
+}
+
+function exportLib(){
+  const blob = new Blob([JSON.stringify({label:LIB.label, exported:new Date().toISOString(), entries:LIB.entries}, null, 1)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "ma-bibliotheque.json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+  toast("Export téléchargé — partage ce fichier à qui tu veux");
+}
+
+/* ============================================================
+   Ajout manuel
+   ============================================================ */
+function addFromMedia(m, opts){
+  opts = opts || {};
+  if (LIB.entries.some(e => (e.al && e.al===m.id) || norm(e.t)===norm(m.titre))){
+    toast("Déjà dans ta liste"); return false;
+  }
+  LIB.entries.unshift({
+    id: uid(), t: m.titre, a: m.auteur, s: opts.source || "Ajout manuel",
+    st: m.statut || "Inconnu", g: m.genres.slice(0,6),
+    r: opts.read || 0, rv: 0, n: m.chapitres || 0, d: "",
+    ad: new Date().toISOString().slice(0,10), m: m.type === "Manhwa" ? "Webtoon" : "",
+    al: m.id, f: 1, origin: "manuel"
+  });
+  META[norm(m.titre)] = m; metaDirty = true;
+  saveLib(); saveMeta(); boot();
+  toast("« "+m.titre+" » ajouté");
+  return true;
+}
+
+function openAddModal(prefill){
+  $("modalHost").innerHTML = `
+    <div class="modal" id="modalScrim">
+      <div class="modalbox" role="dialog" aria-label="Ajouter un titre">
+        <div class="modalhead">
+          <h3>Ajouter un titre</h3>
+          <div class="row">
+            <input type="search" id="addQ" placeholder="Nom du manga, manhwa, webtoon…" aria-label="Chercher un titre" style="flex:1 1 auto">
+            <button class="btn ghost" id="addClose">Fermer</button>
+          </div>
+          <p class="rmeta" style="margin:8px 0 0">Recherche dans le catalogue AniList — plus de 100 000 séries.</p>
+        </div>
+        <div id="addResults"><p class="note" style="margin:14px 15px">Tape au moins deux lettres pour lancer la recherche.</p></div>
+      </div>
+    </div>`;
+  const input = $("addQ");
+  $("addClose").onclick = closeModal;
+  $("modalScrim").onclick = e => { if (e.target.id === "modalScrim") closeModal(); };
+  let timer = null, seq = 0;
+  const run = async () => {
+    const term = input.value.trim();
+    if (term.length < 2){ $("addResults").innerHTML = `<p class="note" style="margin:14px 15px">Tape au moins deux lettres.</p>`; return; }
+    const mine = ++seq;
+    $("addResults").innerHTML = `<p class="loading" style="margin:14px 15px">Recherche</p>`;
+    try{
+      const data = await gql(SEARCH_PAGE_Q, {s: term});
+      if (mine !== seq) return;
+      const hits = (data.Page.media||[]).map(shapeMedia).filter(Boolean);
+      if (!hits.length){ $("addResults").innerHTML = `<p class="note" style="margin:14px 15px">Rien trouvé pour « ${esc(term)} ».</p>`; return; }
+      $("addResults").innerHTML = hits.map((h,i)=>{
+        const owned = isOwned(h);
+        const meta = [h.type, h.annee, h.chapitres?h.chapitres+" ch.":null, h.statut, h.score?h.score+"/100":null].filter(Boolean).join(" · ");
+        return `<div class="hit">
+          ${h.cover?`<img src="${esc(h.cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
+          <span style="min-width:0">
+            <span class="ht">${esc(h.titre)}</span>${owned?'<span class="owned">déjà chez toi</span>':''}<br>
+            <span class="hm">${esc(meta)}${h.auteur?" · "+esc(h.auteur):""}</span>
+          </span>
+          <span class="act"><button class="btn sm ${owned?'ghost':''}" data-add="${i}" ${owned?'disabled':''}>${owned?'Ajouté':'Ajouter'}</button></span>
+        </div>`;
+      }).join("");
+      [...$("addResults").querySelectorAll("[data-add]")].forEach(b=>{
+        b.onclick = () => { if (addFromMedia(hits[+b.dataset.add])){ b.textContent = "Ajouté"; b.disabled = true; b.classList.add("ghost"); } };
+      });
+    }catch(e){
+      if (mine !== seq) return;
+      $("addResults").innerHTML = `<p class="err" style="margin:14px 15px">${esc(e.message)}</p>`;
+    }
+  };
+  input.addEventListener("input", ()=>{ clearTimeout(timer); timer = setTimeout(run, 420); });
+  if (prefill){ input.value = prefill; run(); }
+  input.focus();
+}
+function closeModal(){ $("modalHost").innerHTML = ""; }
+
+/* ============================================================
+   Bibliothèque : filtres et rendu
+   ============================================================ */
+const state = { q:"", shelf:"Tout", source:"Toutes", sort:"Lecture récente", view:"grid",
+                hideOwned:true, tab:"library", type:"Tous", dsort:"Pertinence", unit:"ch",
+                libType:"Tous types", seeds:25 };
+const SHELVES = ["Tout","En cours","À rattraper","Terminées","Jamais ouvertes","Ajoutées à la main"];
+const SORTS = ["Lecture récente","Titre","Chapitres lus","Progression","Note AniList"];
+const TYPES = ["Tous","Manga","Manhwa","Manhua"];
+const LIBTYPES = ["Tous types","Manga","Manhwa","Manhua","Webtoon"];
+const DSORTS = ["Pertinence","Note","Popularité"];
+
+function shelfTest(d, shelf){
+  const behind = progressOf(d).remain;
+  switch(shelf){
+    case "En cours": return d.r > 0 && (d.n ? d.r < d.n : true);
+    case "À rattraper": return d.r > 0 && behind !== null && behind >= 5;
+    case "Terminées": return d.n > 0 && d.r >= d.n;
+    case "Jamais ouvertes": return d.r === 0;
+    case "Ajoutées à la main": return d.origin === "manuel";
+    default: return true;
+  }
+}
+
+function typeOf(d){
+  const m = META[norm(d.t)];
+  if (m && !m.missing && m.type) return m.type;
+  return d.m === "Webtoon" ? "Manhwa" : "Manga";
+}
+function libTypeTest(d){
+  if (state.libType === "Tous types") return true;
+  if (state.libType === "Webtoon") return d.m === "Webtoon";
+  return typeOf(d) === state.libType;
+}
+
+function libRows(){
+  const needle = norm(state.q);
+  const out = LIB.entries.filter(d=>{
+    if (!libTypeTest(d)) return false;
+    if (!shelfTest(d, state.shelf)) return false;
+    if (state.source !== "Toutes" && d.s !== state.source) return false;
+    if (needle){
+      const m = META[norm(d.t)];
+      const hay = d.t+" "+d.a+" "+d.g.join(" ")+" "+(m && !m.missing ? m.romaji+" "+m.genres.join(" ") : "");
+      if (!norm(hay).includes(needle)) return false;
+    }
+    return true;
+  });
+  const score = d => { const m = META[norm(d.t)]; return (m && m.score) || 0; };
+  if (state.sort==="Titre") out.sort((a,b)=>a.t.localeCompare(b.t,"fr"));
+  if (state.sort==="Chapitres lus") out.sort((a,b)=>b.r-a.r);
+  if (state.sort==="Lecture récente") out.sort((a,b)=>(b.d||"").localeCompare(a.d||"")||b.r-a.r);
+  if (state.sort==="Progression") out.sort((a,b)=>(b.r/(b.n||1))-(a.r/(a.n||1)));
+  if (state.sort==="Note AniList") out.sort((a,b)=>score(b)-score(a));
+  return out;
+}
+
+function progressOf(d){
+  const t = totals(d);
+  const unit = unitOf(d);
+  if (unit === "vol"){
+    const read = d.rv || 0, tot = t.vol || 0;
+    return {read, tot, pct: tot ? Math.min(100, Math.round(read/tot*100)) : 0,
+            label: read + (tot ? "/"+tot : "") + " tomes", remain: tot ? tot-read : null, unit:"tomes", t};
+  }
+  const read = d.r || 0, tot = t.ch || 0;
+  return {read, tot, pct: tot ? Math.min(100, Math.round(read/tot*100)) : 0,
+          label: read + (tot ? "/"+tot : "") + " ch.", remain: tot ? Math.round((tot-read)*10)/10 : null, unit:"chapitres", t};
+}
+
+function posterHTML(d){
+  const meta = META[norm(d.t)];
+  const p = progressOf(d);
+  const pct = p.pct;
+  const cover = meta && !meta.missing ? meta.cover : "";
+  const score = meta && !meta.missing ? meta.score : null;
+  const behind = p.remain;
+  const local = (CATALOG ? folderChaptersFor(d).length : 0) + (PICKED.size ? pickedFor(d).length : 0);
+  const tape = local ? local+" hors ligne" : (d.origin === "manuel" ? "Manuel" : (behind >= 5 ? "+"+behind+" "+(p.unit==="tomes"?"t.":"ch.") : (d.m === "Webtoon" ? "Webtoon" : "")));
+  return `<button class="card" data-id="${d.id}">
+    <div class="poster">
+      ${cover?`<img src="${esc(cover)}" alt="" loading="lazy" decoding="async">`:`<span class="fallback">${esc(d.t)}</span>`}
+      ${tape?`<span class="tape">${esc(tape)}</span>`:""}
+      ${score?`<span class="score">${score}</span>`:""}
+      <span class="prog"><i class="${pct===100?"done":""}" style="width:${pct}%"></i></span>
+    </div>
+    <div class="ct">${esc(d.t)}</div>
+    <div class="sub"><span class="src">${esc(d.s)}</span><span>${esc(p.label)}</span></div>
+  </button>`;
+}
+
+function listHTML(d){
+  const meta = META[norm(d.t)];
+  const cover = meta && !meta.missing ? meta.cover : "";
+  return `<button class="lrow" data-id="${d.id}">
+    ${cover?`<img src="${esc(cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
+    <span style="min-width:0"><span class="lt">${esc(d.t)}</span><br>
+    <span class="lm">${esc(d.s)} · ${esc(d.st)}${d.d?" · "+esc(d.d):""}</span></span>
+    <span class="lp">${esc(progressOf(d).label)}</span>
+  </button>`;
+}
+
+function renderLibrary(){
+  if (state.tab !== "library") return;
+  const box = $("results");
+  if (!LIB.entries.length){ box.innerHTML = ""; return; }
+  if ($("filterSum")) updateFilterSummary();
+  const ps = $("pickSummary");
+  if (ps){
+    ps.innerHTML = pickSummaryHTML();
+    const rl = $("relink");
+    if (rl) rl.onclick = () => $("rootDir").click();
+  }
+  const list = libRows();
+  box.innerHTML = !list.length
+    ? `<p class="empty">Aucune série ne correspond.</p>`
+    : (state.view === "grid"
+        ? `<div class="grid">${list.map(posterHTML).join("")}</div>`
+        : `<div class="list">${list.map(listHTML).join("")}</div>`);
+  [...box.querySelectorAll("[data-id]")].forEach(el=>{
+    el.onclick = () => openSheet(LIB.entries.find(x=>x.id===el.dataset.id));
+  });
+}
+
+/* ============================================================
+   Fiche d'une série
+   ============================================================ */
+let current = null;
+function closeSheet(){ current = null; $("overlay").innerHTML = ""; document.body.style.overflow = ""; }
+
+function recoRowHTML(r){
+  const meta = [r.type, r.annee, r.chapitres?r.chapitres+" ch.":null, r.statut, r.score?r.score+"/100":null].filter(Boolean).join(" · ");
+  return `<div class="rec">
+    ${r.cover?`<img class="cover" src="${esc(r.cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
+    <div style="min-width:0">
+      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a>${isOwned(r)?'<span class="owned">déjà chez toi</span>':''}</div>
+      <div class="rmeta">${esc(meta)}</div>
+      <div class="rwhy"><b>${r.votes||0} lecteurs</b> font le rapprochement${r.genres.length?" · "+esc(r.genres.slice(0,3).join(", ")):""}</div>
+      ${isOwned(r)?"":`<div class="ractions"><button class="btn sm" data-addreco="${r.id}">Ajouter à ma liste</button></div>`}
+    </div>
+  </div>`;
+}
+
+
+
+/* ============================================================
+   Lecteur hors ligne : fichiers CBZ / images de l'utilisateur
+   ============================================================ */
+const DB_NAME = "rayon-reader", DB_VER = 2;
+let dbp = null;
+function db(){
+  if (dbp) return dbp;
+  dbp = new Promise((res, rej)=>{
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      if (!d.objectStoreNames.contains("chapters")){
+        const s = d.createObjectStore("chapters", {keyPath:"id"});
+        s.createIndex("entry", "entryId", {unique:false});
+      }
+      if (!d.objectStoreNames.contains("handles")) d.createObjectStore("handles", {keyPath:"id"});
+    };
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(new Error("Stockage local indisponible."));
+  });
+  return dbp;
+}
+async function idb(mode, fn){
+  const d = await db();
+  return new Promise((res, rej)=>{
+    const tx = d.transaction("chapters", mode);
+    const store = tx.objectStore("chapters");
+    let out;
+    try{ out = fn(store); }catch(e){ rej(e); return; }
+    tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    tx.onerror = () => rej(tx.error || new Error("Erreur de stockage."));
+  });
+}
+const chaptersOf = entryId => idb("readonly", s => s.index("entry").getAll(entryId));
+const putChapter = c => idb("readwrite", s => s.put(c));
+const delChapter = id => idb("readwrite", s => s.delete(id));
+
+
+/* ============================================================
+   Dossier de téléchargement Mihon : lecture directe sur l'appareil
+   ============================================================ */
+let FSROOT = null;                                   // FileSystemDirectoryHandle
+let CATALOG = store.get("catalog:v1") || null;       // arborescence relevée
+let FSPROG = store.get("fsprog:v1") || {};           // progression des chapitres du dossier
+
+const IMG_RE = /\.(jpe?g|png|webp|gif|avif)$/i;
+const ARC_RE = /\.(cbz|zip)$/i;
+
+async function saveRootHandle(handle){
+  try{
+    const d = await db();
+    await new Promise((res,rej)=>{
+      const tx = d.transaction("handles","readwrite");
+      tx.objectStore("handles").put({id:"root", handle});
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+  }catch(e){ /* le handle ne survivra pas à la session, sans gravité */ }
+}
+async function loadRootHandle(){
+  try{
+    const d = await db();
+    const rec = await new Promise((res,rej)=>{
+      const tx = d.transaction("handles","readonly");
+      const r = tx.objectStore("handles").get("root");
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    if (!rec) return null;
+    const perm = await rec.handle.queryPermission({mode:"read"});
+    if (perm === "granted") return rec.handle;
+    return rec.handle;   // permission redemandée au moment de lire
+  }catch(e){ return null; }
+}
+
+/* parcourt <racine>/<source>/<série>/<chapitre> */
+async function scanMihonFolder(root){
+  const cat = {at:new Date().toISOString().slice(0,10), series:[]};
+  const setStat = t => { $("statusline").textContent = t; };
+  for await (const [srcName, srcHandle] of root.entries()){
+    if (srcHandle.kind !== "directory") continue;
+    setStat("Analyse · "+srcName);
+    for await (const [mangaName, mangaHandle] of srcHandle.entries()){
+      if (mangaHandle.kind !== "directory") continue;
+      const chapters = [];
+      for await (const [chapName, chapHandle] of mangaHandle.entries()){
+        if (chapHandle.kind === "directory") chapters.push({name:chapName, kind:"dir"});
+        else if (ARC_RE.test(chapName)) chapters.push({name:chapName, kind:"cbz"});
+      }
+      if (chapters.length) cat.series.push({source:srcName, title:mangaName, chapters});
+    }
+  }
+  cat.series.sort((a,b)=>a.title.localeCompare(b.title,"fr"));
+  return cat;
+}
+
+async function linkMihonFolder(){
+  if (!window.showDirectoryPicker){
+    toast("Ce navigateur ne sait pas ouvrir un dossier — utilise l'ajout de fichiers dans une fiche.");
+    return;
+  }
+  let root;
+  try{ root = await window.showDirectoryPicker({id:"mihon", mode:"read"}); }
+  catch(e){ return; }
+  FSROOT = root;
+  await saveRootHandle(root);
+  $("statusline").textContent = "Analyse du dossier…";
+  try{
+    CATALOG = await scanMihonFolder(root);
+    store.set("catalog:v1", CATALOG);
+    const chapters = CATALOG.series.reduce((s,x)=>s+x.chapters.length,0);
+    const matched = CATALOG.series.filter(s=>matchEntry(s)).length;
+    $("statusline").textContent = `${CATALOG.series.length} séries · ${chapters} chapitres · ${matched} reconnues dans ta bibliothèque`;
+    toast(matched+" séries de ta bibliothèque ont des chapitres sur l'appareil");
+    renderLibrary();
+  }catch(e){
+    $("statusline").textContent = "Analyse impossible : "+e.message;
+  }
+}
+
+/* rapprochement dossier ↔ bibliothèque */
+function matchEntry(folderSeries){
+  const key = norm(folderSeries.title);
+  let hit = LIB.entries.find(e => norm(e.t) === key);
+  if (!hit) hit = LIB.entries.find(e => { const n = norm(e.t); return n.length > 6 && (key.includes(n) || n.includes(key)); });
+  return hit || null;
+}
+function folderChaptersFor(entry){
+  if (!CATALOG) return [];
+  const key = norm(entry.t);
+  const hit = CATALOG.series.find(s => norm(s.title) === key)
+    || CATALOG.series.find(s => { const k = norm(s.title); return k.length > 6 && (k.includes(key) || key.includes(k)); });
+  if (!hit) return [];
+  return hit.chapters.map(c => ({
+    id: "fs:"+hit.source+"/"+hit.title+"/"+c.name,
+    entryId: entry.id, name: c.name, num: chapNumOf(c.name),
+    fs: {source:hit.source, title:hit.title, chapter:c.name, kind:c.kind},
+    pages: [], at: 0,
+    lastPage: (FSPROG["fs:"+hit.source+"/"+hit.title+"/"+c.name]||{}).lastPage || 0,
+    done: !!(FSPROG["fs:"+hit.source+"/"+hit.title+"/"+c.name]||{}).done
+  })).sort((a,b)=>(a.num||0)-(b.num||0) || a.name.localeCompare(b.name,undefined,{numeric:true}));
+}
+
+/* charge les pages d'un chapitre du dossier, à la demande */
+async function loadFsPages(chapter){
+  if (!FSROOT) FSROOT = await loadRootHandle();
+  if (!FSROOT) throw new Error("Dossier non lié. Relie-le depuis ••• → Dossier Mihon.");
+  const perm = await FSROOT.requestPermission({mode:"read"});
+  if (perm !== "granted") throw new Error("Accès au dossier refusé.");
+  const src = await FSROOT.getDirectoryHandle(chapter.fs.source);
+  const manga = await src.getDirectoryHandle(chapter.fs.title);
+  if (chapter.fs.kind === "cbz"){
+    const fh = await manga.getFileHandle(chapter.fs.chapter);
+    return readZip(await fh.getFile());
+  }
+  const dir = await manga.getDirectoryHandle(chapter.fs.chapter);
+  const files = [];
+  for await (const [name, h] of dir.entries()){
+    if (h.kind === "file" && IMG_RE.test(name)) files.push({name, h});
+  }
+  files.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+  if (!files.length) throw new Error("Aucune image dans ce chapitre.");
+  return Promise.all(files.map(f => f.h.getFile()));
+}
+
+function saveFsProgress(chapter){
+  FSPROG[chapter.id] = {lastPage: chapter.lastPage||0, done: !!chapter.done};
+  store.set("fsprog:v1", FSPROG);
+}
+
+
+/* ============================================================
+   Dossier de téléchargement choisi en une fois (Android compris)
+   Arborescence Mihon : <racine>/<Source (LANG)>/<Série>/<Chapitre>/pages
+   ============================================================ */
+let PICKED = new Map();                          // clé "source|série" → {source, title, chapters:Map}
+let PICKINDEX = store.get("pickindex:v1") || null;
+
+/* « Asura Scans (EN) » → « asurascans » */
+const srcKey = s => norm(String(s).replace(/\s*\([a-z]{2,3}\)\s*$/i, ""));
+
+function indexPickedFiles(fileList){
+  const map = new Map();
+  let skipped = 0;
+  for (const f of fileList){
+    const path = f.webkitRelativePath || f.name;
+    const segs = path.split("/").filter(Boolean);
+    const isArc = ARC_RE.test(f.name);
+    if (!isArc && !IMG_RE.test(f.name)){ skipped++; continue; }
+    // on compte depuis la fin : la profondeur de la racine choisie n'a pas d'importance
+    let source, title, chapter;
+    if (isArc){
+      chapter = segs[segs.length-1];
+      title   = segs[segs.length-2];
+      source  = segs[segs.length-3];
+    } else {
+      chapter = segs[segs.length-2];
+      title   = segs[segs.length-3];
+      source  = segs[segs.length-4];
+    }
+    if (!title || !chapter){ skipped++; continue; }
+    const key = srcKey(source||"")+"|"+norm(title);
+    if (!map.has(key)) map.set(key, {source: source||"", title, chapters: new Map()});
+    const rec = map.get(key);
+    if (!rec.chapters.has(chapter)) rec.chapters.set(chapter, []);
+    rec.chapters.get(chapter).push(f);
+  }
+  for (const rec of map.values()){
+    for (const files of rec.chapters.values()){
+      files.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true}));
+    }
+  }
+  return {map, skipped};
+}
+
+/* rapprochement : d'abord source + titre (les deux viennent de ta sauvegarde), sinon titre seul */
+function pickedFor(entry){
+  if (!PICKED.size) return [];
+  const tkey = norm(entry.t);
+  let rec = PICKED.get(srcKey(entry.s)+"|"+tkey);
+  if (!rec){
+    for (const [k, v] of PICKED){
+      if (k.endsWith("|"+tkey)){ rec = v; break; }
+    }
+  }
+  if (!rec){
+    for (const [, v] of PICKED){
+      const k = norm(v.title);
+      if (k.length > 6 && (k.includes(tkey) || tkey.includes(k))){ rec = v; break; }
+    }
+  }
+  if (!rec) return [];
+  return [...rec.chapters.entries()].map(([name, files]) => {
+    const id = "pf:"+srcKey(rec.source)+"/"+norm(rec.title)+"/"+norm(name);
+    const prog = FSPROG[id] || {};
+    return {
+      id, entryId: entry.id, name: name.replace(ARC_RE,""), num: chapNumOf(name),
+      pf: {files, isArc: files.length === 1 && ARC_RE.test(files[0].name)},
+      pages: [], at: 0, lastPage: prog.lastPage || 0, done: !!prog.done
+    };
+  }).sort((a,b)=>(a.num||0)-(b.num||0) || a.name.localeCompare(b.name, undefined, {numeric:true}));
+}
+
+async function loadPickedPages(chapter){
+  if (chapter.pf.isArc) return readZip(chapter.pf.files[0]);
+  return chapter.pf.files;
+}
+
+async function pickDownloadFolder(files){
+  $("statusline").textContent = "Analyse du dossier…";
+  await sleep(20);
+  const {map, skipped} = indexPickedFiles(files);
+  PICKED = map;
+  let matched = 0, chapters = 0;
+  const perSource = {};
+  LIB.entries.forEach(e => { if (pickedFor(e).length) matched++; });
+  for (const rec of map.values()){
+    chapters += rec.chapters.size;
+    const s = rec.source || "—";
+    perSource[s] = (perSource[s]||0) + 1;
+  }
+  PICKINDEX = {
+    at: new Date().toISOString().slice(0,10),
+    series: map.size, chapters, matched,
+    sources: perSource,
+    keys: [...map.keys()]
+  };
+  store.set("pickindex:v1", PICKINDEX);
+  $("statusline").textContent = `${map.size} séries · ${chapters} chapitres · ${matched} reconnues dans ta bibliothèque`
+    + (skipped ? ` · ${skipped} fichiers ignorés` : "");
+  toast(matched+" séries de ta bibliothèque ont leurs chapitres sur l'appareil");
+  renderLibrary();
+}
+
+function pickSummaryHTML(){
+  if (!PICKINDEX) return "";
+  const live = PICKED.size > 0;
+  const src = Object.entries(PICKINDEX.sources||{}).sort((a,b)=>b[1]-a[1])
+    .map(([s,n])=>`${esc(s)} (${n})`).join(" · ");
+  return `<div class="note" style="margin-bottom:10px">
+    <b>Dossier de téléchargement</b> — relevé le ${esc(PICKINDEX.at)} : ${PICKINDEX.series} séries, ${PICKINDEX.chapters} chapitres, ${PICKINDEX.matched} reconnues.<br>
+    <span class="rmeta">${src}</span><br>
+    ${live ? '<span class="rmeta">Lecture directe active pour cette session.</span>'
+           : '<button class="btn sm" id="relink">Rouvrir le dossier</button> <span class="rmeta">Le navigateur oublie l\'accès à la fermeture ; un clic suffit à le rendre.</span>'}
+  </div>`;
+}
+
+/* --- lecture d'une archive CBZ (zip) sans bibliothèque externe --- */
+async function inflateRaw(bytes){
+  if (!("DecompressionStream" in window)) throw new Error("Ce navigateur ne sait pas décompresser les archives.");
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function readZip(file){
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const dv = new DataView(buf.buffer);
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 66000); i--){
+    if (dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("Archive illisible (ce n'est pas un CBZ/ZIP).");
+  const count = dv.getUint16(eocd + 10, true);
+  let ptr = dv.getUint32(eocd + 16, true);
+  const files = [];
+  for (let i = 0; i < count; i++){
+    if (dv.getUint32(ptr, true) !== 0x02014b50) break;
+    const method = dv.getUint16(ptr + 10, true);
+    const compSize = dv.getUint32(ptr + 20, true);
+    const nameLen = dv.getUint16(ptr + 28, true);
+    const extraLen = dv.getUint16(ptr + 30, true);
+    const commentLen = dv.getUint16(ptr + 32, true);
+    const localOff = dv.getUint32(ptr + 42, true);
+    const name = new TextDecoder().decode(buf.subarray(ptr + 46, ptr + 46 + nameLen));
+    files.push({name, method, compSize, localOff});
+    ptr += 46 + nameLen + extraLen + commentLen;
+  }
+  const imgs = files.filter(f => /\.(jpe?g|png|webp|gif|avif)$/i.test(f.name) && !/^__MACOSX/.test(f.name))
+    .sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true}));
+  if (!imgs.length) throw new Error("Aucune image dans cette archive.");
+  const pages = [];
+  for (const f of imgs){
+    const nameLen = dv.getUint16(f.localOff + 26, true);
+    const extraLen = dv.getUint16(f.localOff + 28, true);
+    const start = f.localOff + 30 + nameLen + extraLen;
+    const raw = buf.subarray(start, start + f.compSize);
+    const data = f.method === 0 ? raw : await inflateRaw(raw);
+    const ext = f.name.split(".").pop().toLowerCase();
+    const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" : ext === "avif" ? "image/avif" : "image/jpeg";
+    pages.push(new Blob([data], {type:mime}));
+  }
+  return pages;
+}
+
+const chapNumOf = name => {
+  const m = String(name).match(/(?:ch(?:ap(?:ter|itre)?)?[\s._-]*)(\d+(?:\.\d+)?)/i) || String(name).match(/(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : null;
+};
+
+async function addFiles(entry, fileList){
+  const files = [...fileList];
+  const zips = files.filter(f => /\.(cbz|zip)$/i.test(f.name));
+  const imgs = files.filter(f => /^image\//.test(f.type));
+  let added = 0;
+  for (const z of zips){
+    try{
+      const pages = await readZip(z);
+      await putChapter({id: uid(), entryId: entry.id, name: z.name.replace(/\.(cbz|zip)$/i,""),
+        num: chapNumOf(z.name), pages, at: Date.now(), lastPage: 0, done: false});
+      added++;
+    }catch(e){ toast(z.name+" : "+e.message); }
+  }
+  if (imgs.length){
+    imgs.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true}));
+    await putChapter({id: uid(), entryId: entry.id, name: imgs.length+" images importées",
+      num: chapNumOf(imgs[0].name), pages: imgs.map(f=>f), at: Date.now(), lastPage: 0, done: false});
+    added++;
+  }
+  toast(added ? added+" chapitre(s) ajouté(s) hors ligne" : "Aucun fichier exploitable");
+  renderChapters(entry);
+}
+
+async function addFolderFiles(entry, fileList){
+  const files = [...fileList].filter(f => IMG_RE.test(f.name) || ARC_RE.test(f.name));
+  if (!files.length){ toast("Aucune image ni archive dans ce dossier"); return; }
+  const groups = new Map();
+  files.forEach(f => {
+    const path = f.webkitRelativePath || f.name;
+    const parts = path.split("/");
+    const key = ARC_RE.test(f.name) ? path : parts.slice(0, -1).join("/") || "chapitre";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(f);
+  });
+  let added = 0;
+  for (const [key, group] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}))){
+    const label = key.split("/").filter(Boolean).pop();
+    try{
+      let pages;
+      if (group.length === 1 && ARC_RE.test(group[0].name)) pages = await readZip(group[0]);
+      else pages = group.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+      await putChapter({id: uid(), entryId: entry.id, name: label.replace(ARC_RE,""),
+        num: chapNumOf(label), pages, at: Date.now(), lastPage: 0, done: false});
+      added++;
+    }catch(e){ toast(label+" : "+e.message); }
+  }
+  toast(added+" chapitre(s) importés depuis le dossier");
+  renderChapters(entry);
+}
+
+async function renderChapters(entry){
+  const box = $("chapbox");
+  if (!box) return;
+  let stored = [];
+  try{ stored = await chaptersOf(entry.id) || []; }
+  catch(e){ box.innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
+  const fsList = folderChaptersFor(entry);
+  const pfList = pickedFor(entry);
+  const list = stored.concat(fsList, pfList);
+  list.sort((a,b)=> (a.num||0) - (b.num||0) || (a.at||0) - (b.at||0) || a.name.localeCompare(b.name,undefined,{numeric:true}));
+  const size = stored.reduce((s,c)=> s + c.pages.reduce((n,p)=>n+(p.size||0),0), 0);
+  box.innerHTML = `
+    <div class="filedrop" id="fileDrop">Ajouter des chapitres · CBZ, ZIP ou images<br>fichiers de ton appareil</div>
+    <input type="file" id="chapFile" class="hidden" multiple accept=".cbz,.zip,image/*">
+    <input type="file" id="chapDir" class="hidden" webkitdirectory directory multiple>
+    <p class="rmeta" style="margin:6px 0 10px"><button class="btn sm ghost" id="pickDir">Choisir un dossier de chapitres</button></p>
+    ${list.length ? list.map(c=>`
+      <div class="chapline ${c.done?"read":""}">
+        <span style="min-width:0">
+          <span class="cn">${esc(c.name)}</span><br>
+          <span class="cm">${c.fs ? "dossier Mihon"+(c.fs.kind==="cbz"?" · CBZ":"") : c.pf ? "dossier Mihon · "+(c.pf.isArc?"CBZ":c.pf.files.length+" pages") : c.pages.length+" pages"}${c.num?" · ch. "+c.num:""}${c.lastPage?" · page "+(c.lastPage+1):""}</span>
+        </span>
+        <span class="ca">
+          <button class="btn sm" data-read="${c.id}">Lire</button>
+          ${(c.fs || c.pf) ? "" : `<button class="btn sm ghost" data-del="${c.id}">✕</button>`}
+        </span>
+      </div>`).join("") : `<p class="rmeta" style="margin-top:8px">Aucun chapitre trouvé pour cette série. Ajoute des fichiers, ou relie ton dossier Mihon depuis ••• .</p>`}
+    ${size ? `<div class="storagebar">${(size/1048576).toFixed(1)} Mo importés dans ce navigateur</div>` : ""}
+    ${fsList.length+pfList.length ? `<div class="storagebar">${fsList.length+pfList.length} chapitre(s) lus directement depuis ton dossier Mihon, sans copie</div>` : ""}`;
+  $("fileDrop").onclick = () => $("chapFile").click();
+  $("chapFile").onchange = e => { if (e.target.files.length) addFiles(entry, e.target.files); e.target.value=""; };
+  $("pickDir").onclick = () => $("chapDir").click();
+  $("chapDir").onchange = e => { if (e.target.files.length) addFolderFiles(entry, e.target.files); e.target.value=""; };
+  [...box.querySelectorAll("[data-read]")].forEach(b=>{
+    b.onclick = async () => {
+      const c = list.find(x=>x.id===b.dataset.read);
+      if (!c) return;
+      if (!c.pages.length && (c.fs || c.pf)){
+        b.disabled = true; b.textContent = "…";
+        try{ c.pages = c.fs ? await loadFsPages(c) : await loadPickedPages(c); }
+        catch(e){ b.disabled = false; b.textContent = "Lire"; toast(e.message); return; }
+        b.disabled = false; b.textContent = "Lire";
+      }
+      openReader(entry, c, list);
+    };
+  });
+  [...box.querySelectorAll("[data-del]")].forEach(b=>{
+    b.onclick = async () => { await delChapter(b.dataset.del); renderChapters(entry); toast("Chapitre supprimé"); };
+  });
+}
+
+/* --- le lecteur --- */
+let readerState = null;
+function closeReader(){
+  if (!readerState) return;
+  readerState.urls.forEach(u=>URL.revokeObjectURL(u));
+  document.querySelector(".reader") && document.querySelector(".reader").remove();
+  const {entry} = readerState;
+  readerState = null;
+  document.body.style.overflow = "hidden";
+  renderChapters(entry);
+}
+
+function openReader(entry, chapter, all){
+  if (!chapter) return;
+  const urls = chapter.pages.map(p => URL.createObjectURL(p));
+  const mode = store.get("readmode:v1") || (entry.m === "Webtoon" ? "webtoon" : "paged");
+  const rtl = store.get("rtl:v1") !== false && mode === "paged" && entry.m !== "Webtoon";
+  readerState = {entry, chapter, urls, page: chapter.lastPage || 0, mode, rtl, all};
+  const el = document.createElement("div");
+  el.className = "reader" + (mode === "paged" ? " paged" : "");
+  el.innerHTML = `
+    <div class="rtop">
+      <button class="rbtn" id="rClose">✕</button>
+      <span class="rtxt">${esc(entry.t)} · ${esc(chapter.name)}</span>
+      <button class="rbtn ${mode==="webtoon"?"on":""}" id="rMode">${mode==="webtoon"?"Webtoon":"Pages"}</button>
+      ${mode==="paged"?`<button class="rbtn ${rtl?"on":""}" id="rDir">${rtl?"←":"→"}</button>`:""}
+    </div>
+    <div class="pages" id="rPages"></div>
+    ${mode==="paged"?'<div class="zone l" id="zl"></div><div class="zone r" id="zr"></div>':""}
+    <div class="rbar">
+      <span class="rtxt" id="rCount"></span>
+      <button class="rbtn" id="rDone">Marquer lu</button>
+    </div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = "hidden";
+  const pages = $("rPages");
+
+  const draw = () => {
+    if (readerState.mode === "webtoon"){
+      pages.innerHTML = urls.map((u,i)=>`<img src="${u}" alt="page ${i+1}" loading="${i<3?"eager":"lazy"}">`).join("");
+      $("rCount").textContent = urls.length + " pages · défilement continu";
+    } else {
+      pages.innerHTML = `<img src="${urls[readerState.page]}" alt="page ${readerState.page+1}">`;
+      $("rCount").textContent = `Page ${readerState.page+1} / ${urls.length}`;
+    }
+  };
+  const go = delta => {
+    const next = readerState.page + delta;
+    if (next < 0) return;
+    if (next >= urls.length){ finish(); return; }
+    readerState.page = next;
+    chapter.lastPage = next;
+    if (chapter.fs || chapter.pf) saveFsProgress(chapter); else putChapter(chapter);
+    draw();
+  };
+  const finish = async () => {
+    chapter.done = true; chapter.lastPage = 0;
+    if (chapter.fs || chapter.pf) saveFsProgress(chapter); else await putChapter(chapter);
+    const n = chapter.num;
+    if (n && n > (entry.r||0)) entry.r = n;
+    else if (!n) entry.r = (entry.r||0) + 1;
+    entry.d = new Date().toISOString().slice(0,10);
+    saveLib(); renderLibrary(); boot();
+    const idx = all.findIndex(c=>c.id===chapter.id);
+    const next = all[idx+1];
+    closeReader();
+    if (next && confirm("Chapitre terminé. Enchaîner sur « "+next.name+" » ?")){
+      if (!next.pages.length && (next.fs || next.pf)){
+        try{ next.pages = next.fs ? await loadFsPages(next) : await loadPickedPages(next); }
+        catch(e){ toast(e.message); return; }
+      }
+      openReader(entry, next, all);
+    }
+    else toast("Progression mise à jour : "+entry.r);
+  };
+
+  $("rClose").onclick = closeReader;
+  $("rDone").onclick = finish;
+  $("rMode").onclick = () => {
+    readerState.mode = readerState.mode === "webtoon" ? "paged" : "webtoon";
+    store.set("readmode:v1", readerState.mode);
+    el.classList.toggle("paged", readerState.mode === "paged");
+    closeReaderKeepState(el, entry, chapter, all);
+  };
+  const dir = $("rDir");
+  if (dir) dir.onclick = () => { store.set("rtl:v1", !readerState.rtl); readerState.rtl = !readerState.rtl; dir.textContent = readerState.rtl?"←":"→"; dir.classList.toggle("on", readerState.rtl); };
+  const zl = $("zl"), zr = $("zr");
+  if (zl) zl.onclick = () => go(readerState.rtl ? 1 : -1);
+  if (zr) zr.onclick = () => go(readerState.rtl ? -1 : 1);
+  el.tabIndex = -1; el.focus();
+  el.onkeydown = e => {
+    if (e.key === "Escape") closeReader();
+    if (readerState.mode !== "paged") return;
+    if (e.key === "ArrowRight") go(readerState.rtl ? -1 : 1);
+    if (e.key === "ArrowLeft") go(readerState.rtl ? 1 : -1);
+  };
+  if (readerState.mode === "webtoon"){
+    pages.onscroll = () => {
+      if (pages.scrollTop + pages.clientHeight >= pages.scrollHeight - 40) $("rDone").classList.add("on");
+    };
+  }
+  draw();
+}
+function closeReaderKeepState(el, entry, chapter, all){
+  const page = readerState.page;
+  readerState.urls.forEach(u=>URL.revokeObjectURL(u));
+  el.remove(); readerState = null;
+  chapter.lastPage = page;
+  openReader(entry, chapter, all);
+}
+
+/* ============================================================
+   Suivi détaillé : chapitres ou tomes, totaux et provenance
+   ============================================================ */
+function provenanceHTML(d){
+  const t = totals(d);
+  const unit = unitOf(d);
+  const md = MDCACHE[norm(d.t)];
+  const lines = [];
+  if (unit === "vol"){
+    lines.push(t.vol
+      ? `Total tomes : <b>${t.vol}</b> — ${SRCLABEL[t.volSrc]}${t.volSrc==="mangadex"&&t.at?`, relevé le ${t.at}`:""}. <span>${SRCNOTE[t.volSrc]}.</span>`
+      : `<span class="warn">Aucun découpage en tomes connu.</span> Fréquent pour les webtoons, publiés sans édition papier. Vérifie sur MangaDex ou saisis le total à la main.`);
+  } else {
+    lines.push(t.ch
+      ? `Total chapitres : <b>${t.ch}</b> — ${SRCLABEL[t.chSrc]}${t.chSrc==="mangadex"&&t.at?`, relevé le ${t.at}`:""}. <span>${SRCNOTE[t.chSrc]}.</span>`
+      : `<span class="warn">Aucun total fiable.</span> Série en cours : AniList ne publie pas de compte tant qu'elle n'est pas achevée. Vérifie sur MangaDex ou saisis le total.`);
+  }
+  if (md && md.id === null) lines.push(`<span class="warn">Absente de MangaDex</span> — le suivi des sorties doit être manuel.`);
+  const p = unit === "vol" ? {read:d.rv||0, tot:t.vol} : {read:d.r||0, tot:t.ch};
+  if (p.tot && p.read > p.tot) lines.push(`<span class="warn">Tu es allé plus loin que le total connu (${p.read} > ${p.tot}).</span> Les numérotations diffèrent souvent entre scantrad et édition officielle : saisis le total à la main pour trancher.`);
+  return `<div class="prov">${lines.join("<br>")}</div>`;
+}
+
+function trackerHTML(d){
+  const unit = unitOf(d);
+  const p = progressOf(d);
+  const read = unit === "vol" ? (d.rv||0) : (d.r||0);
+  const remainTxt = p.tot
+    ? (p.remain > 0 ? `Reste ${p.remain} ${p.unit}` : "À jour")
+    : "Total inconnu";
+  return `
+    <div class="trackline">
+      <div class="seg" role="group" aria-label="Unité de suivi">
+        <button data-unit="ch" aria-pressed="${unit==="ch"}">Chapitres</button>
+        <button data-unit="vol" aria-pressed="${unit==="vol"}">Tomes</button>
+      </div>
+      <span class="remain ${p.remain===0?"zero":""}">${esc(remainTxt)}</span>
+    </div>
+    <div class="trackline">
+      <span class="rmeta">${unit==="vol"?"Tomes lus":"Chapitre atteint"}</span>
+      <button class="btn sm ghost" id="minus">−</button>
+      <input type="number" id="readInput" value="${read}" min="0" step="${unit==="vol"?1:0.5}" aria-label="Progression">
+      <button class="btn sm ghost" id="plus">+</button>
+      <span class="rmeta">${p.tot ? "/ "+p.tot : "/ ?"}</span>
+      <button class="btn sm" id="allRead">Tout lu</button>
+    </div>
+    <div class="trackline">
+      <button class="btn sm ghost" id="mdCheck">Vérifier les sorties</button>
+      <button class="btn sm ghost" id="setTotal">Saisir le total</button>
+      ${unit==="vol" && MDCACHE[norm(d.t)] && MDCACHE[norm(d.t)].vols && MDCACHE[norm(d.t)].vols.length ? `<button class="btn sm ghost" id="convert">Déduire de mes chapitres</button>` : ""}
+      <button class="btn sm ghost" id="removeBtn" style="margin-left:auto">Retirer</button>
+    </div>
+    ${provenanceHTML(d)}`;
+}
+
+function refreshTracker(d){
+  $("trackwrap").innerHTML = trackerHTML(d);
+  wireTracker(d);
+  saveLib(); renderLibrary(); boot();
+}
+
+function wireTracker(d){
+  const unit = unitOf(d);
+  const setRead = v => {
+    const val = Math.max(0, unit === "vol" ? Math.round(v)||0 : Math.round((+v||0)*2)/2);
+    if (unit === "vol") d.rv = val; else d.r = val;
+    d.d = new Date().toISOString().slice(0,10);
+    refreshTracker(d);
+  };
+  const step = unit === "vol" ? 1 : 1;
+  $("minus").onclick = () => setRead((unit==="vol"?(d.rv||0):(d.r||0)) - step);
+  $("plus").onclick = () => setRead((unit==="vol"?(d.rv||0):(d.r||0)) + step);
+  $("readInput").onchange = e => setRead(e.target.value);
+  $("allRead").onclick = () => { const p = progressOf(d); if (p.tot) setRead(p.tot); };
+  [...$("trackwrap").querySelectorAll("[data-unit]")].forEach(b=>{
+    b.onclick = () => { d.unit = b.dataset.unit; refreshTracker(d); };
+  });
+  $("setTotal").onclick = () => {
+    const cur = unit === "vol" ? (d.manVol || totals(d).vol || "") : (d.manCh || totals(d).ch || "");
+    const v = prompt(unit === "vol" ? "Nombre de tomes parus :" : "Nombre de chapitres parus :", cur);
+    if (v === null) return;
+    const n = parseFloat(String(v).replace(",", "."));
+    if (isNaN(n) || n < 0){ if (unit==="vol") delete d.manVol; else delete d.manCh; }
+    else if (unit === "vol") d.manVol = n; else d.manCh = n;
+    refreshTracker(d);
+  };
+  const conv = $("convert");
+  if (conv) conv.onclick = () => {
+    const vols = (MDCACHE[norm(d.t)]||{}).vols || [];
+    const done = vols.filter(v => v.last !== null && v.last <= (d.r||0)).length;
+    d.rv = done;
+    toast(done + " tome(s) déduits de tes " + (d.r||0) + " chapitres");
+    refreshTracker(d);
+  };
+  $("mdCheck").onclick = async () => {
+    const btn = $("mdCheck");
+    btn.disabled = true; btn.textContent = "Vérification…";
+    try{
+      const info = await mdAggregate(d);
+      toast(info.maxCh ? `Dernier chapitre traduit : ${info.maxCh}${info.maxVol?` · ${info.maxVol} tomes`:""}` : "Aucun chapitre recensé");
+      refreshTracker(d);
+    }catch(e){
+      btn.disabled = false; btn.textContent = "Vérifier les sorties";
+      const box = document.createElement("p");
+      box.className = "err"; box.style.marginTop = "8px"; box.textContent = e.message;
+      $("trackwrap").appendChild(box);
+    }
+  };
+}
+
+function openSheet(d){
+  if (!d) return;
+  current = d;
+  const raw = META[norm(d.t)];
+  const meta = raw && !raw.missing ? raw : null;
+  const pct = d.n ? Math.min(100, Math.round(d.r/d.n*100)) : 0;
+  const behind = meta && meta.chapitres ? meta.chapitres - d.r : null;
+  const hmeta = [meta&&meta.type, meta&&meta.annee, meta&&meta.statut, meta&&meta.score?meta.score+"/100":null].filter(Boolean).join(" · ");
+  $("overlay").innerHTML = `
+    <div class="scrim" id="scrim"></div>
+    <aside class="sheet" role="dialog" aria-label="Fiche ${esc(d.t)}">
+      <div class="sheetbar"><span class="sbt">${esc(d.s)}</span><button class="close" id="closeBtn">Fermer ✕</button></div>
+      <div class="hero">
+        ${meta && meta.banner ? `<img class="banner" src="${esc(meta.banner)}" alt="">` : '<div class="noban"></div>'}
+        <div class="front">
+          ${meta && meta.cover ? `<img src="${esc(meta.cover)}" alt="">` : '<span class="ph"></span>'}
+          <div><h2>${esc(d.t)}</h2><div class="hmeta">${esc(hmeta || d.s)}</div></div>
+        </div>
+      </div>
+      <div class="sbody">
+        <div>
+          ${d.m==="Webtoon"?'<span class="pill hi">Webtoon</span>':''}
+          ${d.origin==="manuel"?'<span class="pill hi">Ajout manuel</span>':''}
+          ${(meta?meta.genres:d.g).slice(0,8).map(g=>`<span class="pill">${esc(g)}</span>`).join("")}
+        </div>
+        <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
+        <dl>
+          <dt>Dernière fois</dt><dd>${esc(d.d||"—")}</dd>
+          <dt>Ajouté le</dt><dd>${esc(d.ad||"—")}</dd>
+          <dt>Auteur</dt><dd>${esc((meta&&meta.auteur)||d.a||"—")}</dd>
+          <dt>Source</dt><dd>${esc(d.s)}</dd>
+          ${meta?`<dt>Fiche</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)} sur AniList</a></dd>`:""}
+        </dl>
+        ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
+        <div class="seclabel"><span>Chapitres hors ligne</span></div>
+        <div id="chapbox"></div>
+        <div class="seclabel"><span>Ce que lisent ceux qui ont aimé</span><button class="btn ghost sm" id="refresh">Actualiser</button></div>
+        <div id="recos"><p class="loading">Interrogation d'AniList</p></div>
+      </div>
+    </aside>`;
+  document.body.style.overflow = "hidden";
+  $("scrim").onclick = closeSheet;
+  const cb = $("closeBtn"); cb.onclick = closeSheet; cb.focus();
+  $("refresh").onclick = () => fillRecos(d, true);
+  const moreBtn = $("moreBtn");
+  if (moreBtn) moreBtn.onclick = () => {
+    const el = $("desc"); el.classList.toggle("clamped");
+    moreBtn.textContent = el.classList.contains("clamped") ? "Lire la suite" : "Replier";
+  };
+  wireTracker(d);
+  $("removeBtn").onclick = () => {
+    if (!confirm("Retirer « "+d.t+" » de ta bibliothèque ?")) return;
+    LIB.entries = LIB.entries.filter(x=>x.id !== d.id);
+    saveLib(); closeSheet(); boot();
+    toast("Série retirée");
+  };
+  renderChapters(d);
+  fillRecos(d, false);
+}
+
+async function fillRecos(d, force){
+  const box = $("recos");
+  box.innerHTML = `<p class="loading">Interrogation d'AniList</p>`;
+  try{
+    const payload = await loadRecos(d, force);
+    if (current !== d) return;
+    if (!payload.items.length){
+      box.innerHTML = `<p class="note">Aucun rapprochement voté sur cette fiche. <a href="${esc(payload.source)}" target="_blank" rel="noreferrer">Voir ${esc(payload.matched)} sur AniList</a></p>`;
+      return;
+    }
+    const visible = payload.items.filter(r => !state.hideOwned || !isOwned(r));
+    box.innerHTML = visible.length
+      ? visible.map(recoRowHTML).join("")
+      : `<p class="note">Les ${payload.items.length} titres recommandés ici sont déjà chez toi.</p>`;
+    [...box.querySelectorAll("[data-addreco]")].forEach(b=>{
+      b.onclick = () => {
+        const r = payload.items.find(x=>String(x.id)===b.dataset.addreco);
+        if (r && addFromMedia(r)){ b.textContent = "Ajouté"; b.disabled = true; }
+      };
+    });
+  }catch(e){
+    if (current !== d) return;
+    box.innerHTML = `<p class="err">${esc(e.message)}</p>`;
+  }
+}
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if ($("modalHost").innerHTML) closeModal();
+  else if (current) closeSheet();
+});
+
+/* ============================================================
+   Découvrir
+   ============================================================ */
+let DISCOVER = store.get("discover:v1") || null;
+
+async function runDiscover(){
+  const btn = $("runDiscover");
+  const bar = $("discoverProgress");
+  btn.disabled = true; bar.classList.remove("hidden");
+  // une série par titre exact d'abord (fonctionne même avant l'hydratation AniList),
+  // puis fusion des variantes de titre qui pointent vers la même fiche une fois l'identifiant connu
+  const byTitle = new Map();
+  LIB.entries.filter(d => d.r > 0 || d.origin === "manuel").forEach(d => {
+    const k = norm(d.t);
+    const prev = byTitle.get(k);
+    if (!prev || (d.r||0) > (prev.r||0)) byTitle.set(k, d);
+  });
+  const byAl = new Map();
+  for (const d of byTitle.values()){
+    const k = d.al ? "al:"+d.al : "t:"+norm(d.t);
+    const prev = byAl.get(k);
+    if (!prev || (d.r||0) > (prev.r||0)) byAl.set(k, d);
+  }
+  const limit = state.seeds === "Tout" ? 999 : state.seeds;
+  const seeds = [...byAl.values()].sort((a,b)=> (b.r||1) - (a.r||1)).slice(0, limit);
+  if (!seeds.length){
+    $("discoverBox").innerHTML = `<p class="note">Ajoute d'abord quelques titres, puis relance l'analyse.</p>`;
+    btn.disabled = false; bar.classList.add("hidden"); return;
+  }
+  const tally = new Map();
+  let failures = 0;
+  $("discoverStatus").textContent = `${seeds.length} séries à interroger · environ ${Math.ceil(seeds.length*1.4/60)} min`;
+  for (let i=0;i<seeds.length;i++){
+    $("discoverStatus").textContent = `${i+1}/${seeds.length} · ${seeds[i].t}`;
+    bar.firstElementChild.style.width = Math.round((i)/seeds.length*100)+"%";
+    let payload;
+    try{ payload = await loadRecos(seeds[i], false); }
+    catch(e){ failures++; $("discoverStatus").textContent = e.message; await sleep(1200); continue; }
+    payload.items.forEach(r=>{
+      if (isOwned(r)) return;
+      const prev = tally.get(r.id);
+      const weight = Math.max(1, seeds[i].r || 1);
+      if (prev){
+        prev.votes += r.votes;
+        prev.weight += r.votes*Math.log10(weight+10);
+        if (!prev.from.some(x => norm(x) === norm(seeds[i].t))) prev.from.push(seeds[i].t);
+      }
+      else tally.set(r.id, Object.assign({}, r, {from:[seeds[i].t], weight: r.votes*Math.log10(weight+10)}));
+    });
+    renderDiscover(rankTally(tally), true);
+    await sleep(700);
+  }
+  bar.firstElementChild.style.width = "100%";
+  DISCOVER = { at: new Date().toISOString(), seeds: seeds.map(s=>s.t), items: rankTally(tally).slice(0,60) };
+  store.set("discover:v1", DISCOVER);
+  $("discoverStatus").textContent = failures ? `Terminé · ${failures} série(s) sans fiche AniList` : "Analyse terminée";
+  bar.classList.add("hidden");
+  btn.disabled = false;
+  renderDiscover();
+  $("tabDiscN").textContent = visibleDiscover().length || "—";
+}
+
+function rankTally(tally){
+  const seen = new Map();
+  for (const r of tally.values()){
+    const k = norm(r.romaji || r.titre);
+    const prev = seen.get(k);
+    if (prev){
+      prev.votes += r.votes; prev.weight += r.weight;
+      r.from.forEach(f => { if (!prev.from.some(x=>norm(x)===norm(f))) prev.from.push(f); });
+    } else seen.set(k, r);
+  }
+  return [...seen.values()].sort((a,b)=> b.from.length-a.from.length || b.weight-a.weight);
+}
+
+function visibleDiscover(){
+  if (!DISCOVER) return [];
+  return DISCOVER.items.filter(r=>{
+    if (DISMISSED.has(r.id)) return false;
+    if (isOwned(r)) return false;
+    if (state.type !== "Tous" && r.type !== state.type) return false;
+    return true;
+  }).sort((a,b)=>{
+    if (state.dsort === "Note") return (b.score||0)-(a.score||0);
+    if (state.dsort === "Popularité") return (b.pop||0)-(a.pop||0);
+    return b.from.length-a.from.length || b.weight-a.weight;
+  });
+}
+
+function discoverCardHTML(r, i){
+  const meta = [r.type, r.annee, r.chapitres?r.chapitres+" ch.":null, r.statut].filter(Boolean).join(" · ");
+  return `<article class="reccard">
+    ${r.cover?`<img class="cov" src="${esc(r.cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
+    <div class="body">
+      <div class="rank">${String(i+1).padStart(2,"0")}${r.score?` · ${r.score}/100`:""}</div>
+      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a></div>
+      <div class="rmeta">${esc(meta)}</div>
+      <div class="rwhy">Parce que tu lis <b>${esc(r.from.slice(0,3).join(", "))}</b>${r.from.length>3?` +${r.from.length-3}`:""} · ${r.votes} votes</div>
+      <div class="ractions">
+        <button class="btn sm" data-add="${r.id}">Ajouter</button>
+        <button class="btn sm ghost" data-skip="${r.id}">Pas pour moi</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderDiscover(partial, isPartial){
+  if (state.tab !== "discover" && !isPartial) return;
+  const box = $("discoverBox");
+  const items = isPartial ? partial.filter(r=>!DISMISSED.has(r.id)).slice(0,30) : visibleDiscover();
+  if (!LIB.entries.length){
+    box.innerHTML = `<p class="note">Ta bibliothèque est vide. Ajoute quelques titres depuis l'onglet <b>Ajouter</b>, ou importe une sauvegarde, puis lance l'analyse.</p>`;
+    return;
+  }
+  if (!items.length){
+    box.innerHTML = DISCOVER
+      ? `<p class="note">Plus rien à proposer avec ces filtres. Change de type, réaffiche les écartés, ou relance l'analyse après avoir lu de nouveaux titres.</p>`
+      : `<p class="note">Lance l'analyse : chaque série que tu lis est envoyée à AniList, et les titres qui reviennent depuis plusieurs d'entre elles remontent en tête.</p>`;
+    return;
+  }
+  const seedLine = DISCOVER && !isPartial
+    ? `<p class="note" style="margin-bottom:12px">Croisement de ${DISCOVER.seeds.length} séries : ${esc(DISCOVER.seeds.join(", "))}.</p>` : "";
+  box.innerHTML = seedLine + `<div class="recgrid">${items.map(discoverCardHTML).join("")}</div>`;
+  [...box.querySelectorAll("[data-add]")].forEach(b=>{
+    b.onclick = () => {
+      const r = items.find(x=>String(x.id)===b.dataset.add);
+      if (r && addFromMedia(r)){ renderDiscover(); }
+    };
+  });
+  [...box.querySelectorAll("[data-skip]")].forEach(b=>{
+    b.onclick = () => {
+      DISMISSED.add(+b.dataset.skip);
+      store.set("dismissed:v1", [...DISMISSED]);
+      renderDiscover();
+      $("tabDiscN").textContent = visibleDiscover().length || "—";
+    };
+  });
+}
+
+/* ============================================================
+   Navigation, amorçage
+   ============================================================ */
+function chips(el, values, currentVal, onPick, counts){
+  el.innerHTML = values.map(v=>{
+    const n = counts ? counts(v) : null;
+    return `<button class="chip" aria-pressed="${v===currentVal}">${esc(v)}${n!=null?`<span class="n">${n}</span>`:""}</button>`;
+  }).join("");
+  [...el.children].forEach((b,i)=> b.onclick = () => onPick(values[i]));
+}
+
+function setTab(tab){
+  state.tab = tab;
+  $("viewLibrary").classList.toggle("hidden", tab !== "library");
+  $("viewDiscover").classList.toggle("hidden", tab !== "discover");
+  $("tabLibrary").setAttribute("aria-selected", String(tab === "library"));
+  $("tabDiscover").setAttribute("aria-selected", String(tab === "discover"));
+  if (tab === "library") renderLibrary();
+  if (tab === "discover"){
+    renderDiscover();
+    if (!store.get("seenDFilters:v1")){
+      store.set("seenDFilters:v1", true);
+      $("dFilterPanel").classList.remove("hidden");
+      $("dFilterBtn").setAttribute("aria-expanded","true");
+    }
+    if (!DISCOVER && LIB.entries.length) runDiscover();
+  }
+  window.scrollTo({top:0});
+}
+
+function onboardHTML(){
+  return `<div class="onboard">
+    <h2>Commence ta bibliothèque</h2>
+    <p>Ajoute les séries que tu lis, puis l'onglet <b>Découvrir</b> croise les recommandations votées par les lecteurs d'AniList pour te sortir ce qui revient le plus souvent. Utilisateur de Mihon ou Tachiyomi ? Importe ta sauvegarde <b>.tachibk</b>, elle est décodée ici même, sans rien envoyer sur un serveur.</p>
+    <div class="row">
+      <button class="btn" id="onbAdd">Chercher un titre</button>
+      <button class="btn ghost" id="onbImport">Importer une sauvegarde</button>
+    </div>
+  </div>`;
+}
+
+function boot(){
+  const lib = LIB.entries;
+  $("kicker").textContent = lib.length ? LIB.label : "Bibliothèque locale";
+  $("vert").textContent = lib.length ? "全"+lib.length+"作品" : "空";
+  $("tabLibN").textContent = lib.length;
+  $("stats").innerHTML = [
+    [lib.length, "Séries"],
+    [lib.reduce((s,d)=>s+d.r,0).toLocaleString("fr-FR"), "Chapitres lus"],
+    [lib.filter(d=>d.n>0 && d.r>=d.n).length, "Terminées"],
+    [lib.filter(d=>d.r>0 && (!d.n || d.r<d.n)).length, "En cours"]
+  ].map(([v,l])=>`<div class="stat"><b>${v}</b><small>${l}</small></div>`).join("");
+
+  const empty = !lib.length;
+  $("onboard").innerHTML = empty ? onboardHTML() : "";
+  $("libTools").classList.toggle("hidden", empty);
+  if (empty){
+    $("onbAdd").onclick = () => openAddModal("");
+    $("onbImport").onclick = () => $("file").click();
+    $("results").innerHTML = "";
+    return;
+  }
+
+  const SOURCES = ["Toutes", ...Array.from(new Set(lib.map(d=>d.s))).sort()];
+  const draw = () => {
+    chips($("typeLibRow"), LIBTYPES, state.libType, v=>{ state.libType=v; draw(); renderLibrary(); },
+      v=> v==="Tous types" ? lib.length : lib.filter(d=> v==="Webtoon" ? d.m==="Webtoon" : typeOf(d)===v).length);
+    chips($("shelfRow"), SHELVES, state.shelf, v=>{ state.shelf=v; draw(); renderLibrary(); }, v=>lib.filter(d=>shelfTest(d,v)).length);
+    chips($("srcRow"), SOURCES, state.source, v=>{ state.source=v; draw(); renderLibrary(); }, v=> v==="Toutes"?lib.length:lib.filter(d=>d.s===v).length);
+    chips($("sortRow"), SORTS, state.sort, v=>{ state.sort=v; draw(); renderLibrary(); });
+  };
+  draw();
+  renderLibrary();
+  if (DISCOVER) $("tabDiscN").textContent = visibleDiscover().length || "—";
+}
+
+const SEEDCHOICES = [12, 25, 50, "Tout"];
+function drawDiscoverChips(){
+  chips($("seedRow"), SEEDCHOICES.map(v=>typeof v === "number" ? v+" séries" : "Toutes mes séries"),
+    typeof state.seeds === "number" ? state.seeds+" séries" : "Toutes mes séries",
+    (v, i) => { state.seeds = SEEDCHOICES[SEEDCHOICES.map(x=>typeof x==="number"?x+" séries":"Toutes mes séries").indexOf(v)]; store.set("seeds:v1", state.seeds); drawDiscoverChips(); });
+  chips($("typeRow"), TYPES, state.type, v=>{ state.type=v; drawDiscoverChips(); renderDiscover(); });
+  chips($("dsortRow"), DSORTS, state.dsort, v=>{ state.dsort=v; drawDiscoverChips(); renderDiscover(); });
+}
+drawDiscoverChips();
+
+function togglePanel(btn, panel){
+  const open = panel.classList.toggle("hidden") === false;
+  btn.setAttribute("aria-expanded", String(open));
+  return open;
+}
+$("filterBtn").onclick = () => { togglePanel($("filterBtn"), $("filterPanel")); store.set("panel:v1", !$("filterPanel").classList.contains("hidden")); };
+$("moreBtn2").onclick = () => togglePanel($("moreBtn2"), $("moreBar"));
+$("dFilterBtn").onclick = () => togglePanel($("dFilterBtn"), $("dFilterPanel"));
+
+function updateFilterSummary(){
+  const active = (state.shelf !== "Tout") + (state.source !== "Toutes") + (state.q ? 1 : 0) + (state.libType !== "Tous types");
+  $("filterDot").classList.toggle("hidden", active === 0);
+  const parts = [];
+  if (state.libType !== "Tous types") parts.push(state.libType);
+  if (state.shelf !== "Tout") parts.push(state.shelf);
+  if (state.source !== "Toutes") parts.push(state.source);
+  parts.push("tri : "+state.sort.toLowerCase());
+  $("filterSum").innerHTML = `<b>${libRows().length}</b> séries · ${esc(parts.join(" · "))}`
+    + (active ? ` <button class="btn sm ghost" id="clearFilters">Tout afficher</button>` : "");
+  const cf = $("clearFilters");
+  if (cf) cf.onclick = () => {
+    state.shelf = "Tout"; state.source = "Toutes"; state.libType = "Tous types"; state.q = ""; $("q").value = "";
+    boot(); renderLibrary();
+  };
+}
+
+$("q").addEventListener("input", e=>{ state.q = e.target.value; renderLibrary(); });
+$("viewBtn").onclick = e => {
+  state.view = state.view === "grid" ? "list" : "grid";
+  e.target.textContent = state.view === "grid" ? "Vue liste" : "Vue posters";
+  renderLibrary();
+};
+$("unitBtn").onclick = e => {
+  state.unit = state.unit === "ch" ? "vol" : "ch";
+  e.target.textContent = state.unit === "ch" ? "Suivi : chapitres" : "Suivi : tomes";
+  store.set("unit:v1", state.unit);
+  renderLibrary();
+  toast(state.unit === "ch" ? "Affichage par chapitres" : "Affichage par tomes — chaque série peut être réglée à part dans sa fiche");
+};
+$("folderBtn").onclick = () => {
+  if (window.showDirectoryPicker) linkMihonFolder();
+  else $("rootDir").click();
+};
+$("rootDir").addEventListener("change", e => {
+  if (e.target.files.length) pickDownloadFolder(e.target.files);
+  e.target.value = "";
+});
+$("importBtn").onclick = () => $("file").click();
+$("exportBtn").onclick = exportLib;
+$("mdBatch").onclick = async () => {
+  const btn = $("mdBatch");
+  const todo = libRows().filter(d => d.r > 0 && !(MDCACHE[norm(d.t)] && MDCACHE[norm(d.t)].at)).slice(0, 40);
+  if (!todo.length){ toast("Rien de neuf à vérifier dans ce rayon"); return; }
+  btn.disabled = true;
+  let ok = 0, ko = 0;
+  for (let i=0;i<todo.length;i++){
+    $("statusline").textContent = `MangaDex ${i+1}/${todo.length} · ${todo[i].t}`;
+    try{ const info = await mdAggregate(todo[i]); if (info.maxCh) ok++; else ko++; }
+    catch(e){
+      ko++;
+      if (/CORS|injoignable/.test(e.message)){ $("statusline").textContent = e.message; break; }
+    }
+    renderLibrary();
+    await sleep(320);
+  }
+  $("statusline").textContent = `${ok} série(s) mises à jour · ${ko} sans correspondance`;
+  btn.disabled = false;
+};
+$("file").addEventListener("change", e=>{ if (e.target.files && e.target.files[0]) importFile(e.target.files[0]); e.target.value = ""; });
+$("tabLibrary").onclick = () => setTab("library");
+$("tabDiscover").onclick = () => setTab("discover");
+$("tabAdd").onclick = () => openAddModal("");
+$("runDiscover").onclick = runDiscover;
+$("resetDismissed").onclick = () => { DISMISSED = new Set(); store.set("dismissed:v1", []); renderDiscover(); toast("Titres écartés réaffichés"); };
+
+/* glisser-déposer */
+const dz = $("dropzone");
+let dragDepth = 0;
+window.addEventListener("dragenter", e=>{ e.preventDefault(); dragDepth++; dz.classList.remove("hidden"); });
+window.addEventListener("dragover", e=> e.preventDefault());
+window.addEventListener("dragleave", ()=>{ if (--dragDepth <= 0){ dragDepth = 0; dz.classList.add("hidden"); } });
+window.addEventListener("drop", e=>{
+  e.preventDefault(); dragDepth = 0; dz.classList.add("hidden");
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) importFile(f);
+});
+
+if (store.get("panel:v1")){ $("filterPanel").classList.remove("hidden"); $("filterBtn").setAttribute("aria-expanded","true"); }
+state.seeds = store.get("seeds:v1") || 25;
+drawDiscoverChips();
+state.unit = store.get("unit:v1") || "ch";
+$("unitBtn").textContent = state.unit === "ch" ? "Suivi : chapitres" : "Suivi : tomes";
+
+boot();
+hydrate();
+loadRootHandle().then(h => { if (h){ FSROOT = h; if (CATALOG) renderLibrary(); } });
+
+/* service worker : uniquement en http(s) */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>

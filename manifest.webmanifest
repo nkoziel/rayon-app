@@ -1,0 +1,18 @@
+{
+  "name": "Rayon — bibliothèque manga & recommandations",
+  "short_name": "Rayon",
+  "description": "Ta bibliothèque manga, webtoon et manhwa, avec les recommandations votées par les lecteurs d'AniList.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#D9D7CA",
+  "theme_color": "#16150F",
+  "lang": "fr",
+  "categories": ["books", "entertainment", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
