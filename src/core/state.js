@@ -54,9 +54,9 @@ export const saveDismissed = () => store.set("dismissed:v1", [...DISMISSED]);
 /* ---------- view state ----------
    A const object mutated by property, so importers see changes without a setter. */
 export const state = {
-  q:"", shelf:"Tout", source:"Toutes", sort:"Lecture récente", view:"grid",
-  hideOwned:true, tab:"library", type:"Tous", dsort:"Pertinence", unit:"ch",
-  libType:"Tous types", seeds:25
+  q:"", shelf:"all", source:"all", sort:"recent", view:"grid",
+  hideOwned:true, tab:"library", type:"all", dsort:"relevance", unit:"ch",
+  libType:"all", seeds:25
 };
 
 /* ---------- persistence of the caches ---------- */

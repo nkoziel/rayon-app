@@ -148,7 +148,45 @@ const en = {
   "filter.sort": "Sort",
   "discover.resetDismissed": "Show dismissed again",
   "discover.seriesAnalysed": "Series analysed",
-  "add.searchPlaceholder": "Manga, manhwa or webtoon name…"
+  "add.searchPlaceholder": "Manga, manhwa or webtoon name…",
+  "shelf.all": "All",
+  "shelf.reading": "Reading",
+  "shelf.behind": "Catching up",
+  "shelf.finished": "Finished",
+  "shelf.unopened": "Never opened",
+  "shelf.manual": "Added by hand",
+  "sort.recent": "Recently read",
+  "sort.title": "Title",
+  "sort.chapters": "Chapters read",
+  "sort.progress": "Progress",
+  "sort.score": "AniList score",
+  "libtype.all": "All types",
+  "libtype.manga": "Manga",
+  "libtype.manhwa": "Manhwa",
+  "libtype.manhua": "Manhua",
+  "libtype.webtoon": "Webtoon",
+  "type.all": "All",
+  "dsort.relevance": "Relevance",
+  "dsort.score": "Score",
+  "dsort.popularity": "Popularity",
+  "source.all": "All",
+  "seeds.count": "{n} series",
+  "seeds.all": "All my series",
+  "filter.showAll": "Show all",
+  "filter.sortBy": "sorted by {what}",
+  "filter.summary": "{n} series",
+  "btn.postersView": "Poster view",
+  "toast.byChapters": "Showing chapters",
+  "toast.byVolumes": "Showing volumes — each series can be set separately in its sheet",
+  "stats.series": "Series",
+  "stats.chaptersRead": "Chapters read",
+  "stats.finished": "Finished",
+  "stats.reading": "Reading",
+  "onboard.title": "Start your library",
+  "onboard.body": "Add the series you read, then the <b>Discover</b> tab cross-references the recommendations AniList readers voted on and surfaces what comes up most. A Mihon or Tachiyomi user? Import your <b>.tachibk</b> backup — it is decoded right here, nothing is sent to a server.",
+  "onboard.search": "Search for a title",
+  "onboard.import": "Import a backup",
+  "reset.exportFirst": "Export your library before erasing it?\n\n{n} series. The export is the only possible backup."
 };
 const fr = {
   "app.title": "Rayon",
@@ -212,7 +250,45 @@ const fr = {
   "filter.sort": "Tri",
   "discover.resetDismissed": "Réafficher les écartés",
   "discover.seriesAnalysed": "Séries analysées",
-  "add.searchPlaceholder": "Nom du manga, manhwa, webtoon…"
+  "add.searchPlaceholder": "Nom du manga, manhwa, webtoon…",
+  "shelf.all": "Tout",
+  "shelf.reading": "En cours",
+  "shelf.behind": "À rattraper",
+  "shelf.finished": "Terminées",
+  "shelf.unopened": "Jamais ouvertes",
+  "shelf.manual": "Ajoutées à la main",
+  "sort.recent": "Lecture récente",
+  "sort.title": "Titre",
+  "sort.chapters": "Chapitres lus",
+  "sort.progress": "Progression",
+  "sort.score": "Note AniList",
+  "libtype.all": "Tous types",
+  "libtype.manga": "Manga",
+  "libtype.manhwa": "Manhwa",
+  "libtype.manhua": "Manhua",
+  "libtype.webtoon": "Webtoon",
+  "type.all": "Tous",
+  "dsort.relevance": "Pertinence",
+  "dsort.score": "Note",
+  "dsort.popularity": "Popularité",
+  "source.all": "Toutes",
+  "seeds.count": "{n} séries",
+  "seeds.all": "Toutes mes séries",
+  "filter.showAll": "Tout afficher",
+  "filter.sortBy": "tri : {what}",
+  "filter.summary": "{n} séries",
+  "btn.postersView": "Vue posters",
+  "toast.byChapters": "Affichage par chapitres",
+  "toast.byVolumes": "Affichage par tomes — chaque série peut être réglée à part dans sa fiche",
+  "stats.series": "Séries",
+  "stats.chaptersRead": "Chapitres lus",
+  "stats.finished": "Terminées",
+  "stats.reading": "En cours",
+  "onboard.title": "Commence ta bibliothèque",
+  "onboard.body": "Ajoute les séries que tu lis, puis l'onglet <b>Découvrir</b> croise les recommandations votées par les lecteurs d'AniList pour te sortir ce qui revient le plus souvent. Utilisateur de Mihon ou Tachiyomi ? Importe ta sauvegarde <b>.tachibk</b>, elle est décodée ici même, sans rien envoyer sur un serveur.",
+  "onboard.search": "Chercher un titre",
+  "onboard.import": "Importer une sauvegarde",
+  "reset.exportFirst": "Exporter ta bibliothèque avant de l'effacer ?\n\n{n} série(s). L'export est la seule sauvegarde possible."
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -396,16 +472,16 @@ const DISMISSED = new Set(store.get("dismissed:v1") || []);
 const saveDismissed = () => store.set("dismissed:v1", [...DISMISSED]);
 const state = {
   q: "",
-  shelf: "Tout",
-  source: "Toutes",
-  sort: "Lecture récente",
+  shelf: "all",
+  source: "all",
+  sort: "recent",
   view: "grid",
   hideOwned: true,
   tab: "library",
-  type: "Tous",
-  dsort: "Pertinence",
+  type: "all",
+  dsort: "relevance",
   unit: "ch",
-  libType: "Tous types",
+  libType: "all",
   seeds: 25
 };
 const CACHE_KEYS = ["meta:v2", "md:v1", "discover:v1"];
@@ -1157,143 +1233,6 @@ function openAddModal(prefill) {
   }
   input.focus();
 }
-async function runDiscover() {
-  const btn = $("runDiscover");
-  const bar = $("discoverProgress");
-  btn.disabled = true;
-  bar.classList.remove("hidden");
-  const byTitle = /* @__PURE__ */ new Map();
-  LIB.entries.filter((d) => d.r > 0 || d.origin === "manuel").forEach((d) => {
-    const k = norm(d.t);
-    const prev = byTitle.get(k);
-    if (!prev || (d.r || 0) > (prev.r || 0)) byTitle.set(k, d);
-  });
-  const byAl = /* @__PURE__ */ new Map();
-  for (const d of byTitle.values()) {
-    const k = d.al ? "al:" + d.al : "t:" + norm(d.t);
-    const prev = byAl.get(k);
-    if (!prev || (d.r || 0) > (prev.r || 0)) byAl.set(k, d);
-  }
-  const limit = state.seeds === "Tout" ? 999 : state.seeds;
-  const seeds = [...byAl.values()].sort((a, b) => (b.r || 1) - (a.r || 1)).slice(0, limit);
-  if (!seeds.length) {
-    $("discoverBox").innerHTML = `<p class="note">Ajoute d'abord quelques titres, puis relance l'analyse.</p>`;
-    btn.disabled = false;
-    bar.classList.add("hidden");
-    return;
-  }
-  const tally = /* @__PURE__ */ new Map();
-  let failures = 0;
-  $("discoverStatus").textContent = `${seeds.length} séries à interroger · environ ${Math.ceil(seeds.length * 1.4 / 60)} min`;
-  for (let i = 0; i < seeds.length; i++) {
-    $("discoverStatus").textContent = `${i + 1}/${seeds.length} · ${seeds[i].t}`;
-    bar.firstElementChild.style.width = Math.round(i / seeds.length * 100) + "%";
-    let payload;
-    try {
-      payload = await loadRecos(seeds[i], false);
-    } catch (e) {
-      failures++;
-      $("discoverStatus").textContent = e.message;
-      await sleep(1200);
-      continue;
-    }
-    payload.items.forEach((r) => {
-      if (isOwned(r)) return;
-      const prev = tally.get(r.id);
-      const weight = Math.max(1, seeds[i].r || 1);
-      if (prev) {
-        prev.votes += r.votes;
-        prev.weight += r.votes * Math.log10(weight + 10);
-        if (!prev.from.some((x) => norm(x) === norm(seeds[i].t))) prev.from.push(seeds[i].t);
-      } else tally.set(r.id, Object.assign({}, r, { from: [seeds[i].t], weight: r.votes * Math.log10(weight + 10) }));
-    });
-    renderDiscover(rankTally(tally), true);
-    await sleep(700);
-  }
-  bar.firstElementChild.style.width = "100%";
-  setDiscover({ at: (/* @__PURE__ */ new Date()).toISOString(), seeds: seeds.map((s) => s.t), items: rankTally(tally).slice(0, 60) });
-  kvSet("discover:v1", DISCOVER);
-  $("discoverStatus").textContent = failures ? `Terminé · ${failures} série(s) sans fiche AniList` : "Analyse terminée";
-  bar.classList.add("hidden");
-  btn.disabled = false;
-  renderDiscover();
-  $("tabDiscN").textContent = visibleDiscover().length || "—";
-}
-function rankTally(tally) {
-  const seen = /* @__PURE__ */ new Map();
-  for (const r of tally.values()) {
-    const k = norm(r.romaji || r.titre);
-    const prev = seen.get(k);
-    if (prev) {
-      prev.votes += r.votes;
-      prev.weight += r.weight;
-      r.from.forEach((f) => {
-        if (!prev.from.some((x) => norm(x) === norm(f))) prev.from.push(f);
-      });
-    } else seen.set(k, r);
-  }
-  return [...seen.values()].sort((a, b) => b.from.length - a.from.length || b.weight - a.weight);
-}
-function visibleDiscover() {
-  if (!DISCOVER) return [];
-  return DISCOVER.items.filter((r) => {
-    if (DISMISSED.has(r.id)) return false;
-    if (isOwned(r)) return false;
-    if (state.type !== "Tous" && r.type !== state.type) return false;
-    return true;
-  }).sort((a, b) => {
-    if (state.dsort === "Note") return (b.score || 0) - (a.score || 0);
-    if (state.dsort === "Popularité") return (b.pop || 0) - (a.pop || 0);
-    return b.from.length - a.from.length || b.weight - a.weight;
-  });
-}
-function discoverCardHTML(r, i) {
-  const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut].filter(Boolean).join(" · ");
-  return `<article class="reccard">
-    ${r.cover ? `<img class="cov" src="${esc(r.cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
-    <div class="body">
-      <div class="rank">${String(i + 1).padStart(2, "0")}${r.score ? ` · ${r.score}/100` : ""}</div>
-      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a></div>
-      <div class="rmeta">${esc(meta)}</div>
-      <div class="rwhy">Parce que tu lis <b>${esc(r.from.slice(0, 3).join(", "))}</b>${r.from.length > 3 ? ` +${r.from.length - 3}` : ""} · ${r.votes} votes</div>
-      <div class="ractions">
-        <button class="btn sm" data-add="${r.id}">Ajouter</button>
-        <button class="btn sm ghost" data-skip="${r.id}">Pas pour moi</button>
-      </div>
-    </div>
-  </article>`;
-}
-function renderDiscover(partial, isPartial) {
-  if (state.tab !== "discover" && !isPartial) return;
-  const box = $("discoverBox");
-  const items = isPartial ? partial.filter((r) => !DISMISSED.has(r.id)).slice(0, 30) : visibleDiscover();
-  if (!LIB.entries.length) {
-    box.innerHTML = `<p class="note">Ta bibliothèque est vide. Ajoute quelques titres depuis l'onglet <b>Ajouter</b>, ou importe une sauvegarde, puis lance l'analyse.</p>`;
-    return;
-  }
-  if (!items.length) {
-    box.innerHTML = DISCOVER ? `<p class="note">Plus rien à proposer avec ces filtres. Change de type, réaffiche les écartés, ou relance l'analyse après avoir lu de nouveaux titres.</p>` : `<p class="note">Lance l'analyse : chaque série que tu lis est envoyée à AniList, et les titres qui reviennent depuis plusieurs d'entre elles remontent en tête.</p>`;
-    return;
-  }
-  const seedLine = DISCOVER && !isPartial ? `<p class="note" style="margin-bottom:12px">Croisement de ${DISCOVER.seeds.length} séries : ${esc(DISCOVER.seeds.join(", "))}.</p>` : "";
-  box.innerHTML = seedLine + `<div class="recgrid">${items.map(discoverCardHTML).join("")}</div>`;
-  [...box.querySelectorAll("[data-add]")].forEach((b) => {
-    b.onclick = () => {
-      const r = items.find((x) => String(x.id) === b.dataset.add);
-      if (r && addFromMedia(r)) {
-        renderDiscover();
-      }
-    };
-  });
-  [...box.querySelectorAll("[data-skip]")].forEach((b) => {
-    b.onclick = () => {
-      DISMISSED.add(+b.dataset.skip);
-      saveDismissed();
-      renderDiscover();
-      $("tabDiscN").textContent = visibleDiscover().length || "—";
-    };
-  });
-}
 function provenanceHTML(d) {
   const t2 = totals(d);
   const unit = unitOf(d);
@@ -1520,23 +1459,24 @@ document.addEventListener("keydown", (e) => {
   if ($("modalHost").innerHTML) closeModal();
   else if (current) closeSheet();
 });
-const SHELVES = ["Tout", "En cours", "À rattraper", "Terminées", "Jamais ouvertes", "Ajoutées à la main"];
-const SORTS = ["Lecture récente", "Titre", "Chapitres lus", "Progression", "Note AniList"];
-const TYPES = ["Tous", "Manga", "Manhwa", "Manhua"];
-const LIBTYPES = ["Tous types", "Manga", "Manhwa", "Manhua", "Webtoon"];
-const DSORTS = ["Pertinence", "Note", "Popularité"];
+const SHELVES = ["all", "reading", "behind", "finished", "unopened", "manual"];
+const SORTS = ["recent", "title", "chapters", "progress", "score"];
+const TYPES = ["all", "manga", "manhwa", "manhua"];
+const LIBTYPES = ["all", "manga", "manhwa", "manhua", "webtoon"];
+const DSORTS = ["relevance", "score", "popularity"];
+const MEDIA_TYPE = { manga: "Manga", manhwa: "Manhwa", manhua: "Manhua" };
 function shelfTest(d, shelf) {
   const behind = progressOf(d).remain;
   switch (shelf) {
-    case "En cours":
+    case "reading":
       return d.r > 0 && (d.n ? d.r < d.n : true);
-    case "À rattraper":
+    case "behind":
       return d.r > 0 && behind !== null && behind >= 5;
-    case "Terminées":
+    case "finished":
       return d.n > 0 && d.r >= d.n;
-    case "Jamais ouvertes":
+    case "unopened":
       return d.r === 0;
-    case "Ajoutées à la main":
+    case "manual":
       return d.origin === "manuel";
     default:
       return true;
@@ -1548,16 +1488,16 @@ function typeOf(d) {
   return d.m === "Webtoon" ? "Manhwa" : "Manga";
 }
 function libTypeTest(d) {
-  if (state.libType === "Tous types") return true;
-  if (state.libType === "Webtoon") return d.m === "Webtoon";
-  return typeOf(d) === state.libType;
+  if (state.libType === "all") return true;
+  if (state.libType === "webtoon") return d.m === "Webtoon";
+  return typeOf(d) === MEDIA_TYPE[state.libType];
 }
 function libRows() {
   const needle = norm(state.q);
   const out = LIB.entries.filter((d) => {
     if (!libTypeTest(d)) return false;
     if (!shelfTest(d, state.shelf)) return false;
-    if (state.source !== "Toutes" && d.s !== state.source) return false;
+    if (state.source !== "all" && d.s !== state.source) return false;
     if (needle) {
       const m = META[norm(d.t)];
       const hay = d.t + " " + d.a + " " + d.g.join(" ") + " " + (m && !m.missing ? m.romaji + " " + m.genres.join(" ") : "");
@@ -1569,11 +1509,11 @@ function libRows() {
     const m = META[norm(d.t)];
     return m && m.score || 0;
   };
-  if (state.sort === "Titre") out.sort((a, b) => a.t.localeCompare(b.t, "fr"));
-  if (state.sort === "Chapitres lus") out.sort((a, b) => b.r - a.r);
-  if (state.sort === "Lecture récente") out.sort((a, b) => (b.d || "").localeCompare(a.d || "") || b.r - a.r);
-  if (state.sort === "Progression") out.sort((a, b) => b.r / (b.n || 1) - a.r / (a.n || 1));
-  if (state.sort === "Note AniList") out.sort((a, b) => score(b) - score(a));
+  if (state.sort === "title") out.sort((a, b) => a.t.localeCompare(b.t));
+  if (state.sort === "chapters") out.sort((a, b) => b.r - a.r);
+  if (state.sort === "recent") out.sort((a, b) => (b.d || "").localeCompare(a.d || "") || b.r - a.r);
+  if (state.sort === "progress") out.sort((a, b) => b.r / (b.n || 1) - a.r / (a.n || 1));
+  if (state.sort === "score") out.sort((a, b) => score(b) - score(a));
   return out;
 }
 function posterHTML(d) {
@@ -1620,14 +1560,14 @@ function renderLibrary() {
   });
 }
 function updateFilterSummary() {
-  const active = (state.shelf !== "Tout") + (state.source !== "Toutes") + (state.q ? 1 : 0) + (state.libType !== "Tous types");
+  const active = (state.shelf !== "all") + (state.source !== "all") + (state.q ? 1 : 0) + (state.libType !== "all");
   $("filterDot").classList.toggle("hidden", active === 0);
   const parts = [];
-  if (state.libType !== "Tous types") parts.push(state.libType);
-  if (state.shelf !== "Tout") parts.push(state.shelf);
-  if (state.source !== "Toutes") parts.push(state.source);
-  parts.push("tri : " + state.sort.toLowerCase());
-  $("filterSum").innerHTML = `<b>${libRows().length}</b> séries · ${esc(parts.join(" · "))}` + (active ? ` <button class="btn sm ghost" id="clearFilters">Tout afficher</button>` : "");
+  if (state.libType !== "all") parts.push(t("libtype." + state.libType));
+  if (state.shelf !== "all") parts.push(t("shelf." + state.shelf));
+  if (state.source !== "all") parts.push(state.source);
+  parts.push(t("filter.sortBy", { what: t("sort." + state.sort).toLowerCase() }));
+  $("filterSum").innerHTML = `<b>${libRows().length}</b> ${esc(t("filter.summary", { n: libRows().length }).replace(/^\d+\s*/, ""))} · ${esc(parts.join(" · "))}` + (active ? ` <button class="btn sm ghost" id="clearFilters">${esc(t("filter.showAll"))}</button>` : "");
   const cf = $("clearFilters");
   if (cf) cf.onclick = () => {
     state.shelf = "Tout";
@@ -1639,10 +1579,147 @@ function updateFilterSummary() {
     renderLibrary();
   };
 }
-function chips(el, values, currentVal, onPick, counts) {
+async function runDiscover() {
+  const btn = $("runDiscover");
+  const bar = $("discoverProgress");
+  btn.disabled = true;
+  bar.classList.remove("hidden");
+  const byTitle = /* @__PURE__ */ new Map();
+  LIB.entries.filter((d) => d.r > 0 || d.origin === "manuel").forEach((d) => {
+    const k = norm(d.t);
+    const prev = byTitle.get(k);
+    if (!prev || (d.r || 0) > (prev.r || 0)) byTitle.set(k, d);
+  });
+  const byAl = /* @__PURE__ */ new Map();
+  for (const d of byTitle.values()) {
+    const k = d.al ? "al:" + d.al : "t:" + norm(d.t);
+    const prev = byAl.get(k);
+    if (!prev || (d.r || 0) > (prev.r || 0)) byAl.set(k, d);
+  }
+  const limit = state.seeds === "all" ? 999 : state.seeds;
+  const seeds = [...byAl.values()].sort((a, b) => (b.r || 1) - (a.r || 1)).slice(0, limit);
+  if (!seeds.length) {
+    $("discoverBox").innerHTML = `<p class="note">Ajoute d'abord quelques titres, puis relance l'analyse.</p>`;
+    btn.disabled = false;
+    bar.classList.add("hidden");
+    return;
+  }
+  const tally = /* @__PURE__ */ new Map();
+  let failures = 0;
+  $("discoverStatus").textContent = `${seeds.length} séries à interroger · environ ${Math.ceil(seeds.length * 1.4 / 60)} min`;
+  for (let i = 0; i < seeds.length; i++) {
+    $("discoverStatus").textContent = `${i + 1}/${seeds.length} · ${seeds[i].t}`;
+    bar.firstElementChild.style.width = Math.round(i / seeds.length * 100) + "%";
+    let payload;
+    try {
+      payload = await loadRecos(seeds[i], false);
+    } catch (e) {
+      failures++;
+      $("discoverStatus").textContent = e.message;
+      await sleep(1200);
+      continue;
+    }
+    payload.items.forEach((r) => {
+      if (isOwned(r)) return;
+      const prev = tally.get(r.id);
+      const weight = Math.max(1, seeds[i].r || 1);
+      if (prev) {
+        prev.votes += r.votes;
+        prev.weight += r.votes * Math.log10(weight + 10);
+        if (!prev.from.some((x) => norm(x) === norm(seeds[i].t))) prev.from.push(seeds[i].t);
+      } else tally.set(r.id, Object.assign({}, r, { from: [seeds[i].t], weight: r.votes * Math.log10(weight + 10) }));
+    });
+    renderDiscover(rankTally(tally), true);
+    await sleep(700);
+  }
+  bar.firstElementChild.style.width = "100%";
+  setDiscover({ at: (/* @__PURE__ */ new Date()).toISOString(), seeds: seeds.map((s) => s.t), items: rankTally(tally).slice(0, 60) });
+  kvSet("discover:v1", DISCOVER);
+  $("discoverStatus").textContent = failures ? `Terminé · ${failures} série(s) sans fiche AniList` : "Analyse terminée";
+  bar.classList.add("hidden");
+  btn.disabled = false;
+  renderDiscover();
+  $("tabDiscN").textContent = visibleDiscover().length || "—";
+}
+function rankTally(tally) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const r of tally.values()) {
+    const k = norm(r.romaji || r.titre);
+    const prev = seen.get(k);
+    if (prev) {
+      prev.votes += r.votes;
+      prev.weight += r.weight;
+      r.from.forEach((f) => {
+        if (!prev.from.some((x) => norm(x) === norm(f))) prev.from.push(f);
+      });
+    } else seen.set(k, r);
+  }
+  return [...seen.values()].sort((a, b) => b.from.length - a.from.length || b.weight - a.weight);
+}
+function visibleDiscover() {
+  if (!DISCOVER) return [];
+  return DISCOVER.items.filter((r) => {
+    if (DISMISSED.has(r.id)) return false;
+    if (isOwned(r)) return false;
+    if (state.type !== "all" && r.type !== MEDIA_TYPE[state.type]) return false;
+    return true;
+  }).sort((a, b) => {
+    if (state.dsort === "score") return (b.score || 0) - (a.score || 0);
+    if (state.dsort === "popularity") return (b.pop || 0) - (a.pop || 0);
+    return b.from.length - a.from.length || b.weight - a.weight;
+  });
+}
+function discoverCardHTML(r, i) {
+  const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut].filter(Boolean).join(" · ");
+  return `<article class="reccard">
+    ${r.cover ? `<img class="cov" src="${esc(r.cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
+    <div class="body">
+      <div class="rank">${String(i + 1).padStart(2, "0")}${r.score ? ` · ${r.score}/100` : ""}</div>
+      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a></div>
+      <div class="rmeta">${esc(meta)}</div>
+      <div class="rwhy">Parce que tu lis <b>${esc(r.from.slice(0, 3).join(", "))}</b>${r.from.length > 3 ? ` +${r.from.length - 3}` : ""} · ${r.votes} votes</div>
+      <div class="ractions">
+        <button class="btn sm" data-add="${r.id}">Ajouter</button>
+        <button class="btn sm ghost" data-skip="${r.id}">Pas pour moi</button>
+      </div>
+    </div>
+  </article>`;
+}
+function renderDiscover(partial, isPartial) {
+  if (state.tab !== "discover" && !isPartial) return;
+  const box = $("discoverBox");
+  const items = isPartial ? partial.filter((r) => !DISMISSED.has(r.id)).slice(0, 30) : visibleDiscover();
+  if (!LIB.entries.length) {
+    box.innerHTML = `<p class="note">Ta bibliothèque est vide. Ajoute quelques titres depuis l'onglet <b>Ajouter</b>, ou importe une sauvegarde, puis lance l'analyse.</p>`;
+    return;
+  }
+  if (!items.length) {
+    box.innerHTML = DISCOVER ? `<p class="note">Plus rien à proposer avec ces filtres. Change de type, réaffiche les écartés, ou relance l'analyse après avoir lu de nouveaux titres.</p>` : `<p class="note">Lance l'analyse : chaque série que tu lis est envoyée à AniList, et les titres qui reviennent depuis plusieurs d'entre elles remontent en tête.</p>`;
+    return;
+  }
+  const seedLine = DISCOVER && !isPartial ? `<p class="note" style="margin-bottom:12px">Croisement de ${DISCOVER.seeds.length} séries : ${esc(DISCOVER.seeds.join(", "))}.</p>` : "";
+  box.innerHTML = seedLine + `<div class="recgrid">${items.map(discoverCardHTML).join("")}</div>`;
+  [...box.querySelectorAll("[data-add]")].forEach((b) => {
+    b.onclick = () => {
+      const r = items.find((x) => String(x.id) === b.dataset.add);
+      if (r && addFromMedia(r)) {
+        renderDiscover();
+      }
+    };
+  });
+  [...box.querySelectorAll("[data-skip]")].forEach((b) => {
+    b.onclick = () => {
+      DISMISSED.add(+b.dataset.skip);
+      saveDismissed();
+      renderDiscover();
+      $("tabDiscN").textContent = visibleDiscover().length || "—";
+    };
+  });
+}
+function chips(el, values, currentVal, onPick, counts, label = (v) => v) {
   el.innerHTML = values.map((v) => {
     const n = counts ? counts(v) : null;
-    return `<button class="chip" aria-pressed="${v === currentVal}">${esc(v)}${n != null ? `<span class="n">${n}</span>` : ""}</button>`;
+    return `<button class="chip" aria-pressed="${v === currentVal}">${esc(label(v))}${n != null ? `<span class="n">${n}</span>` : ""}</button>`;
   }).join("");
   [...el.children].forEach((b, i) => b.onclick = () => onPick(values[i]));
 }
@@ -1666,11 +1743,11 @@ function setTab(tab) {
 }
 function onboardHTML() {
   return `<div class="onboard">
-    <h2>Commence ta bibliothèque</h2>
-    <p>Ajoute les séries que tu lis, puis l'onglet <b>Découvrir</b> croise les recommandations votées par les lecteurs d'AniList pour te sortir ce qui revient le plus souvent. Utilisateur de Mihon ou Tachiyomi ? Importe ta sauvegarde <b>.tachibk</b>, elle est décodée ici même, sans rien envoyer sur un serveur.</p>
+    <h2>${esc(t("onboard.title"))}</h2>
+    <p>${t("onboard.body")}</p>
     <div class="row">
-      <button class="btn" id="onbAdd">Chercher un titre</button>
-      <button class="btn ghost" id="onbImport">Importer une sauvegarde</button>
+      <button class="btn" id="onbAdd">${esc(t("onboard.search"))}</button>
+      <button class="btn ghost" id="onbImport">${esc(t("onboard.import"))}</button>
     </div>
   </div>`;
 }
@@ -1680,10 +1757,10 @@ function boot() {
   $("vert").textContent = lib.length ? "全" + lib.length + "作品" : "空";
   $("tabLibN").textContent = lib.length;
   $("stats").innerHTML = [
-    [lib.length, "Séries"],
-    [lib.reduce((s, d) => s + d.r, 0).toLocaleString("fr-FR"), "Chapitres lus"],
-    [lib.filter((d) => d.n > 0 && d.r >= d.n).length, "Terminées"],
-    [lib.filter((d) => d.r > 0 && (!d.n || d.r < d.n)).length, "En cours"]
+    [lib.length, t("stats.series")],
+    [lib.reduce((s, d) => s + d.r, 0).toLocaleString(locale()), t("stats.chaptersRead")],
+    [lib.filter((d) => d.n > 0 && d.r >= d.n).length, t("stats.finished")],
+    [lib.filter((d) => d.r > 0 && (!d.n || d.r < d.n)).length, t("stats.reading")]
   ].map(([v, l]) => `<div class="stat"><b>${v}</b><small>${l}</small></div>`).join("");
   const empty = !lib.length;
   $("onboard").innerHTML = empty ? onboardHTML() : "";
@@ -1694,7 +1771,7 @@ function boot() {
     $("results").innerHTML = "";
     return;
   }
-  const SOURCES = ["Toutes", ...Array.from(new Set(lib.map((d) => d.s))).sort()];
+  const SOURCES = ["all", ...Array.from(new Set(lib.map((d) => d.s))).sort()];
   const draw = () => {
     chips(
       $("typeLibRow"),
@@ -1705,50 +1782,88 @@ function boot() {
         draw();
         renderLibrary();
       },
-      (v) => v === "Tous types" ? lib.length : lib.filter((d) => v === "Webtoon" ? d.m === "Webtoon" : typeOf(d) === v).length
+      (v) => v === "all" ? lib.length : lib.filter((d) => v === "webtoon" ? d.m === "Webtoon" : typeOf(d) === MEDIA_TYPE[v]).length,
+      (v) => t("libtype." + v)
     );
-    chips($("shelfRow"), SHELVES, state.shelf, (v) => {
-      state.shelf = v;
-      draw();
-      renderLibrary();
-    }, (v) => lib.filter((d) => shelfTest(d, v)).length);
-    chips($("srcRow"), SOURCES, state.source, (v) => {
-      state.source = v;
-      draw();
-      renderLibrary();
-    }, (v) => v === "Toutes" ? lib.length : lib.filter((d) => d.s === v).length);
-    chips($("sortRow"), SORTS, state.sort, (v) => {
-      state.sort = v;
-      draw();
-      renderLibrary();
-    });
+    chips(
+      $("shelfRow"),
+      SHELVES,
+      state.shelf,
+      (v) => {
+        state.shelf = v;
+        draw();
+        renderLibrary();
+      },
+      (v) => lib.filter((d) => shelfTest(d, v)).length,
+      (v) => t("shelf." + v)
+    );
+    chips(
+      $("srcRow"),
+      SOURCES,
+      state.source,
+      (v) => {
+        state.source = v;
+        draw();
+        renderLibrary();
+      },
+      (v) => v === "all" ? lib.length : lib.filter((d) => d.s === v).length,
+      (v) => v === "all" ? t("source.all") : v
+    );
+    chips(
+      $("sortRow"),
+      SORTS,
+      state.sort,
+      (v) => {
+        state.sort = v;
+        draw();
+        renderLibrary();
+      },
+      null,
+      (v) => t("sort." + v)
+    );
   };
   draw();
   renderLibrary();
   if (DISCOVER) $("tabDiscN").textContent = visibleDiscover().length || "—";
 }
-const SEEDCHOICES = [12, 25, 50, "Tout"];
+const SEEDCHOICES = [12, 25, 50, "all"];
 function drawDiscoverChips() {
   chips(
     $("seedRow"),
-    SEEDCHOICES.map((v) => typeof v === "number" ? v + " séries" : "Toutes mes séries"),
-    typeof state.seeds === "number" ? state.seeds + " séries" : "Toutes mes séries",
-    (v, i) => {
-      state.seeds = SEEDCHOICES[SEEDCHOICES.map((x) => typeof x === "number" ? x + " séries" : "Toutes mes séries").indexOf(v)];
-      store.set("seeds:v1", state.seeds);
+    SEEDCHOICES,
+    state.seeds,
+    (v) => {
+      state.seeds = v;
+      store.set("seeds:v1", v);
       drawDiscoverChips();
-    }
+    },
+    null,
+    (v) => typeof v === "number" ? t("seeds.count", { n: v }) : t("seeds.all")
   );
-  chips($("typeRow"), TYPES, state.type, (v) => {
-    state.type = v;
-    drawDiscoverChips();
-    renderDiscover();
-  });
-  chips($("dsortRow"), DSORTS, state.dsort, (v) => {
-    state.dsort = v;
-    drawDiscoverChips();
-    renderDiscover();
-  });
+  chips(
+    $("typeRow"),
+    TYPES,
+    state.type,
+    (v) => {
+      state.type = v;
+      drawDiscoverChips();
+      renderDiscover();
+    },
+    null,
+    (v) => t(v === "all" ? "type.all" : "libtype." + v)
+  );
+  chips(
+    $("dsortRow"),
+    DSORTS,
+    state.dsort,
+    (v) => {
+      state.dsort = v;
+      drawDiscoverChips();
+      renderDiscover();
+    },
+    null,
+    (v) => t("dsort." + v)
+  );
 }
 drawDiscoverChips();
 function togglePanel(btn, panel) {
@@ -1768,23 +1883,21 @@ $("q").addEventListener("input", (e) => {
 });
 $("viewBtn").onclick = (e) => {
   state.view = state.view === "grid" ? "list" : "grid";
-  e.target.textContent = state.view === "grid" ? "Vue liste" : "Vue posters";
+  e.target.textContent = t(state.view === "grid" ? "btn.listView" : "btn.postersView");
   renderLibrary();
 };
 $("unitBtn").onclick = (e) => {
   state.unit = state.unit === "ch" ? "vol" : "ch";
-  e.target.textContent = state.unit === "ch" ? "Suivi : chapitres" : "Suivi : tomes";
+  e.target.textContent = t(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
   store.set("unit:v1", state.unit);
   renderLibrary();
-  toast(state.unit === "ch" ? "Affichage par chapitres" : "Affichage par tomes — chaque série peut être réglée à part dans sa fiche");
+  toast(t(state.unit === "ch" ? "toast.byChapters" : "toast.byVolumes"));
 };
 $("importBtn").onclick = () => $("file").click();
 $("exportBtn").onclick = exportLib;
 $("resetBtn").onclick = async () => {
   const n = LIB.entries.length;
-  if (n && confirm(`Exporter ta bibliothèque avant de l'effacer ?
-
-${n} série(s). L'export est la seule sauvegarde possible.`))
+  if (n && confirm(t("reset.exportFirst", { n })))
     exportLib();
   if (!confirm(
     `Effacer DÉFINITIVEMENT toutes les données de Rayon ?
@@ -1874,7 +1987,8 @@ if (store.get("panel:v1")) {
   $("filterPanel").classList.remove("hidden");
   $("filterBtn").setAttribute("aria-expanded", "true");
 }
-state.seeds = store.get("seeds:v1") || 25;
+const savedSeeds = store.get("seeds:v1");
+state.seeds = savedSeeds === "Tout" ? "all" : savedSeeds || 25;
 drawDiscoverChips();
 state.unit = store.get("unit:v1") || "ch";
 $("unitBtn").textContent = t(state.unit === "ch" ? "unit.chapters" : "unit.volumes");

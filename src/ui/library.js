@@ -8,20 +8,26 @@ import { t as T } from '../core/i18n.js';
 import { progressOf } from '../data/totals.js';
 import { openSheet } from './sheet.js';
 
-export const SHELVES = ["Tout","En cours","À rattraper","Terminées","Jamais ouvertes","Ajoutées à la main"];
-export const SORTS = ["Lecture récente","Titre","Chapitres lus","Progression","Note AniList"];
-export const TYPES = ["Tous","Manga","Manhwa","Manhua"];
-export const LIBTYPES = ["Tous types","Manga","Manhwa","Manhua","Webtoon"];
-export const DSORTS = ["Pertinence","Note","Popularité"];
+/* Internal values, never shown. Labels come from t("shelf."+v) and friends, so switching
+   language cannot change what the app compares against. */
+export const SHELVES  = ["all","reading","behind","finished","unopened","manual"];
+export const SORTS    = ["recent","title","chapters","progress","score"];
+export const TYPES    = ["all","manga","manhwa","manhua"];
+export const LIBTYPES = ["all","manga","manhwa","manhua","webtoon"];
+export const DSORTS   = ["relevance","score","popularity"];
+
+/* The media type in META comes from AniList and is NOT translated, so the keys map onto the
+   values actually stored there rather than replacing them. */
+export const MEDIA_TYPE = { manga:"Manga", manhwa:"Manhwa", manhua:"Manhua" };
 
 export function shelfTest(d, shelf){
   const behind = progressOf(d).remain;
   switch(shelf){
-    case "En cours": return d.r > 0 && (d.n ? d.r < d.n : true);
-    case "À rattraper": return d.r > 0 && behind !== null && behind >= 5;
-    case "Terminées": return d.n > 0 && d.r >= d.n;
-    case "Jamais ouvertes": return d.r === 0;
-    case "Ajoutées à la main": return d.origin === "manuel";
+    case "reading":  return d.r > 0 && (d.n ? d.r < d.n : true);
+    case "behind":   return d.r > 0 && behind !== null && behind >= 5;
+    case "finished": return d.n > 0 && d.r >= d.n;
+    case "unopened": return d.r === 0;
+    case "manual":   return d.origin === "manuel";
     default: return true;
   }
 }
@@ -32,9 +38,9 @@ export function typeOf(d){
   return d.m === "Webtoon" ? "Manhwa" : "Manga";
 }
 export function libTypeTest(d){
-  if (state.libType === "Tous types") return true;
-  if (state.libType === "Webtoon") return d.m === "Webtoon";
-  return typeOf(d) === state.libType;
+  if (state.libType === "all") return true;
+  if (state.libType === "webtoon") return d.m === "Webtoon";
+  return typeOf(d) === MEDIA_TYPE[state.libType];
 }
 
 export function libRows(){
@@ -42,7 +48,7 @@ export function libRows(){
   const out = LIB.entries.filter(d=>{
     if (!libTypeTest(d)) return false;
     if (!shelfTest(d, state.shelf)) return false;
-    if (state.source !== "Toutes" && d.s !== state.source) return false;
+    if (state.source !== "all" && d.s !== state.source) return false;
     if (needle){
       const m = META[norm(d.t)];
       const hay = d.t+" "+d.a+" "+d.g.join(" ")+" "+(m && !m.missing ? m.romaji+" "+m.genres.join(" ") : "");
@@ -51,11 +57,11 @@ export function libRows(){
     return true;
   });
   const score = d => { const m = META[norm(d.t)]; return (m && m.score) || 0; };
-  if (state.sort==="Titre") out.sort((a,b)=>a.t.localeCompare(b.t,"fr"));
-  if (state.sort==="Chapitres lus") out.sort((a,b)=>b.r-a.r);
-  if (state.sort==="Lecture récente") out.sort((a,b)=>(b.d||"").localeCompare(a.d||"")||b.r-a.r);
-  if (state.sort==="Progression") out.sort((a,b)=>(b.r/(b.n||1))-(a.r/(a.n||1)));
-  if (state.sort==="Note AniList") out.sort((a,b)=>score(b)-score(a));
+  if (state.sort==="title")    out.sort((a,b)=>a.t.localeCompare(b.t));
+  if (state.sort==="chapters") out.sort((a,b)=>b.r-a.r);
+  if (state.sort==="recent")   out.sort((a,b)=>(b.d||"").localeCompare(a.d||"")||b.r-a.r);
+  if (state.sort==="progress") out.sort((a,b)=>(b.r/(b.n||1))-(a.r/(a.n||1)));
+  if (state.sort==="score")    out.sort((a,b)=>score(b)-score(a));
   return out;
 }
 
@@ -107,15 +113,15 @@ export function renderLibrary(){
 }
 
 export function updateFilterSummary(){
-  const active = (state.shelf !== "Tout") + (state.source !== "Toutes") + (state.q ? 1 : 0) + (state.libType !== "Tous types");
+  const active = (state.shelf !== "all") + (state.source !== "all") + (state.q ? 1 : 0) + (state.libType !== "all");
   $("filterDot").classList.toggle("hidden", active === 0);
   const parts = [];
-  if (state.libType !== "Tous types") parts.push(state.libType);
-  if (state.shelf !== "Tout") parts.push(state.shelf);
-  if (state.source !== "Toutes") parts.push(state.source);
-  parts.push("tri : "+state.sort.toLowerCase());
-  $("filterSum").innerHTML = `<b>${libRows().length}</b> séries · ${esc(parts.join(" · "))}`
-    + (active ? ` <button class="btn sm ghost" id="clearFilters">Tout afficher</button>` : "");
+  if (state.libType !== "all") parts.push(T("libtype."+state.libType));
+  if (state.shelf !== "all") parts.push(T("shelf."+state.shelf));
+  if (state.source !== "all") parts.push(state.source);
+  parts.push(T("filter.sortBy", { what: T("sort."+state.sort).toLowerCase() }));
+  $("filterSum").innerHTML = `<b>${libRows().length}</b> ${esc(T("filter.summary",{n:libRows().length}).replace(/^\d+\s*/,""))} · ${esc(parts.join(" · "))}`
+    + (active ? ` <button class="btn sm ghost" id="clearFilters">${esc(T("filter.showAll"))}</button>` : "");
   const cf = $("clearFilters");
   if (cf) cf.onclick = () => {
     state.shelf = "Tout"; state.source = "Toutes"; state.libType = "Tous types"; state.q = ""; $("q").value = "";

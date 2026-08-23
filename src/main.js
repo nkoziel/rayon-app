@@ -11,7 +11,7 @@ import { mihonAvailable, openInMihon } from './ui/mihon.js';
 import { addFromMedia, openAddModal } from './ui/add.js';
 import { runDiscover, renderDiscover, visibleDiscover } from './ui/discover.js';
 import { onLibraryChanged } from './ui/refresh.js';
-import { renderLibrary, libRows, shelfTest, typeOf, updateFilterSummary, SHELVES, SORTS, TYPES, LIBTYPES, DSORTS } from './ui/library.js';
+import { renderLibrary, libRows, shelfTest, typeOf, updateFilterSummary, SHELVES, SORTS, TYPES, LIBTYPES, DSORTS, MEDIA_TYPE } from './ui/library.js';
 import { openSheet, closeSheet } from './ui/sheet.js';
 import { progressOf } from './data/totals.js';
 import { closeModal } from './core/dom.js';
@@ -25,10 +25,12 @@ import {
 /* ============================================================
    Navigation, amorçage
    ============================================================ */
-function chips(el, values, currentVal, onPick, counts){
+/* Values are internal keys; `label` turns each into display text. Keeping them separate is
+   what lets the language change without altering what the app compares against. */
+function chips(el, values, currentVal, onPick, counts, label = v => v){
   el.innerHTML = values.map(v=>{
     const n = counts ? counts(v) : null;
-    return `<button class="chip" aria-pressed="${v===currentVal}">${esc(v)}${n!=null?`<span class="n">${n}</span>`:""}</button>`;
+    return `<button class="chip" aria-pressed="${v===currentVal}">${esc(label(v))}${n!=null?`<span class="n">${n}</span>`:""}</button>`;
   }).join("");
   [...el.children].forEach((b,i)=> b.onclick = () => onPick(values[i]));
 }
@@ -54,11 +56,11 @@ function setTab(tab){
 
 function onboardHTML(){
   return `<div class="onboard">
-    <h2>Commence ta bibliothèque</h2>
-    <p>Ajoute les séries que tu lis, puis l'onglet <b>Découvrir</b> croise les recommandations votées par les lecteurs d'AniList pour te sortir ce qui revient le plus souvent. Utilisateur de Mihon ou Tachiyomi ? Importe ta sauvegarde <b>.tachibk</b>, elle est décodée ici même, sans rien envoyer sur un serveur.</p>
+    <h2>${esc(T("onboard.title"))}</h2>
+    <p>${T("onboard.body")}</p>
     <div class="row">
-      <button class="btn" id="onbAdd">Chercher un titre</button>
-      <button class="btn ghost" id="onbImport">Importer une sauvegarde</button>
+      <button class="btn" id="onbAdd">${esc(T("onboard.search"))}</button>
+      <button class="btn ghost" id="onbImport">${esc(T("onboard.import"))}</button>
     </div>
   </div>`;
 }
@@ -69,10 +71,10 @@ function boot(){
   $("vert").textContent = lib.length ? "全"+lib.length+"作品" : "空";
   $("tabLibN").textContent = lib.length;
   $("stats").innerHTML = [
-    [lib.length, "Séries"],
-    [lib.reduce((s,d)=>s+d.r,0).toLocaleString("fr-FR"), "Chapitres lus"],
-    [lib.filter(d=>d.n>0 && d.r>=d.n).length, "Terminées"],
-    [lib.filter(d=>d.r>0 && (!d.n || d.r<d.n)).length, "En cours"]
+    [lib.length, T("stats.series")],
+    [lib.reduce((s,d)=>s+d.r,0).toLocaleString(locale()), T("stats.chaptersRead")],
+    [lib.filter(d=>d.n>0 && d.r>=d.n).length, T("stats.finished")],
+    [lib.filter(d=>d.r>0 && (!d.n || d.r<d.n)).length, T("stats.reading")]
   ].map(([v,l])=>`<div class="stat"><b>${v}</b><small>${l}</small></div>`).join("");
 
   const empty = !lib.length;
@@ -85,26 +87,35 @@ function boot(){
     return;
   }
 
-  const SOURCES = ["Toutes", ...Array.from(new Set(lib.map(d=>d.s))).sort()];
+  /* "all" is the internal value; the source names themselves come from the user's data and
+     are not translatable. */
+  const SOURCES = ["all", ...Array.from(new Set(lib.map(d=>d.s))).sort()];
   const draw = () => {
     chips($("typeLibRow"), LIBTYPES, state.libType, v=>{ state.libType=v; draw(); renderLibrary(); },
-      v=> v==="Tous types" ? lib.length : lib.filter(d=> v==="Webtoon" ? d.m==="Webtoon" : typeOf(d)===v).length);
-    chips($("shelfRow"), SHELVES, state.shelf, v=>{ state.shelf=v; draw(); renderLibrary(); }, v=>lib.filter(d=>shelfTest(d,v)).length);
-    chips($("srcRow"), SOURCES, state.source, v=>{ state.source=v; draw(); renderLibrary(); }, v=> v==="Toutes"?lib.length:lib.filter(d=>d.s===v).length);
-    chips($("sortRow"), SORTS, state.sort, v=>{ state.sort=v; draw(); renderLibrary(); });
+      v=> v==="all" ? lib.length : lib.filter(d=> v==="webtoon" ? d.m==="Webtoon" : typeOf(d)===MEDIA_TYPE[v]).length,
+      v=>T("libtype."+v));
+    chips($("shelfRow"), SHELVES, state.shelf, v=>{ state.shelf=v; draw(); renderLibrary(); },
+        v=>lib.filter(d=>shelfTest(d,v)).length, v=>T("shelf."+v));
+    chips($("srcRow"), SOURCES, state.source, v=>{ state.source=v; draw(); renderLibrary(); },
+        v=> v==="all" ? lib.length : lib.filter(d=>d.s===v).length,
+        v=> v==="all" ? T("source.all") : v);
+    chips($("sortRow"), SORTS, state.sort, v=>{ state.sort=v; draw(); renderLibrary(); },
+        null, v=>T("sort."+v));
   };
   draw();
   renderLibrary();
   if (DISCOVER) $("tabDiscN").textContent = visibleDiscover().length || "—";
 }
 
-const SEEDCHOICES = [12, 25, 50, "Tout"];
+const SEEDCHOICES = [12, 25, 50, "all"];
 function drawDiscoverChips(){
-  chips($("seedRow"), SEEDCHOICES.map(v=>typeof v === "number" ? v+" séries" : "Toutes mes séries"),
-    typeof state.seeds === "number" ? state.seeds+" séries" : "Toutes mes séries",
-    (v, i) => { state.seeds = SEEDCHOICES[SEEDCHOICES.map(x=>typeof x==="number"?x+" séries":"Toutes mes séries").indexOf(v)]; store.set("seeds:v1", state.seeds); drawDiscoverChips(); });
-  chips($("typeRow"), TYPES, state.type, v=>{ state.type=v; drawDiscoverChips(); renderDiscover(); });
-  chips($("dsortRow"), DSORTS, state.dsort, v=>{ state.dsort=v; drawDiscoverChips(); renderDiscover(); });
+  chips($("seedRow"), SEEDCHOICES, state.seeds,
+        v => { state.seeds = v; store.set("seeds:v1", v); drawDiscoverChips(); },
+        null, v => typeof v === "number" ? T("seeds.count",{n:v}) : T("seeds.all"));
+  chips($("typeRow"), TYPES, state.type, v=>{ state.type=v; drawDiscoverChips(); renderDiscover(); },
+        null, v=>T(v==="all"?"type.all":"libtype."+v));
+  chips($("dsortRow"), DSORTS, state.dsort, v=>{ state.dsort=v; drawDiscoverChips(); renderDiscover(); },
+        null, v=>T("dsort."+v));
 }
 drawDiscoverChips();
 
@@ -120,15 +131,15 @@ $("dFilterBtn").onclick = () => togglePanel($("dFilterBtn"), $("dFilterPanel"));
 $("q").addEventListener("input", e=>{ state.q = e.target.value; renderLibrary(); });
 $("viewBtn").onclick = e => {
   state.view = state.view === "grid" ? "list" : "grid";
-  e.target.textContent = state.view === "grid" ? "Vue liste" : "Vue posters";
+  e.target.textContent = T(state.view === "grid" ? "btn.listView" : "btn.postersView");
   renderLibrary();
 };
 $("unitBtn").onclick = e => {
   state.unit = state.unit === "ch" ? "vol" : "ch";
-  e.target.textContent = state.unit === "ch" ? "Suivi : chapitres" : "Suivi : tomes";
+  e.target.textContent = T(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
   store.set("unit:v1", state.unit);
   renderLibrary();
-  toast(state.unit === "ch" ? "Affichage par chapitres" : "Affichage par tomes — chaque série peut être réglée à part dans sa fiche");
+  toast(T(state.unit === "ch" ? "toast.byChapters" : "toast.byVolumes"));
 };
 $("importBtn").onclick = () => $("file").click();
 $("exportBtn").onclick = exportLib;
@@ -136,7 +147,7 @@ $("resetBtn").onclick = async () => {
   const n = LIB.entries.length;
   /* The JSON export is the only backup there is, so offer it before destroying anything
      rather than mentioning it afterwards. */
-  if (n && confirm(`Exporter ta bibliothèque avant de l'effacer ?\n\n${n} série(s). L'export est la seule sauvegarde possible.`))
+  if (n && confirm(T("reset.exportFirst", { n })))
     exportLib();
   if (!confirm(
     `Effacer DÉFINITIVEMENT toutes les données de Rayon ?\n\n`
@@ -197,7 +208,10 @@ window.addEventListener("drop", e=>{
 });
 
 if (store.get("panel:v1")){ $("filterPanel").classList.remove("hidden"); $("filterBtn").setAttribute("aria-expanded","true"); }
-state.seeds = store.get("seeds:v1") || 25;
+/* seeds is the one filter value that IS persisted, so an install from before the
+   internal-value split still holds "Tout". Migrate it on read rather than stranding it. */
+const savedSeeds = store.get("seeds:v1");
+state.seeds = savedSeeds === "Tout" ? "all" : (savedSeeds || 25);
 drawDiscoverChips();
 state.unit = store.get("unit:v1") || "ch";
 $("unitBtn").textContent = T(state.unit === "ch" ? "unit.chapters" : "unit.volumes");

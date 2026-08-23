@@ -3,6 +3,7 @@
    for the whole run rather than retried — REVIEW.md §2.2 and §2.3. */
 
 import { $, esc, toast, sleep } from '../core/dom.js';
+import { MEDIA_TYPE } from './library.js';
 import { norm } from '../core/norm.js';
 import { LIB, DISCOVER, setDiscover, DISMISSED, saveDismissed, state, isOwned } from '../core/state.js';
 import { kvSet } from '../core/store.js';
@@ -28,7 +29,7 @@ export async function runDiscover(){
     const prev = byAl.get(k);
     if (!prev || (d.r||0) > (prev.r||0)) byAl.set(k, d);
   }
-  const limit = state.seeds === "Tout" ? 999 : state.seeds;
+  const limit = state.seeds === "all" ? 999 : state.seeds;
   const seeds = [...byAl.values()].sort((a,b)=> (b.r||1) - (a.r||1)).slice(0, limit);
   if (!seeds.length){
     $("discoverBox").innerHTML = `<p class="note">Ajoute d'abord quelques titres, puis relance l'analyse.</p>`;
@@ -85,11 +86,11 @@ export function visibleDiscover(){
   return DISCOVER.items.filter(r=>{
     if (DISMISSED.has(r.id)) return false;
     if (isOwned(r)) return false;
-    if (state.type !== "Tous" && r.type !== state.type) return false;
+    if (state.type !== "all" && r.type !== MEDIA_TYPE[state.type]) return false;
     return true;
   }).sort((a,b)=>{
-    if (state.dsort === "Note") return (b.score||0)-(a.score||0);
-    if (state.dsort === "Popularité") return (b.pop||0)-(a.pop||0);
+    if (state.dsort === "score") return (b.score||0)-(a.score||0);
+    if (state.dsort === "popularity") return (b.pop||0)-(a.pop||0);
     return b.from.length-a.from.length || b.weight-a.weight;
   });
 }
