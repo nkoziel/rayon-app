@@ -511,9 +511,11 @@ function exportLib(){
 
    which pushes GlobalSearchScreen(query) — the cross-source search.
 
-   No `package=` is set on purpose. Upstream Mihon is app.mihon, forks differ (app.mihon.sync
-   here), and pinning the wrong one silently fails; leaving it out lets Android pick or offer
-   a chooser among whatever is installed. */
+   Targets OFFICIAL Mihon (`app.mihon`) explicitly. Pinning the package makes the hand-off
+   deterministic — no app chooser — and if Mihon is not installed the browser_fallback_url
+   takes over. Forks are deliberately not targeted. */
+const MIHON_PACKAGE = "app.mihon";
+
 const isAndroid = () => /android/i.test(navigator.userAgent);
 
 /* There is no way to ask the browser whether an app is installed — that is deliberate, it
@@ -525,6 +527,7 @@ const mihonAvailable = () => isAndroid();
 function openInMihon(title){
   const fallback = "https://mihon.app/";
   const url = "intent://#Intent;action=eu.kanade.tachiyomi.SEARCH"
+    + ";package=" + MIHON_PACKAGE
     + ";S.query=" + encodeURIComponent(title)
     + ";S.browser_fallback_url=" + encodeURIComponent(fallback)
     + ";end";

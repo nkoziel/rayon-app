@@ -633,11 +633,12 @@ function exportLib() {
   setTimeout(() => URL.revokeObjectURL(a.href), 4e3);
   toast("Export téléchargé — partage ce fichier à qui tu veux");
 }
+const MIHON_PACKAGE = "app.mihon";
 const isAndroid = () => /android/i.test(navigator.userAgent);
 const mihonAvailable = () => isAndroid();
 function openInMihon(title) {
   const fallback = "https://mihon.app/";
-  const url = "intent://#Intent;action=eu.kanade.tachiyomi.SEARCH;S.query=" + encodeURIComponent(title) + ";S.browser_fallback_url=" + encodeURIComponent(fallback) + ";end";
+  const url = "intent://#Intent;action=eu.kanade.tachiyomi.SEARCH;package=" + MIHON_PACKAGE + ";S.query=" + encodeURIComponent(title) + ";S.browser_fallback_url=" + encodeURIComponent(fallback) + ";end";
   window.location.href = url;
 }
 async function purgeSeriesData(entry) {
