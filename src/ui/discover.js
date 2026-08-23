@@ -1,12 +1,13 @@
 /* Discover: cross-references recommendations, seeded from what you read.
  *
- * This used to call AniList's loadRecos directly. AniList's API has been returning 403 since
- * they disabled it, so Discover had been quietly dead — it went through the motions and found
- * nothing, which is what the "—" in the tab badge was. The detail sheet had already been moved
- * to recosFor(); this tab had not, and that was the whole bug.
+ * This used to call AniList's loadRecos directly, while the detail sheet had already been moved
+ * to recosFor(). Two recommendation paths, two different answers for the same question.
  *
- * recosFor() prefers MangaBaka and falls back to AniList, so this now works AND arrives with
- * the evidence — shared tags, shared readers, same author — instead of a bare vote count.
+ * recosFor() prefers MangaBaka and keeps AniList as the fallback. That matters for two reasons.
+ * AniList went dark with a 403 for a stretch of this project and Discover had no second source
+ * to fall back on — it is answering again today, which is exactly why the fallback should be
+ * arranged while it works rather than during the next outage. And MangaBaka says WHY: shared
+ * tags, shared readers, same author, instead of a bare vote count.
  *
  * Still paced by sleep(700), and a series that fails is skipped for the whole run rather than
  * retried — REVIEW.md §2.2 and §2.3. */
