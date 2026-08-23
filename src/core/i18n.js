@@ -193,7 +193,7 @@ const en = {
   "shop.empty":                "No series is tracked by volume yet. Switch a series to Volumes in its sheet to start a collection.",
   "shop.priceNote":            "Estimated at {price} per volume — no database publishes prices.",
   "foot.sources":              "Records and recommendations: MangaBaka (CC BY-NC-SA 4.0), AniList, MangaDex.",
-  "foot.privacy":              "Your library stays in this browser. Only the titles you look up are sent, plus your IP to Google Fonts.",
+  "foot.privacy":              "Your library stays in this browser. Nothing is sent anywhere except the titles you look up.",
 };
 
 const fr = {
@@ -369,7 +369,7 @@ const fr = {
   "shop.empty":                "Aucune série n'est suivie en tomes. Bascule une série sur Tomes dans sa fiche pour commencer une collection.",
   "shop.priceNote":            "Estimé à {price} par tome — aucune base ne publie les prix.",
   "foot.sources":              "Fiches et recommandations : MangaBaka (CC BY-NC-SA 4.0), AniList, MangaDex.",
-  "foot.privacy":              "Ta bibliothèque reste dans ce navigateur. Seuls les titres consultés sont envoyés, et ton IP à Google Fonts.",
+  "foot.privacy":              "Ta bibliothèque reste dans ce navigateur. Rien n'est envoyé ailleurs, hormis les titres consultés.",
 };
 
 const LOCALES = { en, fr };

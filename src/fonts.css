@@ -1,0 +1,66 @@
+/* Self-hosted fonts (REVIEW.md §5).
+ *
+ * The page used to pull these from fonts.googleapis.com, which meant Google received every
+ * visitor's IP and User-Agent on every single open — while the footer claimed "no data is
+ * sent anywhere". Self-hosting makes that claim true, removes a third-party request from the
+ * critical path, and lets offline work on the FIRST open rather than the second.
+ *
+ * Latin subset only. French is fully covered by `latin` (é, è, à, ç, ù all live below U+00FF);
+ * `latin-ext` exists for Polish, Czech, Turkish and the like and cost 64 KB for characters
+ * this interface never renders. Anything outside the subset — a Japanese, Korean or Chinese
+ * title — falls back to the system font, which renders those scripts perfectly well and is
+ * why shipping a full CJK face (megabytes) would be absurd here.
+ *
+ * Only the weights the stylesheet actually declares, 400 and 700. The old Google link also
+ * requested Zen Kaku 500 and 900, which nothing ever used.
+ *
+ * All three families are under the SIL Open Font License, which explicitly permits this.
+ * Anton and Zen Kaku Gothic New: © their respective authors. Space Mono: © Colophon Foundry.
+ *
+ * font-display: swap — text stays readable while a face loads, as before.
+ */
+
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/anton-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Zen Kaku Gothic New';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/zenkaku-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Zen Kaku Gothic New';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/zenkaku-700-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/spacemono-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/spacemono-700-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}

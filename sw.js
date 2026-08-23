@@ -3,10 +3,10 @@
 /* IMPORTANT — bump VERSION on EVERY release.
    Without it, browsers that already installed the app never receive fixes:
    the SW only reinstalls when its own bytes change. See REVIEW.md §1.3. */
-const VERSION = "2026-08-23.10";
+const VERSION = "2026-08-23.11";
 
 const CACHE   = `rayon-shell-${VERSION}`;  // purged on every version bump
-const RUNTIME = "rayon-runtime";           // fonts + covers, kept across versions
+const RUNTIME = "rayon-runtime";           // cover images, kept across versions
 
 const SHELL = [
   "./", "./index.html", "./manifest.webmanifest",
@@ -60,9 +60,13 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // Fonts and cover images: cache first, refreshed in the background.
+  // Cover images: cache first, refreshed in the background.
   // Separate cache, never purged: an app update must not throw away the covers.
-  if (/fonts\.(googleapis|gstatic)\.com|anilist\.co/.test(url.hostname)) {
+  //
+  // Google Fonts is deliberately absent now — the faces are bundled into the page itself
+  // (REVIEW.md §5), so there is no third-party font request left to cache, and no visitor IP
+  // handed to Google on every open.
+  if (/anilist\.co|mangabaka\.(dev|org)/.test(url.hostname)) {
     e.respondWith(
       caches.match(req).then(hit => {
         const net = fetch(req).then(res => {
