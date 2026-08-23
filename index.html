@@ -186,7 +186,8 @@ const en = {
   "onboard.body": "Add the series you read, then the <b>Discover</b> tab cross-references the recommendations AniList readers voted on and surfaces what comes up most. A Mihon or Tachiyomi user? Import your <b>.tachibk</b> backup — it is decoded right here, nothing is sent to a server.",
   "onboard.search": "Search for a title",
   "onboard.import": "Import a backup",
-  "reset.exportFirst": "Export your library before erasing it?\n\n{n} series. The export is the only possible backup."
+  "reset.exportFirst": "Export your library before erasing it?\n\n{n} series. The export is the only possible backup.",
+  "tabs.label": "Main sections"
 };
 const fr = {
   "app.title": "Rayon",
@@ -288,7 +289,8 @@ const fr = {
   "onboard.body": "Ajoute les séries que tu lis, puis l'onglet <b>Découvrir</b> croise les recommandations votées par les lecteurs d'AniList pour te sortir ce qui revient le plus souvent. Utilisateur de Mihon ou Tachiyomi ? Importe ta sauvegarde <b>.tachibk</b>, elle est décodée ici même, sans rien envoyer sur un serveur.",
   "onboard.search": "Chercher un titre",
   "onboard.import": "Importer une sauvegarde",
-  "reset.exportFirst": "Exporter ta bibliothèque avant de l'effacer ?\n\n{n} série(s). L'export est la seule sauvegarde possible."
+  "reset.exportFirst": "Exporter ta bibliothèque avant de l'effacer ?\n\n{n} série(s). L'export est la seule sauvegarde possible.",
+  "tabs.label": "Sections principales"
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -2080,7 +2082,13 @@ window.__rayon = {
 };</script>
   <style rel="stylesheet" crossorigin>:root{
   --ink:#16150F; --ink-soft:#3B392E; --paper:#D9D7CA; --paper-hi:#E9E7DC;
-  --vermilion:#C92D12; --press:#0F6C99; --dim:#726F5F;
+  --vermilion:#C92D12; --press:#0F6C99;
+  /* --dim carries ALL the secondary typography (.rmeta, .statusline, .sub, .lm, .cm,
+     .filtersum, .prov, .empty), often at 9.5-10px. It used to be #726F5F: 3.50:1 on --paper,
+     where WCAG AA asks 4.5:1 for normal text (REVIEW.md §6).
+     #5A5849 measures 4.96:1 on --paper and 5.78:1 on --paper-hi - both backgrounds it is
+     actually used on - without changing the palette's character. */
+  --dim:#5A5849;
   --safe-b:env(safe-area-inset-bottom,0px);
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -2272,7 +2280,7 @@ dd{margin:0}
   <div class="stats" id="stats"></div>
 
   <!-- ===== onglet bibliothèque ===== -->
-  <section id="viewLibrary">
+  <section id="viewLibrary" role="tabpanel" aria-labelledby="tabLibrary">
     <div id="onboard"></div>
     <div class="toolbar" id="libTools">
       <div class="row">
@@ -2297,13 +2305,13 @@ dd{margin:0}
         <button class="btn ghost" id="langBtn">English</button>
         <input type="file" id="file" accept=".tachibk,.json,.gz" class="hidden">
       </div>
-      <div class="statusline" id="statusline"></div>
+      <div class="statusline" id="statusline" role="status" aria-live="polite"></div>
     </div>
     <div id="results"></div>
   </section>
 
   <!-- ===== onglet découvrir ===== -->
-  <section id="viewDiscover" class="hidden">
+  <section id="viewDiscover" class="hidden" role="tabpanel" aria-labelledby="tabDiscover">
     <div class="toolbar">
       <div class="row">
         <button class="btn" id="runDiscover">Analyser</button>
@@ -2316,7 +2324,7 @@ dd{margin:0}
         <div class="chiprow" id="dsortRow" role="group" aria-label="Tri"></div>
       </div>
       <div class="progress hidden" id="discoverProgress"><i style="width:0%"></i></div>
-      <div class="statusline" id="discoverStatus"></div>
+      <div class="statusline" id="discoverStatus" role="status" aria-live="polite"></div>
     </div>
     <div id="discoverBox"></div>
   </section>
@@ -2327,10 +2335,12 @@ dd{margin:0}
   </p>
 </div>
 
-<nav class="tabs" role="tablist">
-  <button class="tab" role="tab" id="tabLibrary" aria-selected="true"><span class="badge" id="tabLibN">0</span>Bibliothèque</button>
-  <button class="tab" role="tab" id="tabDiscover" aria-selected="false"><span class="badge" id="tabDiscN">—</span>Découvrir</button>
-  <button class="tab" role="tab" id="tabAdd" aria-selected="false"><span class="badge">＋</span>Ajouter</button>
+<nav class="tabs" role="tablist" data-i18n-attr="aria-label:tabs.label">
+  <button class="tab" role="tab" id="tabLibrary" aria-selected="true" aria-controls="viewLibrary"><span class="badge" id="tabLibN">0</span><span data-i18n="tab.library">Bibliothèque</span></button>
+  <button class="tab" role="tab" id="tabDiscover" aria-selected="false" aria-controls="viewDiscover"><span class="badge" id="tabDiscN">—</span><span data-i18n="tab.discover">Découvrir</span></button>
+  <!-- NOT a tab: it opens a modal and controls no panel. Announcing it as one made the whole
+       widget wrong for assistive technology (REVIEW.md §6). -->
+  <button class="tab" id="tabAdd"><span class="badge">＋</span><span data-i18n="tab.add">Ajouter</span></button>
 </nav>
 
 <div id="overlay"></div>

@@ -28,7 +28,7 @@
   <div class="stats" id="stats"></div>
 
   <!-- ===== onglet bibliothèque ===== -->
-  <section id="viewLibrary">
+  <section id="viewLibrary" role="tabpanel" aria-labelledby="tabLibrary">
     <div id="onboard"></div>
     <div class="toolbar" id="libTools">
       <div class="row">
@@ -53,13 +53,13 @@
         <button class="btn ghost" id="langBtn">English</button>
         <input type="file" id="file" accept=".tachibk,.json,.gz" class="hidden">
       </div>
-      <div class="statusline" id="statusline"></div>
+      <div class="statusline" id="statusline" role="status" aria-live="polite"></div>
     </div>
     <div id="results"></div>
   </section>
 
   <!-- ===== onglet découvrir ===== -->
-  <section id="viewDiscover" class="hidden">
+  <section id="viewDiscover" class="hidden" role="tabpanel" aria-labelledby="tabDiscover">
     <div class="toolbar">
       <div class="row">
         <button class="btn" id="runDiscover">Analyser</button>
@@ -72,7 +72,7 @@
         <div class="chiprow" id="dsortRow" role="group" aria-label="Tri"></div>
       </div>
       <div class="progress hidden" id="discoverProgress"><i style="width:0%"></i></div>
-      <div class="statusline" id="discoverStatus"></div>
+      <div class="statusline" id="discoverStatus" role="status" aria-live="polite"></div>
     </div>
     <div id="discoverBox"></div>
   </section>
@@ -83,10 +83,12 @@
   </p>
 </div>
 
-<nav class="tabs" role="tablist">
-  <button class="tab" role="tab" id="tabLibrary" aria-selected="true"><span class="badge" id="tabLibN">0</span>Bibliothèque</button>
-  <button class="tab" role="tab" id="tabDiscover" aria-selected="false"><span class="badge" id="tabDiscN">—</span>Découvrir</button>
-  <button class="tab" role="tab" id="tabAdd" aria-selected="false"><span class="badge">＋</span>Ajouter</button>
+<nav class="tabs" role="tablist" data-i18n-attr="aria-label:tabs.label">
+  <button class="tab" role="tab" id="tabLibrary" aria-selected="true" aria-controls="viewLibrary"><span class="badge" id="tabLibN">0</span><span data-i18n="tab.library">Bibliothèque</span></button>
+  <button class="tab" role="tab" id="tabDiscover" aria-selected="false" aria-controls="viewDiscover"><span class="badge" id="tabDiscN">—</span><span data-i18n="tab.discover">Découvrir</span></button>
+  <!-- NOT a tab: it opens a modal and controls no panel. Announcing it as one made the whole
+       widget wrong for assistive technology (REVIEW.md §6). -->
+  <button class="tab" id="tabAdd"><span class="badge">＋</span><span data-i18n="tab.add">Ajouter</span></button>
 </nav>
 
 <div id="overlay"></div>

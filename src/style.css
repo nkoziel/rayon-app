@@ -1,6 +1,12 @@
 :root{
   --ink:#16150F; --ink-soft:#3B392E; --paper:#D9D7CA; --paper-hi:#E9E7DC;
-  --vermilion:#C92D12; --press:#0F6C99; --dim:#726F5F;
+  --vermilion:#C92D12; --press:#0F6C99;
+  /* --dim carries ALL the secondary typography (.rmeta, .statusline, .sub, .lm, .cm,
+     .filtersum, .prov, .empty), often at 9.5-10px. It used to be #726F5F: 3.50:1 on --paper,
+     where WCAG AA asks 4.5:1 for normal text (REVIEW.md §6).
+     #5A5849 measures 4.96:1 on --paper and 5.78:1 on --paper-hi - both backgrounds it is
+     actually used on - without changing the palette's character. */
+  --dim:#5A5849;
   --safe-b:env(safe-area-inset-bottom,0px);
 }
 *,*::before,*::after{box-sizing:border-box}

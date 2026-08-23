@@ -130,6 +130,8 @@ const en = {
   "onboard.search":            "Search for a title",
   "onboard.import":            "Import a backup",
   "reset.exportFirst":         "Export your library before erasing it?\n\n{n} series. The export is the only possible backup.",
+
+  "tabs.label":                "Main sections",
 };
 
 const fr = {
@@ -242,6 +244,8 @@ const fr = {
   "onboard.search":            "Chercher un titre",
   "onboard.import":            "Importer une sauvegarde",
   "reset.exportFirst":         "Exporter ta bibliothèque avant de l'effacer ?\n\n{n} série(s). L'export est la seule sauvegarde possible.",
+
+  "tabs.label":                "Sections principales",
 };
 
 const LOCALES = { en, fr };
