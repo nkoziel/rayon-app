@@ -3,6 +3,7 @@
 import { $, esc } from '../core/dom.js';
 import { libraryChanged } from './refresh.js';
 import { norm } from '../core/norm.js';
+import { recordOf } from '../data/record.js';
 import { LIB, META, state } from '../core/state.js';
 import { t as T } from '../core/i18n.js';
 import { progressOf } from '../data/totals.js';
@@ -66,11 +67,11 @@ export function libRows(){
 }
 
 export function posterHTML(d){
-  const meta = META[norm(d.t)];
+  const meta = recordOf(d);
   const p = progressOf(d);
   const pct = p.pct;
-  const cover = meta && !meta.missing ? meta.cover : "";
-  const score = meta && !meta.missing ? meta.score : null;
+  const cover = meta ? meta.cover : "";
+  const score = meta ? meta.score : null;
   const behind = p.remain;
   const tape = d.origin === "manuel" ? "Manuel" : (behind >= 5 ? "+"+behind+" "+(p.unit==="tomes"?"t.":"ch.") : (d.m === "Webtoon" ? "Webtoon" : ""));
   return `<button class="card" data-id="${d.id}">
@@ -86,8 +87,8 @@ export function posterHTML(d){
 }
 
 export function listHTML(d){
-  const meta = META[norm(d.t)];
-  const cover = meta && !meta.missing ? meta.cover : "";
+  const meta = recordOf(d);
+  const cover = meta ? meta.cover : "";
   return `<button class="lrow" data-id="${d.id}">
     ${cover?`<img src="${esc(cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
     <span style="min-width:0"><span class="lt">${esc(d.t)}</span><br>

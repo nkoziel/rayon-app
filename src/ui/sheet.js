@@ -2,6 +2,7 @@
 
 import { $, esc, toast, closeModal } from '../core/dom.js';
 import { norm } from '../core/norm.js';
+import { recordOf, CREDIT } from '../data/record.js';
 import { LIB, META, saveLib, isOwned, state } from '../core/state.js';
 import { t as T } from '../core/i18n.js';
 import { loadRecos } from '../data/anilist.js';
@@ -31,11 +32,13 @@ export function recoRowHTML(r){
 export function openSheet(d){
   if (!d) return;
   current = d;
-  const raw = META[norm(d.t)];
-  const meta = raw && !raw.missing ? raw : null;
+  /* Source-agnostic: MangaBaka when we have it, AniList otherwise. */
+  const meta = recordOf(d);
   const pct = d.n ? Math.min(100, Math.round(d.r/d.n*100)) : 0;
   const behind = meta && meta.chapitres ? meta.chapitres - d.r : null;
-  const hmeta = [meta&&meta.type, meta&&meta.annee, meta&&meta.statut, meta&&meta.score?meta.score+"/100":null].filter(Boolean).join(" · ");
+    const hmeta = [meta&&meta.type, meta&&meta.annee, meta&&meta.statut,
+    meta&&meta.score ? meta.score+"/100" + (meta.sources > 1 ? " ("+meta.sources+")" : "") : null]
+    .filter(Boolean).join(" · ");
   $("overlay").innerHTML = `
     <div class="scrim" id="scrim"></div>
     <aside class="sheet" role="dialog" aria-label="Fiche ${esc(d.t)}">
@@ -60,7 +63,7 @@ export function openSheet(d){
           <dt>Ajouté le</dt><dd>${esc(d.ad||"—")}</dd>
           <dt>Auteur</dt><dd>${esc((meta&&meta.auteur)||d.a||"—")}</dd>
           <dt>Source</dt><dd>${esc(d.s)}</dd>
-          ${meta?`<dt>Fiche</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)} sur AniList</a></dd>`:""}
+          ${meta ? `<dt>${esc(T("sheet.record"))}</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)}</a> ${esc(T("sheet.via", { source: (CREDIT[meta.src]||{}).name || "" }))}${(CREDIT[meta.src]||{}).licence ? ` <span class="rmeta">(${esc(CREDIT[meta.src].licence)})</span>` : ""}</dd>` : ""}
         </dl>
         ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
         <div class="seclabel"><span>Ce que lisent ceux qui ont aimé</span><button class="btn ghost sm" id="refresh">Actualiser</button></div>

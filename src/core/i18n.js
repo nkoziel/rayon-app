@@ -153,6 +153,12 @@ const en = {
   "net.mbRateLimited":         "MangaBaka is rate limiting ({s}s to wait).",
   "net.mbStatus":              "MangaBaka answered {code}.",
   "net.mbBadResponse":         "Unreadable response from MangaBaka.",
+
+  "hydrate.resolving":         "Fetching records · {done}/{total}",
+  "hydrate.done":              "{n} records of {total} · cached",
+
+  "sheet.record":              "Record",
+  "sheet.via":                 "via {source}",
 };
 
 const fr = {
@@ -288,6 +294,12 @@ const fr = {
   "net.mbRateLimited":         "MangaBaka limite les requêtes ({s} s d\u0027attente).",
   "net.mbStatus":              "MangaBaka a répondu {code}.",
   "net.mbBadResponse":         "Réponse illisible de MangaBaka.",
+
+  "hydrate.resolving":         "Récupération des fiches · {done}/{total}",
+  "hydrate.done":              "{n} fiches sur {total} · en cache",
+
+  "sheet.record":              "Fiche",
+  "sheet.via":                 "via {source}",
 };
 
 const LOCALES = { en, fr };

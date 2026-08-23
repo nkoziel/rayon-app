@@ -24,6 +24,9 @@ export const saveLib = () => { const ok = store.set("lib:v1", LIB); refreshOwned
    they used to overflow it and silently stop the library from saving (REVIEW.md §1.2). */
 export let META = {};
 export let MDCACHE = {};
+/* MangaBaka records, keyed like the others. Primary metadata source since AniList's API was
+   disabled upstream (403). */
+export let MBCACHE = {};
 export let DISCOVER = null;
 
 export function setDiscover(v){ DISCOVER = v; }
@@ -61,7 +64,7 @@ export const state = {
 
 /* ---------- persistence of the caches ---------- */
 
-export const CACHE_KEYS = ["meta:v2", "md:v1", "discover:v1"];
+export const CACHE_KEYS = ["meta:v2", "md:v1", "mb:v1", "discover:v1"];
 
 /* Keys from the removed reader. Never migrated, only dropped: nothing reads them any more. */
 export const DEAD_KEYS = ["catalog:v1", "fsprog:v1", "pickindex:v1"];
@@ -94,5 +97,6 @@ export async function migrateCaches(){
 export async function loadCaches(){
   META     = (await kvGet("meta:v2"))     || {};
   MDCACHE  = (await kvGet("md:v1"))       || {};
+  MBCACHE  = (await kvGet("mb:v1"))       || {};
   DISCOVER = (await kvGet("discover:v1")) || null;
 }

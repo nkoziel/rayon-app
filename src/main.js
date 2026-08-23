@@ -3,7 +3,8 @@
 import { $, esc, stripTags, sleep, uid, toast } from './core/dom.js';
 import { norm } from './core/norm.js';
 import { t as T, setLocale, locale, AVAILABLE, applyStatic } from './core/i18n.js';
-import { gql, shapeMedia, searchBatch, hydrate, loadRecos, RECO_Q, SEARCH_PAGE_Q } from './data/anilist.js';
+import { gql, shapeMedia, searchBatch, loadRecos, RECO_Q, SEARCH_PAGE_Q } from './data/anilist.js';
+import { hydrate } from './data/hydrate.js';
 import { mdResolve, mdAggregate } from './data/mangadex.js';
 import { totals, unitOf, SRCLABEL, SRCNOTE } from './data/totals.js';
 import { importFile, exportLib, mergeLibraries, purgeSeriesData, resetEverything } from './import/library.js';

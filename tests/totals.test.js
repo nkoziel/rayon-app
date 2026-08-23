@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { totals, unitOf, progressOf } from '../src/data/totals.js';
-import { META, MDCACHE, state } from '../src/core/state.js';
+import { META, MDCACHE, MBCACHE, state } from '../src/core/state.js';
 import { norm } from '../src/core/norm.js';
 
 /* The provenance cascade. There is no single reliable source for "how many chapters exist",
@@ -15,6 +15,7 @@ const entry = (over = {}) => ({ t: 'Test Serie', r: 0, rv: 0, n: 0, origin: 'mih
 beforeEach(() => {
   for (const k of Object.keys(META)) delete META[k];
   for (const k of Object.keys(MDCACHE)) delete MDCACHE[k];
+  for (const k of Object.keys(MBCACHE)) delete MBCACHE[k];
   state.unit = 'ch';
 });
 
@@ -37,20 +38,51 @@ describe('totals — priority order', () => {
     expect(t.chSrc).toBe('anilist');
   });
 
-  it('prefers MangaDex over AniList', () => {
+  it('prefers AniList over MangaDex for a finished series', () => {
+    /* This was BACKWARDS and produced understated totals: MangaDex reports what has been
+       TRANSLATED, not what was published, so Berserk showed 386 chapters when 401 exist. */
+    META[KEY] = { statut: 'Terminé', chapitres: 401 };
+    MDCACHE[KEY] = { maxCh: 386 };
+    const t = totals(entry());
+    expect(t.ch).toBe(401);
+    expect(t.chSrc).toBe('anilist');
+  });
+
+  it('prefers MangaBaka over everything automatic', () => {
+    MDCACHE[KEY] = { maxCh: 386 };
+    META[KEY] = { statut: 'Terminé', chapitres: 401 };
+    MBCACHE[KEY] = { chapitres: 405, volumes: 43 };
+    const t = totals(entry());
+    expect(t.ch).toBe(405);
+    expect(t.chSrc).toBe('mangabaka');
+    expect(t.volSrc).toBe('mangabaka');
+  });
+
+  it('gives MangaBaka counts for an ONGOING series, where AniList has none', () => {
+    /* The whole point of the migration: One Piece is releasing, so AniList leaves chapters
+       and volumes empty while MangaBaka has both. */
+    META[KEY] = { statut: 'En cours', chapitres: null, volumes: null };
+    MBCACHE[KEY] = { chapitres: 1191, volumes: 115 };
+    const t = totals(entry());
+    expect(t.ch).toBe(1191);
+    expect(t.vol).toBe(115);
+    expect(t.chSrc).toBe('mangabaka');
+  });
+
+  it('lets a manual entry beat everything, MangaBaka included', () => {
     META[KEY] = { statut: 'Terminé', chapitres: 141 };
+    MDCACHE[KEY] = { maxCh: 150 };
+    MBCACHE[KEY] = { chapitres: 160 };
+    const t = totals(entry({ manCh: 999 }));
+    expect(t.ch).toBe(999);
+    expect(t.chSrc).toBe('manuel');
+  });
+
+  it('still falls back to MangaDex when nothing better exists', () => {
     MDCACHE[KEY] = { maxCh: 150 };
     const t = totals(entry());
     expect(t.ch).toBe(150);
     expect(t.chSrc).toBe('mangadex');
-  });
-
-  it('lets a manual entry beat everything', () => {
-    META[KEY] = { statut: 'Terminé', chapitres: 141 };
-    MDCACHE[KEY] = { maxCh: 150 };
-    const t = totals(entry({ manCh: 999 }));
-    expect(t.ch).toBe(999);
-    expect(t.chSrc).toBe('manuel');
   });
 
   it('reports no total rather than guessing when nothing is known', () => {

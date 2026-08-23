@@ -206,7 +206,11 @@ const en = {
   "net.mbUnreachable": "MangaBaka unreachable. Check your connection.",
   "net.mbRateLimited": "MangaBaka is rate limiting ({s}s to wait).",
   "net.mbStatus": "MangaBaka answered {code}.",
-  "net.mbBadResponse": "Unreadable response from MangaBaka."
+  "net.mbBadResponse": "Unreadable response from MangaBaka.",
+  "hydrate.resolving": "Fetching records · {done}/{total}",
+  "hydrate.done": "{n} records of {total} · cached",
+  "sheet.record": "Record",
+  "sheet.via": "via {source}"
 };
 const fr = {
   "app.title": "Rayon",
@@ -328,7 +332,11 @@ const fr = {
   "net.mbUnreachable": "MangaBaka injoignable. Vérifie ta connexion.",
   "net.mbRateLimited": "MangaBaka limite les requêtes ({s} s d'attente).",
   "net.mbStatus": "MangaBaka a répondu {code}.",
-  "net.mbBadResponse": "Réponse illisible de MangaBaka."
+  "net.mbBadResponse": "Réponse illisible de MangaBaka.",
+  "hydrate.resolving": "Récupération des fiches · {done}/{total}",
+  "hydrate.done": "{n} fiches sur {total} · en cache",
+  "sheet.record": "Fiche",
+  "sheet.via": "via {source}"
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -482,6 +490,7 @@ const saveLib = () => {
 };
 let META = {};
 let MDCACHE = {};
+let MBCACHE = {};
 let DISCOVER = null;
 function setDiscover(v) {
   DISCOVER = v;
@@ -524,7 +533,7 @@ const state = {
   libType: "all",
   seeds: 25
 };
-const CACHE_KEYS = ["meta:v2", "md:v1", "discover:v1"];
+const CACHE_KEYS = ["meta:v2", "md:v1", "mb:v1", "discover:v1"];
 const DEAD_KEYS = ["catalog:v1", "fsprog:v1", "pickindex:v1"];
 async function migrateCaches() {
   for (const k of CACHE_KEYS) {
@@ -553,22 +562,23 @@ async function migrateCaches() {
 async function loadCaches() {
   META = await kvGet("meta:v2") || {};
   MDCACHE = await kvGet("md:v1") || {};
+  MBCACHE = await kvGet("mb:v1") || {};
   DISCOVER = await kvGet("discover:v1") || null;
 }
-const API = "https://graphql.anilist.co";
-let cooldownUntil = 0;
+const API$1 = "https://graphql.anilist.co";
+let cooldownUntil$1 = 0;
 async function gql(query, variables) {
-  const wait = cooldownUntil - Date.now();
+  const wait = cooldownUntil$1 - Date.now();
   if (wait > 0) await sleep(wait);
   let res;
   try {
-    res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) });
+    res = await fetch(API$1, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) });
   } catch (e) {
     throw new Error(t("net.anilistUnreachable"));
   }
   if (res.status === 429) {
     const retry = parseInt(res.headers.get("Retry-After") || "60", 10);
-    cooldownUntil = Date.now() + retry * 1e3;
+    cooldownUntil$1 = Date.now() + retry * 1e3;
     throw new Error(t("net.anilistRateLimited", { s: retry }));
   }
   const json = await res.json().catch(() => null);
@@ -625,60 +635,6 @@ async function searchBatch(entries) {
   });
   saveLib();
 }
-let hydrating = false;
-async function hydrate(onBatch = () => {
-}) {
-  if (hydrating || !LIB.entries.length) return;
-  hydrating = true;
-  try {
-    const todo = LIB.entries.filter((d) => !META[norm(d.t)]);
-    const withId = todo.filter((d) => d.al), without = todo.filter((d) => !d.al);
-    const total = todo.length;
-    let done = 0;
-    for (let i = 0; i < withId.length; i += 50) {
-      const chunk = withId.slice(i, i + 50);
-      $("statusline").textContent = `Fiches AniList · ${done}/${total}`;
-      try {
-        const data = await gql(BY_IDS_Q, { ids: chunk.map((d) => d.al) });
-        const byId = {};
-        (data.Page.media || []).forEach((m) => {
-          byId[m.id] = shapeMedia(m);
-        });
-        chunk.forEach((d) => {
-          META[norm(d.t)] = byId[d.al] || { missing: true };
-        });
-        markMetaDirty();
-      } catch (e) {
-        $("statusline").textContent = e.message;
-        await sleep(2500);
-      }
-      done += chunk.length;
-      onBatch();
-      await sleep(700);
-    }
-    for (let i = 0; i < without.length; i += 6) {
-      const chunk = without.slice(i, i + 6);
-      $("statusline").textContent = `Recherche des fiches · ${done}/${total}`;
-      try {
-        await searchBatch(chunk);
-      } catch (e) {
-        $("statusline").textContent = e.message;
-        await sleep(3e3);
-      }
-      done += chunk.length;
-      onBatch();
-      await sleep(900);
-    }
-    saveMeta();
-    const found = LIB.entries.filter((d) => {
-      const m = META[norm(d.t)];
-      return m && !m.missing;
-    }).length;
-    $("statusline").textContent = `${found} fiches AniList sur ${LIB.entries.length} · en cache`;
-  } finally {
-    hydrating = false;
-  }
-}
 async function loadRecos(entry, force) {
   const key = "reco:v3:" + norm(entry.t);
   if (!force) {
@@ -710,6 +666,170 @@ async function loadRecos(entry, force) {
   };
   kvSet(key, payload);
   return payload;
+}
+const API = "https://api.mangabaka.org";
+let cooldownUntil = 0;
+async function mbGet(path) {
+  const wait = cooldownUntil - Date.now();
+  if (wait > 0) await sleep(wait);
+  let res;
+  try {
+    res = await fetch(API + path, { headers: { Accept: "application/json" } });
+  } catch (e) {
+    throw new Error(t("net.mbUnreachable"));
+  }
+  if (res.status === 429) {
+    const retry = parseInt(res.headers.get("Retry-After") || "30", 10);
+    cooldownUntil = Date.now() + retry * 1e3;
+    throw new Error(t("net.mbRateLimited", { s: retry }));
+  }
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(t("net.mbStatus", { code: res.status }));
+  const json = await res.json().catch(() => null);
+  if (!json) throw new Error(t("net.mbBadResponse"));
+  if (json.message && json.status >= 400) throw new Error(json.message);
+  return json.data;
+}
+function shapeCover(cover) {
+  if (!cover) return { url: "", blurhash: "" };
+  const pick2 = cover.x350 || cover.x250 || cover.x150;
+  return {
+    url: pick2 && (pick2.x2 || pick2.x1) || cover.raw && cover.raw.url || "",
+    blurhash: cover.raw && cover.raw.blurhash || ""
+  };
+}
+function shapeSeries(s) {
+  if (!s) return null;
+  const src = s.source || {};
+  const rated = Object.values(src).filter((v) => v && v.rating_normalized != null);
+  const cover = shapeCover(s.cover);
+  return {
+    mb: s.id,
+    id: src.anilist && src.anilist.id || null,
+    // keep the AniList id where one exists
+    titre: s.title || s.romanized_title || s.native_title || "",
+    romaji: s.romanized_title || s.title || "",
+    url: `https://mangabaka.org/series/${s.id}`,
+    cover: cover.url,
+    blurhash: cover.blurhash,
+    type: s.type ? s.type[0].toUpperCase() + s.type.slice(1) : "",
+    statut: s.status || "",
+    chapitres: s.total_chapters != null ? Number(s.total_chapters) : null,
+    volumes: s.final_volume != null ? Number(s.final_volume) : null,
+    /* The average of every database that has an opinion, not one site's score. */
+    score: rated.length ? Math.round(rated.reduce((a, v) => a + v.rating_normalized, 0) / rated.length) : null,
+    sources: rated.length,
+    pop: s.popularity && s.popularity.global != null ? Number(s.popularity.global) : 0,
+    annee: s.year || null,
+    genres: (s.genres || []).map((g) => typeof g === "string" ? g : g.name).filter(Boolean).slice(0, 8),
+    auteur: [...s.authors || [], ...s.artists || []].map((a) => typeof a === "string" ? a : a && a.name).filter(Boolean).join(", "),
+    desc: (s.description || "").slice(0, 900),
+    /* Every alternative title, which is what makes matching a Mihon folder name work. */
+    aliases: (s.titles || []).map((x) => x && x.title).filter(Boolean)
+  };
+}
+async function byAniListId(id) {
+  const d = await mbGet(`/v1/source/anilist/${encodeURIComponent(id)}?with_series=true`);
+  const list = d && d.series;
+  const s = Array.isArray(list) ? list[0] : list;
+  return shapeSeries(s);
+}
+async function matchTitle(title) {
+  const d = await mbGet(`/v1/series/match?q=${encodeURIComponent(String(title).slice(0, 120))}`);
+  const first = Array.isArray(d) ? d[0] : d;
+  return shapeSeries(first);
+}
+let running = false;
+const saveMb = () => kvSet("mb:v1", MBCACHE);
+async function resolveOne(d) {
+  if (d.al) {
+    const m = await byAniListId(d.al);
+    if (m) return m;
+  }
+  return matchTitle(d.t);
+}
+async function hydrate(onBatch = () => {
+}) {
+  if (running || !LIB.entries.length) return;
+  running = true;
+  try {
+    const todo = LIB.entries.filter((d) => !MBCACHE[norm(d.t)] && !META[norm(d.t)]);
+    if (!todo.length) {
+      status();
+      return;
+    }
+    const total = todo.length;
+    let done = 0, viaMb = 0;
+    const pending = [];
+    for (const d of todo) {
+      $("statusline").textContent = t("hydrate.resolving", { done, total });
+      try {
+        const m = await resolveOne(d);
+        if (m) {
+          MBCACHE[norm(d.t)] = m;
+          if (!d.al && m.id) d.al = m.id;
+          viaMb++;
+        } else {
+          pending.push(d);
+        }
+      } catch (e) {
+        $("statusline").textContent = e.message;
+        pending.push(d);
+        await sleep(1500);
+      }
+      done++;
+      if (done % 10 === 0) {
+        saveMb();
+        onBatch();
+      }
+    }
+    saveMb();
+    onBatch();
+    if (pending.length) {
+      const withId = pending.filter((d) => d.al), without = pending.filter((d) => !d.al);
+      for (let i = 0; i < withId.length; i += 50) {
+        const chunk = withId.slice(i, i + 50);
+        try {
+          const data = await gql(BY_IDS_Q, { ids: chunk.map((d) => d.al) });
+          const byId = {};
+          (data.Page.media || []).forEach((m) => {
+            byId[m.id] = shapeMedia(m);
+          });
+          chunk.forEach((d) => {
+            META[norm(d.t)] = byId[d.al] || { missing: true };
+          });
+          markMetaDirty();
+        } catch (e) {
+          $("statusline").textContent = e.message;
+          break;
+        }
+        onBatch();
+        await sleep(2100);
+      }
+      for (let i = 0; i < without.length; i += 6) {
+        try {
+          await searchBatch(without.slice(i, i + 6));
+        } catch (e) {
+          $("statusline").textContent = e.message;
+          break;
+        }
+        onBatch();
+        await sleep(2100);
+      }
+    }
+    saveMeta();
+    saveLib();
+    status(viaMb);
+  } finally {
+    running = false;
+  }
+}
+function status(viaMb) {
+  const n = LIB.entries.filter((d) => {
+    const k = norm(d.t);
+    return MBCACHE[k] || META[k] && !META[k].missing;
+  }).length;
+  $("statusline").textContent = t("hydrate.done", { n, total: LIB.entries.length });
 }
 const MD = "https://api.mangadex.org";
 async function mdGet(path) {
@@ -828,44 +948,40 @@ function missingVolumes(str, total) {
   for (let i = 1; i <= total; i++) if (!owned.has(i)) out.push(i);
   return out;
 }
+const ORDER = ["mihon", "import", "mangadex", "anilist", "mangabaka", "manuel"];
+const rank = (src) => ORDER.indexOf(src);
 function totals(d) {
-  const meta = META[norm(d.t)];
-  const md = MDCACHE[norm(d.t)];
+  const key = norm(d.t);
+  const meta = META[key];
+  const md = MDCACHE[key];
+  const mb = MBCACHE[key];
   const out = { ch: null, chSrc: null, vol: null, volSrc: null, at: md && md.at };
-  if (md && md.maxCh) {
-    out.ch = md.maxCh;
-    out.chSrc = "mangadex";
-  }
-  if (md && md.maxVol) {
-    out.vol = md.maxVol;
-    out.volSrc = "mangadex";
+  const put = (field, srcField, value, src) => {
+    if (!value) return;
+    if (out[srcField] && rank(src) <= rank(out[srcField])) return;
+    out[field] = value;
+    out[srcField] = src;
+  };
+  if (d.n) put("ch", "chSrc", d.n, d.origin === "mihon" ? "mihon" : "import");
+  if (md) {
+    put("ch", "chSrc", md.maxCh, "mangadex");
+    put("vol", "volSrc", md.maxVol, "mangadex");
   }
   if (meta && !meta.missing) {
     const fini = meta.statut === "Terminé";
-    if (meta.chapitres && (!out.ch || fini && meta.chapitres > out.ch)) {
-      out.ch = meta.chapitres;
-      out.chSrc = "anilist";
-    }
-    if (meta.volumes && (!out.vol || fini)) {
-      out.vol = meta.volumes;
-      out.volSrc = "anilist";
-    }
+    if (fini || !out.ch) put("ch", "chSrc", meta.chapitres, "anilist");
+    if (fini || !out.vol) put("vol", "volSrc", meta.volumes, "anilist");
   }
-  if (!out.ch && d.n) {
-    out.ch = d.n;
-    out.chSrc = d.origin === "mihon" ? "mihon" : "import";
+  if (mb) {
+    put("ch", "chSrc", mb.chapitres, "mangabaka");
+    put("vol", "volSrc", mb.volumes, "mangabaka");
   }
-  if (d.manCh) {
-    out.ch = d.manCh;
-    out.chSrc = "manuel";
-  }
-  if (d.manVol) {
-    out.vol = d.manVol;
-    out.volSrc = "manuel";
-  }
+  put("ch", "chSrc", d.manCh, "manuel");
+  put("vol", "volSrc", d.manVol, "manuel");
   return out;
 }
 const SRCLABEL = {
+  mangabaka: "MangaBaka",
   mangadex: "MangaDex",
   anilist: "AniList",
   mihon: "chapitres de ta source",
@@ -873,7 +989,8 @@ const SRCLABEL = {
   manuel: "saisi à la main"
 };
 const SRCNOTE = {
-  mangadex: "structure des tomes et dernier chapitre traduit recensés par MangaDex",
+  mangabaka: "comptes de publication agrégés par MangaBaka depuis plusieurs bases",
+  mangadex: "dernier chapitre traduit recensé par MangaDex — ce qui est disponible à lire, pas ce qui est paru",
   anilist: "AniList ne renseigne les totaux que pour les séries achevées",
   mihon: "nombre de chapitres présents chez ta source de lecture",
   import: "valeur venue du fichier importé",
@@ -1336,6 +1453,19 @@ function openAddModal(prefill) {
   }
   input.focus();
 }
+function recordOf(d) {
+  if (!d) return null;
+  const key = norm(d.t);
+  const mb = MBCACHE[key];
+  if (mb) return { ...mb, src: "mangabaka" };
+  const al = META[key];
+  if (al && !al.missing) return { ...al, src: "anilist", sources: 1, blurhash: "" };
+  return null;
+}
+const CREDIT = {
+  mangabaka: { name: "MangaBaka", url: "https://mangabaka.org", licence: "CC BY-NC-SA 4.0" },
+  anilist: { name: "AniList", url: "https://anilist.co", licence: "" }
+};
 function provenanceHTML(d) {
   const t2 = totals(d);
   const unit = unitOf(d);
@@ -1509,11 +1639,15 @@ function recoRowHTML(r) {
 function openSheet(d) {
   if (!d) return;
   current = d;
-  const raw = META[norm(d.t)];
-  const meta = raw && !raw.missing ? raw : null;
+  const meta = recordOf(d);
   d.n ? Math.min(100, Math.round(d.r / d.n * 100)) : 0;
   meta && meta.chapitres ? meta.chapitres - d.r : null;
-  const hmeta = [meta && meta.type, meta && meta.annee, meta && meta.statut, meta && meta.score ? meta.score + "/100" : null].filter(Boolean).join(" · ");
+  const hmeta = [
+    meta && meta.type,
+    meta && meta.annee,
+    meta && meta.statut,
+    meta && meta.score ? meta.score + "/100" + (meta.sources > 1 ? " (" + meta.sources + ")" : "") : null
+  ].filter(Boolean).join(" · ");
   $("overlay").innerHTML = `
     <div class="scrim" id="scrim"></div>
     <aside class="sheet" role="dialog" aria-label="Fiche ${esc(d.t)}">
@@ -1538,7 +1672,7 @@ function openSheet(d) {
           <dt>Ajouté le</dt><dd>${esc(d.ad || "—")}</dd>
           <dt>Auteur</dt><dd>${esc(meta && meta.auteur || d.a || "—")}</dd>
           <dt>Source</dt><dd>${esc(d.s)}</dd>
-          ${meta ? `<dt>Fiche</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)} sur AniList</a></dd>` : ""}
+          ${meta ? `<dt>${esc(t("sheet.record"))}</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)}</a> ${esc(t("sheet.via", { source: (CREDIT[meta.src] || {}).name || "" }))}${(CREDIT[meta.src] || {}).licence ? ` <span class="rmeta">(${esc(CREDIT[meta.src].licence)})</span>` : ""}</dd>` : ""}
         </dl>
         ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
         <div class="seclabel"><span>Ce que lisent ceux qui ont aimé</span><button class="btn ghost sm" id="refresh">Actualiser</button></div>
@@ -1651,11 +1785,11 @@ function libRows() {
   return out;
 }
 function posterHTML(d) {
-  const meta = META[norm(d.t)];
+  const meta = recordOf(d);
   const p = progressOf(d);
   const pct = p.pct;
-  const cover = meta && !meta.missing ? meta.cover : "";
-  const score = meta && !meta.missing ? meta.score : null;
+  const cover = meta ? meta.cover : "";
+  const score = meta ? meta.score : null;
   const behind = p.remain;
   const tape = d.origin === "manuel" ? "Manuel" : behind >= 5 ? "+" + behind + " " + (p.unit === "tomes" ? "t." : "ch.") : d.m === "Webtoon" ? "Webtoon" : "";
   return `<button class="card" data-id="${d.id}">
@@ -1670,8 +1804,8 @@ function posterHTML(d) {
   </button>`;
 }
 function listHTML(d) {
-  const meta = META[norm(d.t)];
-  const cover = meta && !meta.missing ? meta.cover : "";
+  const meta = recordOf(d);
+  const cover = meta ? meta.cover : "";
   return `<button class="lrow" data-id="${d.id}">
     ${cover ? `<img src="${esc(cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
     <span style="min-width:0"><span class="lt">${esc(d.t)}</span><br>

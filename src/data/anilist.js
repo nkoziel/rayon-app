@@ -31,7 +31,7 @@ const FIELDS = `
   id siteUrl format status chapters volumes averageScore popularity genres countryOfOrigin
   startDate{year} title{romaji english} coverImage{large medium} bannerImage description(asHtml:false)
   staff(perPage:2, sort:RELEVANCE){ nodes{ name{full} } }`;
-const BY_IDS_Q = `query ($ids:[Int]){ Page(perPage:50){ media(id_in:$ids, type:MANGA){ ${FIELDS} } } }`;
+export const BY_IDS_Q = `query ($ids:[Int]){ Page(perPage:50){ media(id_in:$ids, type:MANGA){ ${FIELDS} } } }`;
 export const SEARCH_PAGE_Q = `query ($s:String){ Page(perPage:8){ media(search:$s, type:MANGA, sort:SEARCH_MATCH){ ${FIELDS} } } }`;
 export const RECO_Q = `query ($id:Int){ Media(id:$id, type:MANGA){ id siteUrl title{romaji english}
   recommendations(sort:RATING_DESC, perPage:12){ nodes{ rating mediaRecommendation{ ${FIELDS} } } } } }`;
@@ -70,37 +70,6 @@ export async function searchBatch(entries){
   saveLib();
 }
 
-let hydrating = false;
-export async function hydrate(onBatch = () => {}){
-  if (hydrating || !LIB.entries.length) return;
-  hydrating = true;
-  try{
-    const todo = LIB.entries.filter(d => !META[norm(d.t)]);
-    const withId = todo.filter(d=>d.al), without = todo.filter(d=>!d.al);
-    const total = todo.length; let done = 0;
-    for (let i=0;i<withId.length;i+=50){
-      const chunk = withId.slice(i,i+50);
-      $("statusline").textContent = `Fiches AniList · ${done}/${total}`;
-      try{
-        const data = await gql(BY_IDS_Q,{ids:chunk.map(d=>d.al)});
-        const byId = {}; (data.Page.media||[]).forEach(m=>{ byId[m.id]=shapeMedia(m); });
-        chunk.forEach(d=>{ META[norm(d.t)] = byId[d.al] || {missing:true}; });
-        markMetaDirty();
-      }catch(e){ $("statusline").textContent = e.message; await sleep(2500); }
-      done += chunk.length; onBatch(); await sleep(700);
-    }
-    for (let i=0;i<without.length;i+=6){
-      const chunk = without.slice(i,i+6);
-      $("statusline").textContent = `Recherche des fiches · ${done}/${total}`;
-      try{ await searchBatch(chunk); }catch(e){ $("statusline").textContent = e.message; await sleep(3000); }
-      done += chunk.length; onBatch(); await sleep(900);
-    }
-    saveMeta();
-    const found = LIB.entries.filter(d=>{ const m=META[norm(d.t)]; return m && !m.missing; }).length;
-    $("statusline").textContent = `${found} fiches AniList sur ${LIB.entries.length} · en cache`;
-  } finally { hydrating = false; }
-}
-
 export async function loadRecos(entry, force){
   const key = "reco:v3:"+norm(entry.t);
   if (!force){ const hit = await kvGet(key); if (hit) return hit; }
@@ -126,7 +95,6 @@ export async function loadRecos(entry, force){
   kvSet(key, payload);
   return payload;
 }
-
 
 import { sleep } from '../core/dom.js';
 import { t } from '../core/i18n.js';
