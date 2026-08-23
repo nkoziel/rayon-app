@@ -120,7 +120,7 @@ export function updateFilterSummary(){
   if (state.shelf !== "all") parts.push(T("shelf."+state.shelf));
   if (state.source !== "all") parts.push(state.source);
   parts.push(T("filter.sortBy", { what: T("sort."+state.sort).toLowerCase() }));
-  $("filterSum").innerHTML = `<b>${libRows().length}</b> ${esc(T("filter.summary",{n:libRows().length}).replace(/^\d+\s*/,""))} · ${esc(parts.join(" · "))}`
+  $("filterSum").innerHTML = `<b>${libRows().length}</b> ${esc(T("filter.summary",{n:libRows().length}))} · ${esc(parts.join(" · "))}`
     + (active ? ` <button class="btn sm ghost" id="clearFilters">${esc(T("filter.showAll"))}</button>` : "");
   const cf = $("clearFilters");
   if (cf) cf.onclick = () => {

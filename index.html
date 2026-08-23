@@ -174,7 +174,7 @@ const en = {
   "seeds.all": "All my series",
   "filter.showAll": "Show all",
   "filter.sortBy": "sorted by {what}",
-  "filter.summary": "{n} series",
+  "filter.summary": { one: "series", other: "series" },
   "btn.postersView": "Poster view",
   "toast.byChapters": "Showing chapters",
   "toast.byVolumes": "Showing volumes — each series can be set separately in its sheet",
@@ -276,7 +276,7 @@ const fr = {
   "seeds.all": "Toutes mes séries",
   "filter.showAll": "Tout afficher",
   "filter.sortBy": "tri : {what}",
-  "filter.summary": "{n} séries",
+  "filter.summary": { one: "série", other: "séries" },
   "btn.postersView": "Vue posters",
   "toast.byChapters": "Affichage par chapitres",
   "toast.byVolumes": "Affichage par tomes — chaque série peut être réglée à part dans sa fiche",
@@ -1567,7 +1567,7 @@ function updateFilterSummary() {
   if (state.shelf !== "all") parts.push(t("shelf." + state.shelf));
   if (state.source !== "all") parts.push(state.source);
   parts.push(t("filter.sortBy", { what: t("sort." + state.sort).toLowerCase() }));
-  $("filterSum").innerHTML = `<b>${libRows().length}</b> ${esc(t("filter.summary", { n: libRows().length }).replace(/^\d+\s*/, ""))} · ${esc(parts.join(" · "))}` + (active ? ` <button class="btn sm ghost" id="clearFilters">${esc(t("filter.showAll"))}</button>` : "");
+  $("filterSum").innerHTML = `<b>${libRows().length}</b> ${esc(t("filter.summary", { n: libRows().length }))} · ${esc(parts.join(" · "))}` + (active ? ` <button class="btn sm ghost" id="clearFilters">${esc(t("filter.showAll"))}</button>` : "");
   const cf = $("clearFilters");
   if (cf) cf.onclick = () => {
     state.shelf = "Tout";

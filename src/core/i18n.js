@@ -116,7 +116,7 @@ const en = {
   "seeds.all":                 "All my series",
   "filter.showAll":            "Show all",
   "filter.sortBy":             "sorted by {what}",
-  "filter.summary":            "{n} series",
+  "filter.summary":            { one: "series", other: "series" },
 
   "btn.postersView":           "Poster view",
   "toast.byChapters":          "Showing chapters",
@@ -228,7 +228,7 @@ const fr = {
   "seeds.all":                 "Toutes mes séries",
   "filter.showAll":            "Tout afficher",
   "filter.sortBy":             "tri : {what}",
-  "filter.summary":            "{n} séries",
+  "filter.summary":            { one: "série", other: "séries" },
 
   "btn.postersView":           "Vue posters",
   "toast.byChapters":          "Affichage par chapitres",
