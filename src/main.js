@@ -1,59 +1,8 @@
 "use strict";
 
-/* ============================================================
-   Utilitaires
-   ============================================================ */
-const $ = id => document.getElementById(id);
-/* Title normalisation, used for fuzzy matching only.
-   WARNING: do NOT go back to [^a-z0-9] — it stripped every non-ASCII character, so
-   "進撃の巨人", "나 혼자만 레벨업" and "ワンピース" all collapsed to "" and overwrote each
-   other in META, OWNED, MDCACHE and the reco: caches. (REVIEW.md §1.1)
-
-   The .normalize("NFC") is not cosmetic: NFD decomposes ピ into ヒ + handakuten (U+309A),
-   which is a mark and not a letter — without recomposing, [^\p{L}\p{N}] strips it and
-   "ワンピース" becomes "ワンヒース". Worse, パパ collides with ハハ. */
-const norm = s => (s||"").toLowerCase().normalize("NFD")
-  .replace(/[\u0300-\u036f]/g,"")            // latin diacritics only: é -> e
-  .normalize("NFC")                  // RECOMPOSE before filtering — see above
-  .replace(/[^\p{L}\p{N}]/gu,"");   // keep letters and digits of EVERY script
-const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const stripTags = s => String(s||"").replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g,"").trim();
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
-const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-
-/* localStorage holds ONLY the library and small preferences.
-   Every large, regenerable cache lives in IndexedDB instead — see kvGet/kvSet below.
-   Reason (REVIEW.md §1.2): the quota is ~5 MB per origin, the recommendation caches alone
-   reached several MB, and setItem then throws on every write. That failure used to be
-   swallowed, so the library silently stopped being saved. */
-let quotaWarned = false;
-const store = {
-  get(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){ return null; } },
-  set(k,v){
-    try{ localStorage.setItem(k,JSON.stringify(v)); return true; }
-    catch(e){
-      /* Never swallow this again. Warn once per session rather than on every keystroke. */
-      if (!quotaWarned){
-        quotaWarned = true;
-        toast("Stockage plein — exporte ta bibliothèque pour ne rien perdre");
-      }
-      console.error("[rayon] localStorage write refused for", k, e);
-      return false;
-    }
-  },
-  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
-};
-
-let toastTimer = null;
-function toast(msg){
-  const old = document.querySelector(".toast");
-  if (old) old.remove();
-  const el = document.createElement("div");
-  el.className = "toast"; el.textContent = msg;
-  document.body.appendChild(el);
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.remove(), 3200);
-}
+import { $, esc, stripTags, sleep, uid, toast } from './core/dom.js';
+import { norm } from './core/norm.js';
+import { store, db, forgetDb, kvGet, kvSet, kvDel, DB_NAME } from './core/store.js';
 
 /* ============================================================
    État
@@ -573,7 +522,7 @@ async function resetEverything(){
   try{
     const d = await db().catch(() => null);
     if (d) d.close();
-    dbp = null;
+    forgetDb();
     await new Promise(res => {
       const req = indexedDB.deleteDatabase(DB_NAME);
       req.onsuccess = req.onerror = req.onblocked = () => res();
@@ -794,65 +743,6 @@ function recoRowHTML(r){
   </div>`;
 }
 
-
-
-/* ============================================================
-   Stockage local : base IndexedDB et cache clé/valeur
-   ============================================================ */
-const DB_NAME = "rayon-reader", DB_VER = 4;
-let dbp = null;
-function db(){
-  if (dbp) return dbp;
-  dbp = new Promise((res, rej)=>{
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = () => {
-      const d = req.result;
-      /* v3: metadata caches moved off localStorage (REVIEW.md §1.2) */
-      if (!d.objectStoreNames.contains("cache")) d.createObjectStore("cache", {keyPath:"k"});
-      /* v4: the embedded reader is gone — Mihon is the reader. Drop its stores rather than
-         leaving them orphaned: "chapters" held whole CBZ pages as Blobs and can be hundreds
-         of MB. Exactly the leak §2.5 was about, so do not recreate it by omission. */
-      if (d.objectStoreNames.contains("chapters")) d.deleteObjectStore("chapters");
-      if (d.objectStoreNames.contains("handles"))  d.deleteObjectStore("handles");
-    };
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(new Error("Stockage local indisponible."));
-    /* Another tab still holding an older version blocks the upgrade indefinitely.
-       Reject instead of hanging — callers must stay able to give up. */
-    req.onblocked = () => rej(new Error("Une autre fenêtre de Rayon bloque la mise à jour du stockage. Ferme-la puis recharge."));
-  });
-  return dbp;
-}
-
-/* ---- key/value cache on IndexedDB (REVIEW.md §1.2) ----
-   Holds what used to overflow localStorage: AniList records, MangaDex volume data and the
-   recommendation caches. All of it is regenerable, so failing to read it is survivable —
-   these helpers fail soft and the app keeps working without persistence rather than
-   refusing to start. */
-function kv(mode, fn){
-  return db().then(d => new Promise((res, rej)=>{
-    const tx = d.transaction("cache", mode);
-    const s = tx.objectStore("cache");
-    let out;
-    try{ out = fn(s); }catch(e){ rej(e); return; }
-    tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
-    tx.onerror = () => rej(tx.error || new Error("Erreur de stockage."));
-  }));
-}
-let cacheWarned = false;
-async function kvGet(k){
-  try{ const r = await kv("readonly", s => s.get(k)); return r ? r.v : null; }
-  catch(e){ return null; }
-}
-async function kvSet(k, v){
-  try{ await kv("readwrite", s => s.put({k, v})); return true; }
-  catch(e){
-    if (!cacheWarned){ cacheWarned = true; toast("Cache non enregistré — le stockage de l'appareil est plein"); }
-    console.error("[rayon] IndexedDB cache write failed for", k, e);
-    return false;
-  }
-}
-async function kvDel(k){ try{ await kv("readwrite", s => s.delete(k)); }catch(e){} }
 
 
 /* ============================================================

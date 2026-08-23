@@ -1,42 +1,58 @@
 #!/usr/bin/env node
 /*
- * Verification harness for the single-file app.
+ * Verification harness. Zero dependencies, no test runner yet (REVIEW.md §3.1):
  *
- * `index.html` is one ~1,900-line file with inline JS, so nothing can be imported and there is
- * no test runner yet (REVIEW.md §3.1). This does what is possible in the meantime, with zero
- * dependencies:
+ *   1. parses every module under src/ so syntax errors surface without opening a browser
+ *   2. checks the published root index.html is self-contained and not stale
+ *   3. extracts pure functions BY SOURCE and runs case tables against them
  *
- *   1. parses the inline <script> so syntax errors surface without opening a browser
- *   2. extracts the pure functions BY SOURCE from index.html and runs case tables against them
- *
- * Point 2 matters: it tests the code that actually ships, not a copy that can drift.
+ * Point 3 matters: it exercises the code that actually ships, not a copy that can drift.
  *
  *   node tools/verify.js
  *
- * When the module split lands (roadmap phase 4), these tables move to Vitest unchanged.
+ * The extraction is a pragmatic stand-in for real imports, and it is deliberately dumb —
+ * it evaluates a declaration as a script, so `export` prefixes are stripped. Once the module
+ * split finishes, these tables move to Vitest and import properly, unchanged.
  */
 const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 
-/* Source of truth is src/main.js. The root index.html is a build artifact — testing that
-   would test the bundler, not the code. */
-const FILE = path.join(__dirname, '..', 'src', 'main.js');
-const source = fs.readFileSync(FILE, 'utf8');
+/* Source of truth is src/. The root index.html is a build artifact — testing that would test
+   the bundler, not the code. */
+const SRC = path.join(__dirname, '..', 'src');
+
+function jsFiles(dir){
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+    const p = path.join(dir, e.name);
+    return e.isDirectory() ? jsFiles(p) : (e.name.endsWith('.js') ? [p] : []);
+  });
+}
+const files = jsFiles(SRC).sort();
+const sources = new Map(files.map(f => [path.relative(SRC, f).replace(/\\/g, '/'), fs.readFileSync(f, 'utf8')]));
+
+/* All module sources concatenated, for finding a declaration wherever it now lives. */
+const source = [...sources.values()].join('\n');
 
 let failures = 0;
 const fail = (msg) => { failures++; console.log('  FAIL ' + msg); };
 const section = (name) => console.log('\n=== ' + name + ' ===');
 
 /* ---------- 1. syntax ---------- */
-section('Syntaxe de src/main.js');
-try {
-  /* vm.Script cannot parse import/export. Once the module split lands, strip those lines
-     before parsing (or move to a real parser) — for now main.js has none. */
-  new vm.Script(source, { filename: 'src/main.js' });
-  console.log(`  OK   ${source.split('\n').length} lignes`);
-} catch (e) {
-  fail(`src/main.js : ${e.message}`);
+section('Syntaxe des modules de src/');
+for (const [name, code] of sources) {
+  try {
+    /* vm.Script parses scripts, not modules, so strip the module syntax first. Enough to
+       catch the class of error this is here for; it is not a module resolver. */
+    const asScript = code
+      .replace(/^\s*import[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '')
+      .replace(/^\s*import\s+['"][^'"]+['"];?\s*$/gm, '')
+      .replace(/^export\s+/gm, '');
+    new vm.Script(asScript, { filename: name });
+    console.log(`  OK   ${name.padEnd(18)} ${code.split('\n').length} lignes`);
+  } catch (e) {
+    fail(`${name} : ${e.message}`);
+  }
 }
 
 /* ---------- 1b. the published file must stay self-contained ---------- */
@@ -62,9 +78,12 @@ else {
    Line-based rather than one big regex: these declarations span several lines and end with a
    trailing `//` comment after the semicolon, which a `;\n` pattern silently misses. */
 const srcLines = source.split('\n');
+const declares = (line, name) =>
+  line.startsWith(`const ${name} = `) || line.startsWith(`export const ${name} = `);
+
 function extract(name) {
-  const start = srcLines.findIndex(l => l.startsWith(`const ${name} = `));
-  if (start === -1) { fail(`declaration de ${name} introuvable dans index.html`); return null; }
+  const start = srcLines.findIndex(l => declares(l, name));
+  if (start === -1) { fail(`declaration de ${name} introuvable dans src/`); return null; }
   /* Counting braces does NOT work here: a character class like [\[\(\{][^\]\)\}]*[\]\)\}]
      holds one { and two }, so the depth goes negative and the scan overruns. Match the file's
      actual shape instead — a block body closes on a line that is exactly `};`, an arrow
@@ -134,8 +153,9 @@ if (norm) {
 section('mergeLibraries — importer ne doit jamais faire reculer une progression');
 {
   const src = extractFunction('mergeLibraries');
-  const normStart = srcLines.findIndex(l => l.startsWith('const norm = '));
-  const normSrc = srcLines.slice(normStart, normStart + 4).join('\n');
+  const normStart = srcLines.findIndex(l => declares(l, 'norm'));
+  /* drop the `export ` prefix: this is evaluated as a script, not a module */
+  const normSrc = srcLines.slice(normStart, normStart + 4).join('\n').replace(/^export\s+/, '');
   if (!src) fail('mergeLibraries indisponible');
   else {
     const sb = { console };
@@ -190,7 +210,7 @@ section('mergeLibraries — importer ne doit jamais faire reculer une progressio
    does prove the ordering invariant that matters: a localStorage key is only dropped once its
    value is safely stored elsewhere. Getting that wrong destroys libraries. */
 function extractFunction(name) {
-  const start = srcLines.findIndex(l => new RegExp(`^(async )?function ${name}\\(`).test(l));
+  const start = srcLines.findIndex(l => new RegExp(`^(export )?(async )?function ${name}\\(`).test(l));
   if (start === -1) { fail(`fonction ${name} introuvable`); return null; }
   let end = start;
   while (end < srcLines.length && srcLines[end] !== '}') end++;
@@ -220,7 +240,7 @@ function makeSandbox(kvShouldFail) {
 
 const migrateSrc = extractFunction('migrateCaches');
 const constLine = (name) => {
-  const i = srcLines.findIndex(l => l.startsWith(`const ${name} = `));
+  const i = srcLines.findIndex(l => declares(l, name));
   return i === -1 ? null : srcLines[i];
 };
 const cacheKeysSrc = [constLine('CACHE_KEYS'), constLine('DEAD_KEYS')].filter(Boolean).join('\n');

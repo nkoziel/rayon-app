@@ -148,10 +148,11 @@ On Android, every series sheet shows **Chercher dans Mihon**. It fires an Androi
 Mihon declares for exactly this purpose (`eu.kanade.tachiyomi.SEARCH`), landing you in its
 cross-source search with the title already filled in.
 
+It targets the official Mihon package (`app.mihon`), so the hand-off is deterministic with no
+app chooser. If Mihon is not installed the button falls back to mihon.app.
+
 The button is hidden elsewhere: a browser cannot ask whether an app is installed — deliberately,
-since that would be a fingerprinting vector — so it appears where the intent *can* work, and
-falls back to mihon.app if nothing handles it. No package name is pinned, so forks of Mihon work
-too.
+since that would be a fingerprinting vector — so it appears where the intent *can* work.
 
 ## Sharing with others
 

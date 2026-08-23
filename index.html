@@ -52,11 +52,22 @@
   }
 })();
 const $ = (id) => document.getElementById(id);
-const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC").replace(/[^\p{L}\p{N}]/gu, "");
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const stripTags = (s) => String(s || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+let toastTimer = null;
+function toast(msg) {
+  const old = document.querySelector(".toast");
+  if (old) old.remove();
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.textContent = msg;
+  document.body.appendChild(el);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.remove(), 3200);
+}
+const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").normalize("NFC").replace(/[^\p{L}\p{N}]/gu, "");
 let quotaWarned = false;
 const store = {
   get(k) {
@@ -87,16 +98,70 @@ const store = {
     }
   }
 };
-let toastTimer = null;
-function toast(msg) {
-  const old = document.querySelector(".toast");
-  if (old) old.remove();
-  const el = document.createElement("div");
-  el.className = "toast";
-  el.textContent = msg;
-  document.body.appendChild(el);
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.remove(), 3200);
+const DB_NAME = "rayon-reader";
+const DB_VER = 4;
+let dbp = null;
+function db() {
+  if (dbp) return dbp;
+  dbp = new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      if (!d.objectStoreNames.contains("cache")) d.createObjectStore("cache", { keyPath: "k" });
+      if (d.objectStoreNames.contains("chapters")) d.deleteObjectStore("chapters");
+      if (d.objectStoreNames.contains("handles")) d.deleteObjectStore("handles");
+    };
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(new Error("Stockage local indisponible."));
+    req.onblocked = () => rej(new Error("Une autre fenêtre de Rayon bloque la mise à jour du stockage. Ferme-la puis recharge."));
+  });
+  return dbp;
+}
+function forgetDb() {
+  dbp = null;
+}
+function kv(mode, fn) {
+  return db().then((d) => new Promise((res, rej) => {
+    const tx = d.transaction("cache", mode);
+    const s = tx.objectStore("cache");
+    let out;
+    try {
+      out = fn(s);
+    } catch (e) {
+      rej(e);
+      return;
+    }
+    tx.oncomplete = () => res(out && out.result !== void 0 ? out.result : out);
+    tx.onerror = () => rej(tx.error || new Error("Erreur de stockage."));
+  }));
+}
+let cacheWarned = false;
+async function kvGet(k) {
+  try {
+    const r = await kv("readonly", (s) => s.get(k));
+    return r ? r.v : null;
+  } catch (e) {
+    return null;
+  }
+}
+async function kvSet(k, v) {
+  try {
+    await kv("readwrite", (s) => s.put({ k, v }));
+    return true;
+  } catch (e) {
+    if (!cacheWarned) {
+      cacheWarned = true;
+      toast("Cache non enregistré — le stockage de l'appareil est plein");
+    }
+    console.error("[rayon] IndexedDB cache write failed for", k, e);
+    return false;
+  }
+}
+async function kvDel(k) {
+  try {
+    await kv("readwrite", (s) => s.delete(k));
+  } catch (e) {
+  }
 }
 let LIB = store.get("lib:v1") || { label: "Bibliothèque locale", entries: [] };
 let META = {};
@@ -688,7 +753,7 @@ async function resetEverything() {
   try {
     const d = await db().catch(() => null);
     if (d) d.close();
-    dbp = null;
+    forgetDb();
     await new Promise((res) => {
       const req = indexedDB.deleteDatabase(DB_NAME);
       req.onsuccess = req.onerror = req.onblocked = () => res();
@@ -957,67 +1022,6 @@ function recoRowHTML(r) {
       ${isOwned(r) ? "" : `<div class="ractions"><button class="btn sm" data-addreco="${r.id}">Ajouter à ma liste</button></div>`}
     </div>
   </div>`;
-}
-const DB_NAME = "rayon-reader", DB_VER = 4;
-let dbp = null;
-function db() {
-  if (dbp) return dbp;
-  dbp = new Promise((res, rej) => {
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = () => {
-      const d = req.result;
-      if (!d.objectStoreNames.contains("cache")) d.createObjectStore("cache", { keyPath: "k" });
-      if (d.objectStoreNames.contains("chapters")) d.deleteObjectStore("chapters");
-      if (d.objectStoreNames.contains("handles")) d.deleteObjectStore("handles");
-    };
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(new Error("Stockage local indisponible."));
-    req.onblocked = () => rej(new Error("Une autre fenêtre de Rayon bloque la mise à jour du stockage. Ferme-la puis recharge."));
-  });
-  return dbp;
-}
-function kv(mode, fn) {
-  return db().then((d) => new Promise((res, rej) => {
-    const tx = d.transaction("cache", mode);
-    const s = tx.objectStore("cache");
-    let out;
-    try {
-      out = fn(s);
-    } catch (e) {
-      rej(e);
-      return;
-    }
-    tx.oncomplete = () => res(out && out.result !== void 0 ? out.result : out);
-    tx.onerror = () => rej(tx.error || new Error("Erreur de stockage."));
-  }));
-}
-let cacheWarned = false;
-async function kvGet(k) {
-  try {
-    const r = await kv("readonly", (s) => s.get(k));
-    return r ? r.v : null;
-  } catch (e) {
-    return null;
-  }
-}
-async function kvSet(k, v) {
-  try {
-    await kv("readwrite", (s) => s.put({ k, v }));
-    return true;
-  } catch (e) {
-    if (!cacheWarned) {
-      cacheWarned = true;
-      toast("Cache non enregistré — le stockage de l'appareil est plein");
-    }
-    console.error("[rayon] IndexedDB cache write failed for", k, e);
-    return false;
-  }
-}
-async function kvDel(k) {
-  try {
-    await kv("readwrite", (s) => s.delete(k));
-  } catch (e) {
-  }
 }
 function provenanceHTML(d) {
   const t = totals(d);
