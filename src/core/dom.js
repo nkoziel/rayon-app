@@ -24,3 +24,6 @@ export function toast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.remove(), 3200);
 }
+
+/* Modal host is a single slot in the shell; closing is just emptying it. */
+export function closeModal(){ const h = $("modalHost"); if (h) h.innerHTML = ""; }

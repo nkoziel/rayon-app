@@ -111,9 +111,11 @@ const fr = {
 const LOCALES = { en, fr };
 export const AVAILABLE = Object.keys(LOCALES);
 
-/* English by default. A French browser starts in French on first run, because defaulting a
-   French speaker to English when we have a complete French locale would be perverse — but
-   the stored choice always wins once made. */
+/* THE RULE (decided 2026-08-23): English by default, EXCEPT when the browser is in French.
+   In order: a stored choice always wins; failing that a French browser gets French; failing
+   that, English. This is deliberate, not an oversight — do not "fix" it into always-English:
+   shipping English to a French speaker when a complete French locale exists is worse, and
+   English still greets everyone else the app gets shared with. */
 function pick(){
   const saved = readPref();
   if (saved && LOCALES[saved]) return saved;

@@ -44,8 +44,11 @@ for (const [name, code] of sources) {
   try {
     /* vm.Script parses scripts, not modules, so strip the module syntax first. Enough to
        catch the class of error this is here for; it is not a module resolver. */
+    /* `import\s` — the whitespace is load-bearing. Without it this matches `import:` used as
+       an object key (SRCNOTE has one) and then eats everything up to the next `from '...'`,
+       which silently truncates the file and reports a bogus syntax error. */
     const asScript = code
-      .replace(/^\s*import[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '')
+      .replace(/^\s*import\s[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '')
       .replace(/^\s*import\s+['"][^'"]+['"];?\s*$/gm, '')
       .replace(/^export\s+/gm, '');
     new vm.Script(asScript, { filename: name });

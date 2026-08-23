@@ -67,6 +67,10 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.remove(), 3200);
 }
+function closeModal() {
+  const h = $("modalHost");
+  if (h) h.innerHTML = "";
+}
 const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").normalize("NFC").replace(/[^\p{L}\p{N}]/gu, "");
 const STORAGE_KEY = "lang:v1";
 const readPref = () => {
@@ -452,7 +456,8 @@ async function searchBatch(entries) {
   saveLib();
 }
 let hydrating = false;
-async function hydrate() {
+async function hydrate(onBatch = () => {
+}) {
   if (hydrating || !LIB.entries.length) return;
   hydrating = true;
   try {
@@ -478,7 +483,7 @@ async function hydrate() {
         await sleep(2500);
       }
       done += chunk.length;
-      renderLibrary();
+      onBatch();
       await sleep(700);
     }
     for (let i = 0; i < without.length; i += 6) {
@@ -491,7 +496,7 @@ async function hydrate() {
         await sleep(3e3);
       }
       done += chunk.length;
-      renderLibrary();
+      onBatch();
       await sleep(900);
     }
     saveMeta();
@@ -829,7 +834,8 @@ function askImportMode(incoming) {
     $("impMerge").focus();
   });
 }
-async function importFile(file) {
+async function importFile(file, onImported = () => {
+}) {
   try {
     $("statusline").textContent = "Lecture de " + file.name + "…";
     const raw = new Uint8Array(await file.arrayBuffer());
@@ -871,9 +877,8 @@ async function importFile(file) {
     saveLib();
     setDiscover(null);
     kvDel("discover:v1");
-    boot();
     toast(msg);
-    hydrate();
+    onImported();
   } catch (e) {
     $("statusline").textContent = "";
     alert("Import impossible : " + e.message);
@@ -887,14 +892,6 @@ function exportLib() {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4e3);
   toast(t("toast.exported"));
-}
-const MIHON_PACKAGE = "app.mihon";
-const isAndroid = () => /android/i.test(navigator.userAgent);
-const mihonAvailable = () => isAndroid();
-function openInMihon(title) {
-  const fallback = "https://mihon.app/";
-  const url = "intent://#Intent;action=eu.kanade.tachiyomi.SEARCH;package=" + MIHON_PACKAGE + ";S.query=" + encodeURIComponent(title) + ";S.browser_fallback_url=" + encodeURIComponent(fallback) + ";end";
-  window.location.href = url;
 }
 async function purgeSeriesData(entry) {
   const key = norm(entry.t);
@@ -952,6 +949,14 @@ async function resetEverything() {
   } catch (e) {
     console.error("[rayon] reset: IndexedDB", e);
   }
+}
+const MIHON_PACKAGE = "app.mihon";
+const FALLBACK_URL = "https://mihon.app/";
+const isAndroid = () => /android/i.test(navigator.userAgent);
+const mihonAvailable = () => isAndroid();
+function openInMihon(title) {
+  const url = "intent://#Intent;action=eu.kanade.tachiyomi.SEARCH;package=" + MIHON_PACKAGE + ";S.query=" + encodeURIComponent(title) + ";S.browser_fallback_url=" + encodeURIComponent(FALLBACK_URL) + ";end";
+  window.location.href = url;
 }
 function addFromMedia(m, opts) {
   opts = opts || {};
@@ -1052,9 +1057,6 @@ function openAddModal(prefill) {
     timer = setTimeout(run, 420);
   });
   input.focus();
-}
-function closeModal() {
-  $("modalHost").innerHTML = "";
 }
 const SHELVES = ["Tout", "En cours", "À rattraper", "Terminées", "Jamais ouvertes", "Ajoutées à la main"];
 const SORTS = ["Lecture récente", "Titre", "Chapitres lus", "Progression", "Note AniList"];
@@ -1757,7 +1759,7 @@ $("mdBatch").onclick = async () => {
   btn.disabled = false;
 };
 $("file").addEventListener("change", (e) => {
-  if (e.target.files && e.target.files[0]) importFile(e.target.files[0]);
+  if (e.target.files && e.target.files[0]) importFile(e.target.files[0], afterImport);
   e.target.value = "";
 });
 $("tabLibrary").onclick = () => setTab("library");
@@ -1789,7 +1791,7 @@ window.addEventListener("drop", (e) => {
   dragDepth = 0;
   dz.classList.add("hidden");
   const f = e.dataTransfer.files && e.dataTransfer.files[0];
-  if (f) importFile(f);
+  if (f) importFile(f, afterImport);
 });
 if (store.get("panel:v1")) {
   $("filterPanel").classList.remove("hidden");
@@ -1799,6 +1801,10 @@ state.seeds = store.get("seeds:v1") || 25;
 drawDiscoverChips();
 state.unit = store.get("unit:v1") || "ch";
 $("unitBtn").textContent = t(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
+function afterImport() {
+  boot();
+  hydrate(renderLibrary);
+}
 (async function start() {
   const CACHE_INIT_TIMEOUT = 5e3;
   try {
