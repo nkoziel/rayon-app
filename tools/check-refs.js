@@ -103,5 +103,41 @@ for (const f of files) {
   }
 }
 
-console.log(problems ? `\n${problems} reference(s) libre(s)\n` : '\nAucune reference libre.\n');
-process.exit(problems ? 1 : 0);
+console.log(problems ? `\n${problems} reference(s) libre(s)\n` : '\nAucune reference libre.');
+
+/* ---------- import cycles ----------
+   The whole point of the split was an acyclic dependency graph:
+     main -> ui/library -> ui/sheet -> ui/tracker -> data/* -> core/*
+   ES modules tolerate cycles for hoisted function declarations, which is exactly what makes
+   them dangerous: one works, the next throws on a `const` caught in its temporal dead zone,
+   and only on whichever path happens to run first. ui/refresh.js exists to keep this clean —
+   if a cycle appears, reach for late binding rather than accepting it. */
+const graph = new Map();
+for (const f of files) {
+  const key = rel(f);
+  const dir = path.posix.dirname(key);
+  const deps = [...fs.readFileSync(f, 'utf8').matchAll(/from\s+['"](\.[^'"]+)['"]/g)]
+    .map(m => path.posix.normalize(path.posix.join(dir, m[1])));
+  graph.set(key, deps);
+}
+
+let cycles = 0;
+const state = new Map();          // 0 = visiting, 1 = done
+const stack = [];
+function walk(node){
+  if (state.get(node) === 0){
+    console.log('  CYCLE  ' + stack.slice(stack.indexOf(node)).join(' -> ') + ' -> ' + node);
+    cycles++;
+    return;
+  }
+  if (state.get(node) === 1) return;
+  state.set(node, 0);
+  stack.push(node);
+  for (const d of (graph.get(node) || [])) walk(d);
+  stack.pop();
+  state.set(node, 1);
+}
+for (const key of graph.keys()) walk(key);
+
+console.log(cycles ? `\n${cycles} cycle(s) d'import\n` : "Aucun cycle d'import.\n");
+process.exit(problems || cycles ? 1 : 0);

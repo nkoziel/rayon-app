@@ -707,6 +707,32 @@ const SRCNOTE = {
 function unitOf(d) {
   return d.unit || state.unit;
 }
+function progressOf(d) {
+  const t2 = totals(d);
+  const unit = unitOf(d);
+  if (unit === "vol") {
+    const read2 = d.rv || 0, tot2 = t2.vol || 0;
+    return {
+      read: read2,
+      tot: tot2,
+      pct: tot2 ? Math.min(100, Math.round(read2 / tot2 * 100)) : 0,
+      label: read2 + (tot2 ? "/" + tot2 : "") + " tomes",
+      remain: tot2 ? tot2 - read2 : null,
+      unit: "tomes",
+      t: t2
+    };
+  }
+  const read = d.r || 0, tot = t2.ch || 0;
+  return {
+    read,
+    tot,
+    pct: tot ? Math.min(100, Math.round(read / tot * 100)) : 0,
+    label: read + (tot ? "/" + tot : "") + " ch.",
+    remain: tot ? Math.round((tot - read) * 10) / 10 : null,
+    unit: "chapitres",
+    t: t2
+  };
+}
 function pbParse(buf, start2, end) {
   const out = [];
   let i = start2;
@@ -1268,6 +1294,232 @@ function renderDiscover(partial, isPartial) {
     };
   });
 }
+function provenanceHTML(d) {
+  const t2 = totals(d);
+  const unit = unitOf(d);
+  const md = MDCACHE[norm(d.t)];
+  const lines = [];
+  if (unit === "vol") {
+    lines.push(t2.vol ? `Total tomes : <b>${t2.vol}</b> — ${SRCLABEL[t2.volSrc]}${t2.volSrc === "mangadex" && t2.at ? `, relevé le ${t2.at}` : ""}. <span>${SRCNOTE[t2.volSrc]}.</span>` : `<span class="warn">Aucun découpage en tomes connu.</span> Fréquent pour les webtoons, publiés sans édition papier. Vérifie sur MangaDex ou saisis le total à la main.`);
+  } else {
+    lines.push(t2.ch ? `Total chapitres : <b>${t2.ch}</b> — ${SRCLABEL[t2.chSrc]}${t2.chSrc === "mangadex" && t2.at ? `, relevé le ${t2.at}` : ""}. <span>${SRCNOTE[t2.chSrc]}.</span>` : `<span class="warn">Aucun total fiable.</span> Série en cours : AniList ne publie pas de compte tant qu'elle n'est pas achevée. Vérifie sur MangaDex ou saisis le total.`);
+  }
+  if (md && md.id === null) lines.push(`<span class="warn">Absente de MangaDex</span> — le suivi des sorties doit être manuel.`);
+  const p = unit === "vol" ? { read: d.rv || 0, tot: t2.vol } : { read: d.r || 0, tot: t2.ch };
+  if (p.tot && p.read > p.tot) lines.push(`<span class="warn">Tu es allé plus loin que le total connu (${p.read} > ${p.tot}).</span> Les numérotations diffèrent souvent entre scantrad et édition officielle : saisis le total à la main pour trancher.`);
+  return `<div class="prov">${lines.join("<br>")}</div>`;
+}
+function trackerHTML(d) {
+  const unit = unitOf(d);
+  const p = progressOf(d);
+  const read = unit === "vol" ? d.rv || 0 : d.r || 0;
+  const remainTxt = p.tot ? p.remain > 0 ? `Reste ${p.remain} ${p.unit}` : "À jour" : "Total inconnu";
+  return `
+    <div class="trackline">
+      <div class="seg" role="group" aria-label="Unité de suivi">
+        <button data-unit="ch" aria-pressed="${unit === "ch"}">Chapitres</button>
+        <button data-unit="vol" aria-pressed="${unit === "vol"}">Tomes</button>
+      </div>
+      <span class="remain ${p.remain === 0 ? "zero" : ""}">${esc(remainTxt)}</span>
+    </div>
+    <div class="trackline">
+      <span class="rmeta">${unit === "vol" ? "Tomes lus" : "Chapitre atteint"}</span>
+      <button class="btn sm ghost" id="minus">−</button>
+      <input type="number" id="readInput" value="${read}" min="0" step="${unit === "vol" ? 1 : 0.5}" aria-label="Progression">
+      <button class="btn sm ghost" id="plus">+</button>
+      <span class="rmeta">${p.tot ? "/ " + p.tot : "/ ?"}</span>
+      <button class="btn sm" id="allRead">Tout lu</button>
+    </div>
+    <div class="trackline">
+      <button class="btn sm ghost" id="mdCheck">Vérifier les sorties</button>
+      <button class="btn sm ghost" id="setTotal">Saisir le total</button>
+      ${unit === "vol" && MDCACHE[norm(d.t)] && MDCACHE[norm(d.t)].vols && MDCACHE[norm(d.t)].vols.length ? `<button class="btn sm ghost" id="convert">Déduire de mes chapitres</button>` : ""}
+      <button class="btn sm ghost" id="removeBtn" style="margin-left:auto">Retirer</button>
+    </div>
+    ${provenanceHTML(d)}`;
+}
+function refreshTracker(d, onRemoved) {
+  $("trackwrap").innerHTML = trackerHTML(d);
+  wireTracker(d, onRemoved);
+  saveLib();
+  libraryChanged();
+}
+function wireTracker(d, onRemoved) {
+  const unit = unitOf(d);
+  const setRead = (v) => {
+    const val = Math.max(0, unit === "vol" ? Math.round(v) || 0 : Math.round((+v || 0) * 2) / 2);
+    if (unit === "vol") d.rv = val;
+    else d.r = val;
+    d.d = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    refreshTracker(d, onRemoved);
+  };
+  const step = unit === "vol" ? 1 : 1;
+  $("minus").onclick = () => setRead((unit === "vol" ? d.rv || 0 : d.r || 0) - step);
+  $("plus").onclick = () => setRead((unit === "vol" ? d.rv || 0 : d.r || 0) + step);
+  $("readInput").onchange = (e) => setRead(e.target.value);
+  $("allRead").onclick = () => {
+    const p = progressOf(d);
+    if (p.tot) setRead(p.tot);
+  };
+  [...$("trackwrap").querySelectorAll("[data-unit]")].forEach((b) => {
+    b.onclick = () => {
+      d.unit = b.dataset.unit;
+      refreshTracker(d, onRemoved);
+    };
+  });
+  $("setTotal").onclick = () => {
+    const cur = unit === "vol" ? d.manVol || totals(d).vol || "" : d.manCh || totals(d).ch || "";
+    const v = prompt(unit === "vol" ? "Nombre de tomes parus :" : "Nombre de chapitres parus :", cur);
+    if (v === null) return;
+    const n = parseFloat(String(v).replace(",", "."));
+    if (isNaN(n) || n < 0) {
+      if (unit === "vol") delete d.manVol;
+      else delete d.manCh;
+    } else if (unit === "vol") d.manVol = n;
+    else d.manCh = n;
+    refreshTracker(d, onRemoved);
+  };
+  const conv = $("convert");
+  if (conv) conv.onclick = () => {
+    const vols = (MDCACHE[norm(d.t)] || {}).vols || [];
+    const done = vols.filter((v) => v.last !== null && v.last <= (d.r || 0)).length;
+    d.rv = done;
+    toast(done + " tome(s) déduits de tes " + (d.r || 0) + " chapitres");
+    refreshTracker(d, onRemoved);
+  };
+  $("mdCheck").onclick = async () => {
+    const btn = $("mdCheck");
+    btn.disabled = true;
+    btn.textContent = "Vérification…";
+    try {
+      const info = await mdAggregate(d);
+      toast(info.maxCh ? `Dernier chapitre traduit : ${info.maxCh}${info.maxVol ? ` · ${info.maxVol} tomes` : ""}` : "Aucun chapitre recensé");
+      refreshTracker(d, onRemoved);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = "Vérifier les sorties";
+      const box = document.createElement("p");
+      box.className = "err";
+      box.style.marginTop = "8px";
+      box.textContent = e.message;
+      $("trackwrap").appendChild(box);
+    }
+  };
+  $("removeBtn").onclick = async () => {
+    if (!confirm("Retirer « " + d.t + " » de ta bibliothèque ?\n\nSes données en cache seront également supprimées.")) return;
+    LIB.entries = LIB.entries.filter((x) => x.id !== d.id);
+    saveLib();
+    if (onRemoved) onRemoved();
+    libraryChanged();
+    toast(t("toast.seriesRemoved"));
+    await purgeSeriesData(d);
+  };
+}
+let current = null;
+function closeSheet() {
+  current = null;
+  $("overlay").innerHTML = "";
+  document.body.style.overflow = "";
+}
+function recoRowHTML(r) {
+  const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut, r.score ? r.score + "/100" : null].filter(Boolean).join(" · ");
+  return `<div class="rec">
+    ${r.cover ? `<img class="cover" src="${esc(r.cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
+    <div style="min-width:0">
+      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a>${isOwned(r) ? '<span class="owned">déjà chez toi</span>' : ""}</div>
+      <div class="rmeta">${esc(meta)}</div>
+      <div class="rwhy"><b>${r.votes || 0} lecteurs</b> font le rapprochement${r.genres.length ? " · " + esc(r.genres.slice(0, 3).join(", ")) : ""}</div>
+      ${isOwned(r) ? "" : `<div class="ractions"><button class="btn sm" data-addreco="${r.id}">Ajouter à ma liste</button></div>`}
+    </div>
+  </div>`;
+}
+function openSheet(d) {
+  if (!d) return;
+  current = d;
+  const raw = META[norm(d.t)];
+  const meta = raw && !raw.missing ? raw : null;
+  d.n ? Math.min(100, Math.round(d.r / d.n * 100)) : 0;
+  meta && meta.chapitres ? meta.chapitres - d.r : null;
+  const hmeta = [meta && meta.type, meta && meta.annee, meta && meta.statut, meta && meta.score ? meta.score + "/100" : null].filter(Boolean).join(" · ");
+  $("overlay").innerHTML = `
+    <div class="scrim" id="scrim"></div>
+    <aside class="sheet" role="dialog" aria-label="Fiche ${esc(d.t)}">
+      <div class="sheetbar"><span class="sbt">${esc(d.s)}</span><button class="close" id="closeBtn">Fermer ✕</button></div>
+      <div class="hero">
+        ${meta && meta.banner ? `<img class="banner" src="${esc(meta.banner)}" alt="">` : '<div class="noban"></div>'}
+        <div class="front">
+          ${meta && meta.cover ? `<img src="${esc(meta.cover)}" alt="">` : '<span class="ph"></span>'}
+          <div><h2>${esc(d.t)}</h2><div class="hmeta">${esc(hmeta || d.s)}</div></div>
+        </div>
+      </div>
+      <div class="sbody">
+        <div>
+          ${d.m === "Webtoon" ? '<span class="pill hi">Webtoon</span>' : ""}
+          ${d.origin === "manuel" ? '<span class="pill hi">Ajout manuel</span>' : ""}
+          ${(meta ? meta.genres : d.g).slice(0, 8).map((g) => `<span class="pill">${esc(g)}</span>`).join("")}
+        </div>
+        <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
+        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">Chercher dans Mihon</button>` : ""}
+        <dl>
+          <dt>Dernière fois</dt><dd>${esc(d.d || "—")}</dd>
+          <dt>Ajouté le</dt><dd>${esc(d.ad || "—")}</dd>
+          <dt>Auteur</dt><dd>${esc(meta && meta.auteur || d.a || "—")}</dd>
+          <dt>Source</dt><dd>${esc(d.s)}</dd>
+          ${meta ? `<dt>Fiche</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)} sur AniList</a></dd>` : ""}
+        </dl>
+        ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
+        <div class="seclabel"><span>Ce que lisent ceux qui ont aimé</span><button class="btn ghost sm" id="refresh">Actualiser</button></div>
+        <div id="recos"><p class="loading">Interrogation d'AniList</p></div>
+      </div>
+    </aside>`;
+  document.body.style.overflow = "hidden";
+  $("scrim").onclick = closeSheet;
+  const cb = $("closeBtn");
+  cb.onclick = closeSheet;
+  cb.focus();
+  $("refresh").onclick = () => fillRecos(d, true);
+  const moreBtn = $("moreBtn");
+  if (moreBtn) moreBtn.onclick = () => {
+    const el = $("desc");
+    el.classList.toggle("clamped");
+    moreBtn.textContent = el.classList.contains("clamped") ? "Lire la suite" : "Replier";
+  };
+  wireTracker(d, closeSheet);
+  const mb = $("mihonBtn");
+  if (mb) mb.onclick = () => openInMihon(d.t);
+  fillRecos(d, false);
+}
+async function fillRecos(d, force) {
+  const box = $("recos");
+  box.innerHTML = `<p class="loading">Interrogation d'AniList</p>`;
+  try {
+    const payload = await loadRecos(d, force);
+    if (current !== d) return;
+    if (!payload.items.length) {
+      box.innerHTML = `<p class="note">Aucun rapprochement voté sur cette fiche. <a href="${esc(payload.source)}" target="_blank" rel="noreferrer">Voir ${esc(payload.matched)} sur AniList</a></p>`;
+      return;
+    }
+    const visible = payload.items.filter((r) => !state.hideOwned || !isOwned(r));
+    box.innerHTML = visible.length ? visible.map(recoRowHTML).join("") : `<p class="note">Les ${payload.items.length} titres recommandés ici sont déjà chez toi.</p>`;
+    [...box.querySelectorAll("[data-addreco]")].forEach((b) => {
+      b.onclick = () => {
+        const r = payload.items.find((x) => String(x.id) === b.dataset.addreco);
+        if (r && addFromMedia(r)) {
+          b.textContent = "Ajouté";
+          b.disabled = true;
+        }
+      };
+    });
+  } catch (e) {
+    if (current !== d) return;
+    box.innerHTML = `<p class="err">${esc(e.message)}</p>`;
+  }
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if ($("modalHost").innerHTML) closeModal();
+  else if (current) closeSheet();
+});
 const SHELVES = ["Tout", "En cours", "À rattraper", "Terminées", "Jamais ouvertes", "Ajoutées à la main"];
 const SORTS = ["Lecture récente", "Titre", "Chapitres lus", "Progression", "Note AniList"];
 const TYPES = ["Tous", "Manga", "Manhwa", "Manhua"];
@@ -1324,32 +1576,6 @@ function libRows() {
   if (state.sort === "Note AniList") out.sort((a, b) => score(b) - score(a));
   return out;
 }
-function progressOf(d) {
-  const t2 = totals(d);
-  const unit = unitOf(d);
-  if (unit === "vol") {
-    const read2 = d.rv || 0, tot2 = t2.vol || 0;
-    return {
-      read: read2,
-      tot: tot2,
-      pct: tot2 ? Math.min(100, Math.round(read2 / tot2 * 100)) : 0,
-      label: read2 + (tot2 ? "/" + tot2 : "") + " tomes",
-      remain: tot2 ? tot2 - read2 : null,
-      unit: "tomes",
-      t: t2
-    };
-  }
-  const read = d.r || 0, tot = t2.ch || 0;
-  return {
-    read,
-    tot,
-    pct: tot ? Math.min(100, Math.round(read / tot * 100)) : 0,
-    label: read + (tot ? "/" + tot : "") + " ch.",
-    remain: tot ? Math.round((tot - read) * 10) / 10 : null,
-    unit: "chapitres",
-    t: t2
-  };
-}
 function posterHTML(d) {
   const meta = META[norm(d.t)];
   const p = progressOf(d);
@@ -1393,233 +1619,26 @@ function renderLibrary() {
     el.onclick = () => openSheet(LIB.entries.find((x) => x.id === el.dataset.id));
   });
 }
-let current = null;
-function closeSheet() {
-  current = null;
-  $("overlay").innerHTML = "";
-  document.body.style.overflow = "";
-}
-function recoRowHTML(r) {
-  const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut, r.score ? r.score + "/100" : null].filter(Boolean).join(" · ");
-  return `<div class="rec">
-    ${r.cover ? `<img class="cover" src="${esc(r.cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
-    <div style="min-width:0">
-      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a>${isOwned(r) ? '<span class="owned">déjà chez toi</span>' : ""}</div>
-      <div class="rmeta">${esc(meta)}</div>
-      <div class="rwhy"><b>${r.votes || 0} lecteurs</b> font le rapprochement${r.genres.length ? " · " + esc(r.genres.slice(0, 3).join(", ")) : ""}</div>
-      ${isOwned(r) ? "" : `<div class="ractions"><button class="btn sm" data-addreco="${r.id}">Ajouter à ma liste</button></div>`}
-    </div>
-  </div>`;
-}
-function provenanceHTML(d) {
-  const t2 = totals(d);
-  const unit = unitOf(d);
-  const md = MDCACHE[norm(d.t)];
-  const lines = [];
-  if (unit === "vol") {
-    lines.push(t2.vol ? `Total tomes : <b>${t2.vol}</b> — ${SRCLABEL[t2.volSrc]}${t2.volSrc === "mangadex" && t2.at ? `, relevé le ${t2.at}` : ""}. <span>${SRCNOTE[t2.volSrc]}.</span>` : `<span class="warn">Aucun découpage en tomes connu.</span> Fréquent pour les webtoons, publiés sans édition papier. Vérifie sur MangaDex ou saisis le total à la main.`);
-  } else {
-    lines.push(t2.ch ? `Total chapitres : <b>${t2.ch}</b> — ${SRCLABEL[t2.chSrc]}${t2.chSrc === "mangadex" && t2.at ? `, relevé le ${t2.at}` : ""}. <span>${SRCNOTE[t2.chSrc]}.</span>` : `<span class="warn">Aucun total fiable.</span> Série en cours : AniList ne publie pas de compte tant qu'elle n'est pas achevée. Vérifie sur MangaDex ou saisis le total.`);
-  }
-  if (md && md.id === null) lines.push(`<span class="warn">Absente de MangaDex</span> — le suivi des sorties doit être manuel.`);
-  const p = unit === "vol" ? { read: d.rv || 0, tot: t2.vol } : { read: d.r || 0, tot: t2.ch };
-  if (p.tot && p.read > p.tot) lines.push(`<span class="warn">Tu es allé plus loin que le total connu (${p.read} > ${p.tot}).</span> Les numérotations diffèrent souvent entre scantrad et édition officielle : saisis le total à la main pour trancher.`);
-  return `<div class="prov">${lines.join("<br>")}</div>`;
-}
-function trackerHTML(d) {
-  const unit = unitOf(d);
-  const p = progressOf(d);
-  const read = unit === "vol" ? d.rv || 0 : d.r || 0;
-  const remainTxt = p.tot ? p.remain > 0 ? `Reste ${p.remain} ${p.unit}` : "À jour" : "Total inconnu";
-  return `
-    <div class="trackline">
-      <div class="seg" role="group" aria-label="Unité de suivi">
-        <button data-unit="ch" aria-pressed="${unit === "ch"}">Chapitres</button>
-        <button data-unit="vol" aria-pressed="${unit === "vol"}">Tomes</button>
-      </div>
-      <span class="remain ${p.remain === 0 ? "zero" : ""}">${esc(remainTxt)}</span>
-    </div>
-    <div class="trackline">
-      <span class="rmeta">${unit === "vol" ? "Tomes lus" : "Chapitre atteint"}</span>
-      <button class="btn sm ghost" id="minus">−</button>
-      <input type="number" id="readInput" value="${read}" min="0" step="${unit === "vol" ? 1 : 0.5}" aria-label="Progression">
-      <button class="btn sm ghost" id="plus">+</button>
-      <span class="rmeta">${p.tot ? "/ " + p.tot : "/ ?"}</span>
-      <button class="btn sm" id="allRead">Tout lu</button>
-    </div>
-    <div class="trackline">
-      <button class="btn sm ghost" id="mdCheck">Vérifier les sorties</button>
-      <button class="btn sm ghost" id="setTotal">Saisir le total</button>
-      ${unit === "vol" && MDCACHE[norm(d.t)] && MDCACHE[norm(d.t)].vols && MDCACHE[norm(d.t)].vols.length ? `<button class="btn sm ghost" id="convert">Déduire de mes chapitres</button>` : ""}
-      <button class="btn sm ghost" id="removeBtn" style="margin-left:auto">Retirer</button>
-    </div>
-    ${provenanceHTML(d)}`;
-}
-function refreshTracker(d) {
-  $("trackwrap").innerHTML = trackerHTML(d);
-  wireTracker(d);
-  saveLib();
-  renderLibrary();
-  boot();
-}
-function wireTracker(d) {
-  const unit = unitOf(d);
-  const setRead = (v) => {
-    const val = Math.max(0, unit === "vol" ? Math.round(v) || 0 : Math.round((+v || 0) * 2) / 2);
-    if (unit === "vol") d.rv = val;
-    else d.r = val;
-    d.d = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    refreshTracker(d);
-  };
-  const step = unit === "vol" ? 1 : 1;
-  $("minus").onclick = () => setRead((unit === "vol" ? d.rv || 0 : d.r || 0) - step);
-  $("plus").onclick = () => setRead((unit === "vol" ? d.rv || 0 : d.r || 0) + step);
-  $("readInput").onchange = (e) => setRead(e.target.value);
-  $("allRead").onclick = () => {
-    const p = progressOf(d);
-    if (p.tot) setRead(p.tot);
-  };
-  [...$("trackwrap").querySelectorAll("[data-unit]")].forEach((b) => {
-    b.onclick = () => {
-      d.unit = b.dataset.unit;
-      refreshTracker(d);
-    };
-  });
-  $("setTotal").onclick = () => {
-    const cur = unit === "vol" ? d.manVol || totals(d).vol || "" : d.manCh || totals(d).ch || "";
-    const v = prompt(unit === "vol" ? "Nombre de tomes parus :" : "Nombre de chapitres parus :", cur);
-    if (v === null) return;
-    const n = parseFloat(String(v).replace(",", "."));
-    if (isNaN(n) || n < 0) {
-      if (unit === "vol") delete d.manVol;
-      else delete d.manCh;
-    } else if (unit === "vol") d.manVol = n;
-    else d.manCh = n;
-    refreshTracker(d);
-  };
-  const conv = $("convert");
-  if (conv) conv.onclick = () => {
-    const vols = (MDCACHE[norm(d.t)] || {}).vols || [];
-    const done = vols.filter((v) => v.last !== null && v.last <= (d.r || 0)).length;
-    d.rv = done;
-    toast(done + " tome(s) déduits de tes " + (d.r || 0) + " chapitres");
-    refreshTracker(d);
-  };
-  $("mdCheck").onclick = async () => {
-    const btn = $("mdCheck");
-    btn.disabled = true;
-    btn.textContent = "Vérification…";
-    try {
-      const info = await mdAggregate(d);
-      toast(info.maxCh ? `Dernier chapitre traduit : ${info.maxCh}${info.maxVol ? ` · ${info.maxVol} tomes` : ""}` : "Aucun chapitre recensé");
-      refreshTracker(d);
-    } catch (e) {
-      btn.disabled = false;
-      btn.textContent = "Vérifier les sorties";
-      const box = document.createElement("p");
-      box.className = "err";
-      box.style.marginTop = "8px";
-      box.textContent = e.message;
-      $("trackwrap").appendChild(box);
-    }
-  };
-  $("removeBtn").onclick = async () => {
-    if (!confirm("Retirer « " + d.t + " » de ta bibliothèque ?\n\nSes données en cache seront également supprimées.")) return;
-    LIB.entries = LIB.entries.filter((x) => x.id !== d.id);
-    saveLib();
-    closeSheet();
-    boot();
-    toast(t("toast.seriesRemoved"));
-    await purgeSeriesData(d);
+function updateFilterSummary() {
+  const active = (state.shelf !== "Tout") + (state.source !== "Toutes") + (state.q ? 1 : 0) + (state.libType !== "Tous types");
+  $("filterDot").classList.toggle("hidden", active === 0);
+  const parts = [];
+  if (state.libType !== "Tous types") parts.push(state.libType);
+  if (state.shelf !== "Tout") parts.push(state.shelf);
+  if (state.source !== "Toutes") parts.push(state.source);
+  parts.push("tri : " + state.sort.toLowerCase());
+  $("filterSum").innerHTML = `<b>${libRows().length}</b> séries · ${esc(parts.join(" · "))}` + (active ? ` <button class="btn sm ghost" id="clearFilters">Tout afficher</button>` : "");
+  const cf = $("clearFilters");
+  if (cf) cf.onclick = () => {
+    state.shelf = "Tout";
+    state.source = "Toutes";
+    state.libType = "Tous types";
+    state.q = "";
+    $("q").value = "";
+    libraryChanged();
+    renderLibrary();
   };
 }
-function openSheet(d) {
-  if (!d) return;
-  current = d;
-  const raw = META[norm(d.t)];
-  const meta = raw && !raw.missing ? raw : null;
-  d.n ? Math.min(100, Math.round(d.r / d.n * 100)) : 0;
-  meta && meta.chapitres ? meta.chapitres - d.r : null;
-  const hmeta = [meta && meta.type, meta && meta.annee, meta && meta.statut, meta && meta.score ? meta.score + "/100" : null].filter(Boolean).join(" · ");
-  $("overlay").innerHTML = `
-    <div class="scrim" id="scrim"></div>
-    <aside class="sheet" role="dialog" aria-label="Fiche ${esc(d.t)}">
-      <div class="sheetbar"><span class="sbt">${esc(d.s)}</span><button class="close" id="closeBtn">Fermer ✕</button></div>
-      <div class="hero">
-        ${meta && meta.banner ? `<img class="banner" src="${esc(meta.banner)}" alt="">` : '<div class="noban"></div>'}
-        <div class="front">
-          ${meta && meta.cover ? `<img src="${esc(meta.cover)}" alt="">` : '<span class="ph"></span>'}
-          <div><h2>${esc(d.t)}</h2><div class="hmeta">${esc(hmeta || d.s)}</div></div>
-        </div>
-      </div>
-      <div class="sbody">
-        <div>
-          ${d.m === "Webtoon" ? '<span class="pill hi">Webtoon</span>' : ""}
-          ${d.origin === "manuel" ? '<span class="pill hi">Ajout manuel</span>' : ""}
-          ${(meta ? meta.genres : d.g).slice(0, 8).map((g) => `<span class="pill">${esc(g)}</span>`).join("")}
-        </div>
-        <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
-        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">Chercher dans Mihon</button>` : ""}
-        <dl>
-          <dt>Dernière fois</dt><dd>${esc(d.d || "—")}</dd>
-          <dt>Ajouté le</dt><dd>${esc(d.ad || "—")}</dd>
-          <dt>Auteur</dt><dd>${esc(meta && meta.auteur || d.a || "—")}</dd>
-          <dt>Source</dt><dd>${esc(d.s)}</dd>
-          ${meta ? `<dt>Fiche</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)} sur AniList</a></dd>` : ""}
-        </dl>
-        ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
-        <div class="seclabel"><span>Ce que lisent ceux qui ont aimé</span><button class="btn ghost sm" id="refresh">Actualiser</button></div>
-        <div id="recos"><p class="loading">Interrogation d'AniList</p></div>
-      </div>
-    </aside>`;
-  document.body.style.overflow = "hidden";
-  $("scrim").onclick = closeSheet;
-  const cb = $("closeBtn");
-  cb.onclick = closeSheet;
-  cb.focus();
-  $("refresh").onclick = () => fillRecos(d, true);
-  const moreBtn = $("moreBtn");
-  if (moreBtn) moreBtn.onclick = () => {
-    const el = $("desc");
-    el.classList.toggle("clamped");
-    moreBtn.textContent = el.classList.contains("clamped") ? "Lire la suite" : "Replier";
-  };
-  wireTracker(d);
-  const mb = $("mihonBtn");
-  if (mb) mb.onclick = () => openInMihon(d.t);
-  fillRecos(d, false);
-}
-async function fillRecos(d, force) {
-  const box = $("recos");
-  box.innerHTML = `<p class="loading">Interrogation d'AniList</p>`;
-  try {
-    const payload = await loadRecos(d, force);
-    if (current !== d) return;
-    if (!payload.items.length) {
-      box.innerHTML = `<p class="note">Aucun rapprochement voté sur cette fiche. <a href="${esc(payload.source)}" target="_blank" rel="noreferrer">Voir ${esc(payload.matched)} sur AniList</a></p>`;
-      return;
-    }
-    const visible = payload.items.filter((r) => !state.hideOwned || !isOwned(r));
-    box.innerHTML = visible.length ? visible.map(recoRowHTML).join("") : `<p class="note">Les ${payload.items.length} titres recommandés ici sont déjà chez toi.</p>`;
-    [...box.querySelectorAll("[data-addreco]")].forEach((b) => {
-      b.onclick = () => {
-        const r = payload.items.find((x) => String(x.id) === b.dataset.addreco);
-        if (r && addFromMedia(r)) {
-          b.textContent = "Ajouté";
-          b.disabled = true;
-        }
-      };
-    });
-  } catch (e) {
-    if (current !== d) return;
-    box.innerHTML = `<p class="err">${esc(e.message)}</p>`;
-  }
-}
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape") return;
-  if ($("modalHost").innerHTML) closeModal();
-  else if (current) closeSheet();
-});
 function chips(el, values, currentVal, onPick, counts) {
   el.innerHTML = values.map((v) => {
     const n = counts ? counts(v) : null;
@@ -1743,26 +1762,6 @@ $("filterBtn").onclick = () => {
 };
 $("moreBtn2").onclick = () => togglePanel($("moreBtn2"), $("moreBar"));
 $("dFilterBtn").onclick = () => togglePanel($("dFilterBtn"), $("dFilterPanel"));
-function updateFilterSummary() {
-  const active = (state.shelf !== "Tout") + (state.source !== "Toutes") + (state.q ? 1 : 0) + (state.libType !== "Tous types");
-  $("filterDot").classList.toggle("hidden", active === 0);
-  const parts = [];
-  if (state.libType !== "Tous types") parts.push(state.libType);
-  if (state.shelf !== "Tout") parts.push(state.shelf);
-  if (state.source !== "Toutes") parts.push(state.source);
-  parts.push("tri : " + state.sort.toLowerCase());
-  $("filterSum").innerHTML = `<b>${libRows().length}</b> séries · ${esc(parts.join(" · "))}` + (active ? ` <button class="btn sm ghost" id="clearFilters">Tout afficher</button>` : "");
-  const cf = $("clearFilters");
-  if (cf) cf.onclick = () => {
-    state.shelf = "Tout";
-    state.source = "Toutes";
-    state.libType = "Tous types";
-    state.q = "";
-    $("q").value = "";
-    boot();
-    renderLibrary();
-  };
-}
 $("q").addEventListener("input", (e) => {
   state.q = e.target.value;
   renderLibrary();

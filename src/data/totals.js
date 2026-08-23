@@ -39,3 +39,18 @@ export const SRCNOTE = {
 /* unité effective d'une série */
 export function unitOf(d){ return d.unit || state.unit; }
 
+/* Reading progress against the effective total, in whichever unit the series uses.
+   Lives here rather than with the grid because the tracker needs it too, and putting it in
+   the library module would make library -> sheet -> tracker -> library a cycle. */
+export function progressOf(d){
+  const t = totals(d);
+  const unit = unitOf(d);
+  if (unit === "vol"){
+    const read = d.rv || 0, tot = t.vol || 0;
+    return {read, tot, pct: tot ? Math.min(100, Math.round(read/tot*100)) : 0,
+            label: read + (tot ? "/"+tot : "") + " tomes", remain: tot ? tot-read : null, unit:"tomes", t};
+  }
+  const read = d.r || 0, tot = t.ch || 0;
+  return {read, tot, pct: tot ? Math.min(100, Math.round(read/tot*100)) : 0,
+          label: read + (tot ? "/"+tot : "") + " ch.", remain: tot ? Math.round((tot-read)*10)/10 : null, unit:"chapitres", t};
+}
