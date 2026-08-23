@@ -255,7 +255,14 @@ const en = {
   "discover.noneLeft": "Nothing left to suggest with these filters. Change the type, show dismissed titles again, or run the analysis after reading something new.",
   "discover.intro": "Run the analysis: each series you read is looked up, and the titles that come back from several of them rise to the top.",
   "discover.crossed": "Crossed {n} series: {seeds}.",
-  "import.consolidated": "{n} rows left out (not in your favourites, or the same series on another source)"
+  "import.consolidated": "{n} rows left out (not in your favourites, or the same series on another source)",
+  "why.all": "All reasons",
+  "why.readers": "Readers",
+  "why.tags": "Same style",
+  "why.author": "Same author",
+  "filter.why": "Reason",
+  "mihon.search": "Search in Mihon",
+  "mihon.failed": "Could not open the share sheet"
 };
 const fr = {
   "app.title": "Rayon",
@@ -429,7 +436,14 @@ const fr = {
   "discover.noneLeft": "Plus rien à proposer avec ces filtres. Change de type, réaffiche les écartés, ou relance l'analyse après avoir lu de nouveaux titres.",
   "discover.intro": "Lance l'analyse : chaque série que tu lis est recherchée, et les titres qui reviennent depuis plusieurs d'entre elles remontent en tête.",
   "discover.crossed": "Croisement de {n} séries : {seeds}.",
-  "import.consolidated": "{n} lignes écartées (hors favoris, ou même série sur une autre source)"
+  "import.consolidated": "{n} lignes écartées (hors favoris, ou même série sur une autre source)",
+  "why.all": "Toutes raisons",
+  "why.readers": "Lecteurs",
+  "why.tags": "Même style",
+  "why.author": "Même auteur",
+  "filter.why": "Raison",
+  "mihon.search": "Chercher dans Mihon",
+  "mihon.failed": "Impossible d'ouvrir le partage"
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -624,7 +638,10 @@ const state = {
   dsort: "relevance",
   unit: "ch",
   libType: "all",
-  seeds: 25
+  seeds: 25,
+  /* Discover: which evidence a recommendation must carry - "all" | "readers" | "tags" | "author",
+     read through signalsOf() so the chip and the badge can never disagree. */
+  dwhy: "all"
 };
 const CACHE_KEYS = ["meta:v2", "md:v1", "mb:v1", "discover:v1"];
 const DEAD_KEYS = ["catalog:v1", "fsprog:v1", "pickindex:v1"];
@@ -1499,13 +1516,16 @@ async function resetEverything() {
     return false;
   }
 }
-const MIHON_PACKAGE = "app.mihon";
-const FALLBACK_URL = "https://mihon.app/";
 const isAndroid = () => /android/i.test(navigator.userAgent);
-const mihonAvailable = () => isAndroid();
-function openInMihon(title) {
-  const url = "intent://#Intent;action=eu.kanade.tachiyomi.SEARCH;package=" + MIHON_PACKAGE + ";S.query=" + encodeURIComponent(title) + ";S.browser_fallback_url=" + encodeURIComponent(FALLBACK_URL) + ";end";
-  window.location.href = url;
+const mihonAvailable = () => isAndroid() && typeof navigator.share === "function";
+async function openInMihon(title) {
+  try {
+    await navigator.share({ text: title });
+    return true;
+  } catch (e) {
+    if (e && e.name === "AbortError") return false;
+    throw e;
+  }
 }
 let handler = () => {
 };
@@ -1842,19 +1862,35 @@ function strengthOf(r) {
   if (!w) return r.votes || 0;
   return (w.sharedUsers || 0) + (w.score || 0) * 100 + (w.sameAuthor ? 25 : 0);
 }
+function signalsOf(r) {
+  const w = r.why;
+  if (!w) return {
+    readers: (r.votes || 0) > 0,
+    tags: !!(r.genres && r.genres.length),
+    author: false
+  };
+  return {
+    readers: !!w.sharedUsers,
+    tags: !!(w.tags && w.tags.length || w.tagsTotal),
+    author: !!w.sameAuthor
+  };
+}
+const WHY_KINDS = ["readers", "tags", "author"];
 function whyHTML(r) {
   const w = r.why;
-  if (!w) {
-    const n = r.votes || 0;
-    return badge("readers", t("reco.badgeReaders", { n })) + (r.genres && r.genres.length ? " " + badge("tags", t("reco.badgeTagsPlain"), r.genres.slice(0, 4).join(", ")) : "");
-  }
+  const sig = signalsOf(r);
   const out = [];
-  if (w.sharedUsers) out.push(badge("readers", t("reco.badgeReaders", { n: w.sharedUsers })));
-  if (w.tags && w.tags.length)
-    out.push(badge("tags", t("reco.badgeTags", { n: w.tagsTotal || w.tags.length }), w.tags.join(", ")));
-  else if (w.tagsTotal)
-    out.push(badge("tags", t("reco.badgeTags", { n: w.tagsTotal })));
-  if (w.sameAuthor) out.push(badge("author", t("reco.badgeAuthor")));
+  if (!w) {
+    if (sig.readers) out.push(badge("readers", t("reco.badgeReaders", { n: r.votes || 0 })));
+    if (sig.tags) out.push(badge("tags", t("reco.badgeTagsPlain"), r.genres.slice(0, 4).join(", ")));
+    return out.join(" ");
+  }
+  if (sig.readers) out.push(badge("readers", t("reco.badgeReaders", { n: w.sharedUsers })));
+  if (sig.tags) {
+    const names = (w.tags || []).join(", ");
+    out.push(badge("tags", t("reco.badgeTags", { n: w.tagsTotal || w.tags.length }), names || void 0));
+  }
+  if (sig.author) out.push(badge("author", t("reco.badgeAuthor")));
   return out.join(" ");
 }
 let current = null;
@@ -1905,7 +1941,7 @@ function openSheet(d) {
           ${(meta ? meta.genres : d.g).slice(0, 8).map((g) => `<span class="pill">${esc(g)}</span>`).join("")}
         </div>
         <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
-        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">Chercher dans Mihon</button>` : ""}
+        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(t("mihon.search"))}</button>` : ""}
         <dl>
           <dt>Dernière fois</dt><dd>${esc(d.d || "—")}</dd>
           <dt>Ajouté le</dt><dd>${esc(d.ad || "—")}</dd>
@@ -1932,7 +1968,9 @@ function openSheet(d) {
   };
   wireTracker(d, closeSheet);
   const mb = $("mihonBtn");
-  if (mb) mb.onclick = () => openInMihon(d.t);
+  if (mb) mb.onclick = () => {
+    openInMihon(d.t).catch(() => toast(t("mihon.failed")));
+  };
   fillRecos(d, false);
 }
 async function fillRecos(d, force) {
@@ -1968,7 +2006,7 @@ document.addEventListener("keydown", (e) => {
 });
 const SHELVES = ["all", "reading", "behind", "finished", "unopened", "manual"];
 const SORTS = ["recent", "title", "chapters", "progress", "score"];
-const TYPES = ["all", "manga", "manhwa", "manhua"];
+const TYPES = ["all", "manga", "manhwa", "manhua", "webtoon"];
 const LIBTYPES = ["all", "manga", "manhwa", "manhua", "webtoon"];
 const DSORTS = ["relevance", "score", "popularity"];
 const MEDIA_TYPE = { manga: "Manga", manhwa: "Manhwa", manhua: "Manhua" };
@@ -2168,12 +2206,19 @@ function rankTally(tally) {
   }
   return [...seen.values()].sort((a, b) => b.from.length - a.from.length || b.weight - a.weight);
 }
+function typeTest(r) {
+  if (state.type === "all") return true;
+  if (state.type === "webtoon") return r.type === "Manhwa" || r.type === "Manhua";
+  return r.type === MEDIA_TYPE[state.type];
+}
+function discoverPool() {
+  return DISCOVER ? DISCOVER.items.filter((r) => !DISMISSED.has(keyOf(r)) && !isOwned(r)) : [];
+}
 function visibleDiscover() {
   if (!DISCOVER) return [];
-  return DISCOVER.items.filter((r) => {
-    if (DISMISSED.has(keyOf(r))) return false;
-    if (isOwned(r)) return false;
-    if (state.type !== "all" && r.type !== MEDIA_TYPE[state.type]) return false;
+  return discoverPool().filter((r) => {
+    if (!typeTest(r)) return false;
+    if (state.dwhy !== "all" && !signalsOf(r)[state.dwhy]) return false;
     return true;
   }).sort((a, b) => {
     if (state.dsort === "score") return (b.score || 0) - (a.score || 0);
@@ -2454,6 +2499,7 @@ function boot() {
   $("tabShopN").textContent = shop.cont.reduce((s, r) => s + r.missing.length, 0) || "—";
 }
 const SEEDCHOICES = [12, 25, 50, "all"];
+const WHYS = ["all", ...WHY_KINDS];
 function drawDiscoverChips() {
   chips(
     $("seedRow"),
@@ -2467,6 +2513,8 @@ function drawDiscoverChips() {
     null,
     (v) => typeof v === "number" ? t("seeds.count", { n: v }) : t("seeds.all")
   );
+  const pool = discoverPool();
+  const typeHit = (r, v) => v === "all" || (v === "webtoon" ? r.type === "Manhwa" || r.type === "Manhua" : r.type === MEDIA_TYPE[v]);
   chips(
     $("typeRow"),
     TYPES,
@@ -2476,8 +2524,20 @@ function drawDiscoverChips() {
       drawDiscoverChips();
       renderDiscover();
     },
-    null,
+    (v) => pool.filter((r) => typeHit(r, v) && (state.dwhy === "all" || signalsOf(r)[state.dwhy])).length,
     (v) => t(v === "all" ? "type.all" : "libtype." + v)
+  );
+  chips(
+    $("whyRow"),
+    WHYS,
+    state.dwhy,
+    (v) => {
+      state.dwhy = v;
+      drawDiscoverChips();
+      renderDiscover();
+    },
+    (v) => pool.filter((r) => typeTest(r) && (v === "all" || signalsOf(r)[v])).length,
+    (v) => t("why." + v)
   );
   chips(
     $("dsortRow"),
@@ -3064,8 +3124,9 @@ dd{margin:0}
       </div>
       <div class="panel hidden" id="dFilterPanel">
         <div class="chiprow" id="seedRow" role="group" aria-label="Séries analysées"></div>
-        <div class="chiprow" id="typeRow" role="group" aria-label="Type"></div>
-        <div class="chiprow" id="dsortRow" role="group" aria-label="Tri"></div>
+        <div class="chiprow" id="typeRow" role="group" aria-label="Type" data-i18n-attr="aria-label:filter.type"></div>
+        <div class="chiprow" id="whyRow" role="group" aria-label="Raison" data-i18n-attr="aria-label:filter.why"></div>
+        <div class="chiprow" id="dsortRow" role="group" aria-label="Tri" data-i18n-attr="aria-label:filter.sort"></div>
       </div>
       <div class="progress hidden" id="discoverProgress"><i style="width:0%"></i></div>
       <div class="statusline" id="discoverStatus" role="status" aria-live="polite"></div>

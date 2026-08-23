@@ -19,7 +19,7 @@ import { LIB, DISCOVER, setDiscover, DISMISSED, saveDismissed, state, isOwned } 
 import { kvSet } from '../core/store.js';
 import { t as T } from '../core/i18n.js';
 import { recosFor } from '../data/recos.js';
-import { whyHTML, mergeWhy, strengthOf } from './why.js';
+import { whyHTML, mergeWhy, strengthOf, signalsOf } from './why.js';
 import { addFromMedia } from './add.js';
 
 /* MangaBaka items carry `mb`; their AniList `id` is often null, so keying the tally on `id`
@@ -102,12 +102,28 @@ function rankTally(tally){
   return [...seen.values()].sort((a,b)=> b.from.length-a.from.length || b.weight-a.weight);
 }
 
+/* MangaBaka has no "webtoon" type - a canonical webtoon like Omniscient Reader is typed
+   `manhwa`, and "webtoon" appears in neither its genres nor its tags. So the chip means the
+   vertical-scroll colour formats, manhwa and manhua, which is what someone filtering for
+   webtoons is after. The library tab's own webtoon filter is a different thing: it reads
+   Mihon's reading mode, which recommendations do not have. */
+export function typeTest(r){
+  if (state.type === "all") return true;
+  if (state.type === "webtoon") return r.type === "Manhwa" || r.type === "Manhua";
+  return r.type === MEDIA_TYPE[state.type];
+}
+
+/* Not dismissed, not already owned. The chips filter on top of this, and the chip counts are
+   taken from it so a chip never advertises titles the list cannot show. */
+export function discoverPool(){
+  return DISCOVER ? DISCOVER.items.filter(r => !DISMISSED.has(keyOf(r)) && !isOwned(r)) : [];
+}
+
 export function visibleDiscover(){
   if (!DISCOVER) return [];
-  return DISCOVER.items.filter(r=>{
-    if (DISMISSED.has(keyOf(r))) return false;
-    if (isOwned(r)) return false;
-    if (state.type !== "all" && r.type !== MEDIA_TYPE[state.type]) return false;
+  return discoverPool().filter(r=>{
+    if (!typeTest(r)) return false;
+    if (state.dwhy !== "all" && !signalsOf(r)[state.dwhy]) return false;
     return true;
   }).sort((a,b)=>{
     if (state.dsort === "score") return (b.score||0)-(a.score||0);

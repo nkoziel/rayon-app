@@ -58,7 +58,7 @@ export function openSheet(d){
           ${(meta?meta.genres:d.g).slice(0,8).map(g=>`<span class="pill">${esc(g)}</span>`).join("")}
         </div>
         <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
-        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">Chercher dans Mihon</button>` : ""}
+        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(T("mihon.search"))}</button>` : ""}
         <dl>
           <dt>Dernière fois</dt><dd>${esc(d.d||"—")}</dd>
           <dt>Ajouté le</dt><dd>${esc(d.ad||"—")}</dd>
@@ -82,7 +82,9 @@ export function openSheet(d){
   };
   wireTracker(d, closeSheet);   // also wires removeBtn — see REVIEW.md §1.4
   const mb = $("mihonBtn");
-  if (mb) mb.onclick = () => openInMihon(d.t);
+  /* The share sheet needs the click's user activation, so this stays in the handler and is not
+     awaited into a later tick. A refusal is the user changing their mind, not a failure. */
+  if (mb) mb.onclick = () => { openInMihon(d.t).catch(() => toast(T("mihon.failed"))); };
   fillRecos(d, false);
 }
 

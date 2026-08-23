@@ -10,7 +10,8 @@ import { totals, unitOf, SRCLABEL, SRCNOTE } from './data/totals.js';
 import { importFile, exportLib, mergeLibraries, purgeSeriesData, resetEverything } from './import/library.js';
 import { mihonAvailable, openInMihon } from './ui/mihon.js';
 import { addFromMedia, openAddModal } from './ui/add.js';
-import { runDiscover, renderDiscover, visibleDiscover } from './ui/discover.js';
+import { runDiscover, renderDiscover, visibleDiscover, discoverPool, typeTest } from './ui/discover.js';
+import { signalsOf, WHY_KINDS } from './ui/why.js';
 import { onLibraryChanged } from './ui/refresh.js';
 import { renderShopping, shoppingRows, askPrice, defaultPrice } from './ui/shopping.js';
 import { renderLibrary, libRows, shelfTest, typeOf, updateFilterSummary, SHELVES, SORTS, TYPES, LIBTYPES, DSORTS, MEDIA_TYPE } from './ui/library.js';
@@ -125,12 +126,25 @@ function boot(){
 }
 
 const SEEDCHOICES = [12, 25, 50, "all"];
+/* The three badges, plus "all". Same keys signalsOf() returns, so the chip and the badge can
+   never drift apart. */
+const WHYS = ["all", ...WHY_KINDS];
 function drawDiscoverChips(){
   chips($("seedRow"), SEEDCHOICES, state.seeds,
         v => { state.seeds = v; store.set("seeds:v1", v); drawDiscoverChips(); },
         null, v => typeof v === "number" ? T("seeds.count",{n:v}) : T("seeds.all"));
+  /* Counts come from the same pool the list is drawn from, so a chip never advertises titles the
+     list cannot show. Each row counts against the OTHER row's current choice, which is what makes
+     the pair readable: pick Webtoon and the reason counts tell you what is actually left. */
+  const pool = discoverPool();
+  const typeHit = (r, v) => v === "all" ||
+    (v === "webtoon" ? r.type === "Manhwa" || r.type === "Manhua" : r.type === MEDIA_TYPE[v]);
   chips($("typeRow"), TYPES, state.type, v=>{ state.type=v; drawDiscoverChips(); renderDiscover(); },
-        null, v=>T(v==="all"?"type.all":"libtype."+v));
+        v=>pool.filter(r => typeHit(r, v) && (state.dwhy === "all" || signalsOf(r)[state.dwhy])).length,
+        v=>T(v==="all"?"type.all":"libtype."+v));
+  chips($("whyRow"), WHYS, state.dwhy, v=>{ state.dwhy=v; drawDiscoverChips(); renderDiscover(); },
+        v=>pool.filter(r => typeTest(r) && (v === "all" || signalsOf(r)[v])).length,
+        v=>T("why."+v));
   chips($("dsortRow"), DSORTS, state.dsort, v=>{ state.dsort=v; drawDiscoverChips(); renderDiscover(); },
         null, v=>T("dsort."+v));
 }

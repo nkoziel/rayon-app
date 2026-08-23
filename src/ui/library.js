@@ -13,7 +13,9 @@ import { openSheet } from './sheet.js';
    language cannot change what the app compares against. */
 export const SHELVES  = ["all","reading","behind","finished","unopened","manual"];
 export const SORTS    = ["recent","title","chapters","progress","score"];
-export const TYPES    = ["all","manga","manhwa","manhua"];
+/* Discover's type chips. "webtoon" here means the vertical-scroll formats (manhwa + manhua):
+   MangaBaka has no webtoon type - see typeTest() in ui/discover.js. */
+export const TYPES    = ["all","manga","manhwa","manhua","webtoon"];
 export const LIBTYPES = ["all","manga","manhwa","manhua","webtoon"];
 export const DSORTS   = ["relevance","score","popularity"];
 

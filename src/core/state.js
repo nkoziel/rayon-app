@@ -62,7 +62,10 @@ export const saveDismissed = () => store.set("dismissed:v1", [...DISMISSED]);
 export const state = {
   q:"", shelf:"all", source:"all", sort:"recent", view:"grid",
   hideOwned:true, tab:"library", type:"all", dsort:"relevance", unit:"ch",
-  libType:"all", seeds:25
+  libType:"all", seeds:25,
+  /* Discover: which evidence a recommendation must carry - "all" | "readers" | "tags" | "author",
+     read through signalsOf() so the chip and the badge can never disagree. */
+  dwhy:"all"
 };
 
 /* ---------- persistence of the caches ---------- */

@@ -212,6 +212,15 @@ const en = {
   "discover.crossed":          "Crossed {n} series: {seeds}.",
 
   "import.consolidated":       "{n} rows left out (not in your favourites, or the same series on another source)",
+
+  "why.all":                   "All reasons",
+  "why.readers":               "Readers",
+  "why.tags":                  "Same style",
+  "why.author":                "Same author",
+  "filter.why":                "Reason",
+
+  "mihon.search":              "Search in Mihon",
+  "mihon.failed":              "Could not open the share sheet",
 };
 
 const fr = {
@@ -406,6 +415,15 @@ const fr = {
   "discover.crossed":          "Croisement de {n} séries : {seeds}.",
 
   "import.consolidated":       "{n} lignes écartées (hors favoris, ou même série sur une autre source)",
+
+  "why.all":                   "Toutes raisons",
+  "why.readers":               "Lecteurs",
+  "why.tags":                  "Même style",
+  "why.author":                "Même auteur",
+  "filter.why":                "Raison",
+
+  "mihon.search":              "Chercher dans Mihon",
+  "mihon.failed":              "Impossible d'ouvrir le partage",
 };
 
 const LOCALES = { en, fr };
