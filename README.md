@@ -1,8 +1,11 @@
 # Rayon — manga library & recommendations
 
-Standalone web app: a library of series, AniList metadata, progress tracking, and a
-**Discover** tab that cross-references reader-voted recommendations. No account, no server —
-everything is stored in your browser.
+Standalone web app: a library of series, cross-database metadata, progress tracking, and a
+**Discover** tab that cross-references recommendations from the series you already read. No
+account, no server — everything is stored in your browser.
+
+Every recommendation says *why* it is being suggested, as three badges: how many readers have
+both series, how many tags they share, and whether they come from the same author.
 
 **Rayon does not read manga. [Mihon](https://mihon.app/) is the reader.** Each series sheet
 has a *Chercher dans Mihon* button that hands the title straight to the app's cross-source
@@ -39,7 +42,7 @@ Open `index.html` in a browser. Everything works except installation and offline
 which both require an `http(s)://` address — or just use the live URL above.
 
 To load a library: **Import** (Mihon `.tachibk` backup or `.json` export), or the **Add**
-tab to search AniList for titles one by one.
+tab to search for titles one by one.
 
 ## 2. Hosting it yourself
 
@@ -54,7 +57,7 @@ One requirement: serve over HTTPS, otherwise the service worker will not registe
 ## 3. Installing on Android
 
 Open the URL in Chrome → ⋮ menu → **Add to home screen**. The app launches fullscreen,
-no address bar, with its icon. It starts offline; only AniList requests need the network.
+no address bar, with its icon. It starts offline; only metadata lookups need the network.
 
 On iPhone: Safari → Share → **Add to Home Screen**.
 

@@ -1,6 +1,6 @@
 # Rayon — notes for Claude Code
 
-Standalone PWA: manga library, progress tracking, AniList cross-referenced recommendations.
+Standalone PWA: manga library, progress tracking, cross-referenced recommendations (MangaBaka first, AniList as fallback).
 No account, no server, everything local in the browser.
 
 ## Language policy
@@ -28,7 +28,7 @@ Consequences while that migration is in progress:
 | `src/core/` | `dom`, `norm`, `store`, `state`, `i18n` — no UI, no app flow |
 | `src/data/` | `anilist`, `mangadex`, `totals` — fetching and deriving |
 | `src/import/` | `tachibk` (protobuf), `library` (import/merge/export/reset) |
-| `src/ui/` | `library`, `sheet`, `tracker`, `discover`, `add`, `mihon`, `refresh` |
+| `src/ui/` | `library`, `sheet`, `tracker`, `discover`, `add`, `mihon`, `shopping`, `why`, `refresh` |
 | `src/main.js` | wiring and boot only |
 | `src/style.css`, `src/index.html` | CSS and the page shell |
 | `index.html` (root) | generated single file, committed, served by Pages |
@@ -97,13 +97,35 @@ is how every behavioural check on this app has been done.
 - AniList: 30 req/min. The current `sleep(700)` yields ~85 req/min → bursts of 429.
 - `norm()` is called thousands of times per render — memoise it or move to the stable key.
 
+## Recommendations
+
+Both surfaces — the detail sheet and the Discover tab — go through `data/recos.js` `recosFor()`.
+Discover used to call AniList's `loadRecos` directly, which meant two paths and two different
+answers to the same question; it now shares one.
+
+`ui/why.js` renders the evidence as badges and is imported by both. It lives in its own module
+rather than in `sheet.js` so Discover can use it without closing an import cycle.
+
+Two shapes flow through it. MangaBaka items carry `why` (`sharedUsers`, `tags`, `tagsTotal`,
+`sameAuthor`, `score`); AniList items carry only `votes`. `strengthOf()` reduces either to one
+comparable number so ranking does not care which source answered.
+
+Gotchas worth keeping:
+- MangaBaka ids are on `.mb`; `.id` (AniList) is often `null`. Key on `mb ?? id`, never `id`.
+- `DISMISSED` holds **strings**. It used to hold AniList numbers, and a mixed Set answers
+  `has("123")` false for a stored `123`, which silently un-dismisses everything.
+- `shared_tags_total` is a real count in the dozens; the returned `shared_tags` list is
+  truncated. Show the count, put the sampled names in the tooltip.
+- Badge colours were measured, not picked: `--press` (4.01:1) and `--vermilion` (3.75:1) both
+  fail WCAG AA on `--paper` at 9px, so the badges use darker shades of their own.
+
 ## Data sources
 
 | Source | Use | Constraint |
 |---|---|---|
-| AniList GraphQL | records, recommendations | 30 req/min, no key |
+| AniList GraphQL | records, recommendations (fallback only) | 30 req/min, no key; returned 403 for a stretch of this project, answering again as of 2026-08-23 — which is why nothing depends on it alone |
 | MangaDex API | totals, volume split | CORS fine on `api.mangadex.org`; the image CDN is not |
-| MangaBaka | cross-database ids, metadata, recommendations | base URL is `api.mangabaka.org` (**not** `.dev`, which is down); CC BY-NC-SA 4.0, attribution required, non-commercial |
+| MangaBaka | cross-database ids, metadata, recommendations (**preferred**) | base URL is `api.mangabaka.org` (**not** `.dev`, which is down); CC BY-NC-SA 4.0, attribution required, non-commercial |
 
 ## Verifying a change
 
