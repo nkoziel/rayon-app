@@ -5,7 +5,7 @@ import { norm } from '../core/norm.js';
 import { recordOf, CREDIT } from '../data/record.js';
 import { LIB, META, saveLib, isOwned, state } from '../core/state.js';
 import { t as T } from '../core/i18n.js';
-import { loadRecos } from '../data/anilist.js';
+import { recosFor } from '../data/recos.js';
 import { totals, unitOf, progressOf } from '../data/totals.js';
 import { purgeSeriesData } from '../import/library.js';
 import { trackerHTML, wireTracker, provenanceHTML } from './tracker.js';
@@ -16,6 +16,22 @@ import { libraryChanged } from './refresh.js';
 let current = null;
 export function closeSheet(){ current = null; $("overlay").innerHTML = ""; document.body.style.overflow = ""; }
 
+/* Say WHY this was recommended, not just that it was.
+   MangaBaka knows the shared tags and the shared readers; AniList only ever knew a vote
+   count, so that is what it falls back to. */
+function whyHTML(r){
+  const w = r.why;
+  if (!w) return `<b>${r.votes||0} ${esc(T("reco.readers"))}</b> ${esc(T("reco.madeLink"))}${r.genres && r.genres.length ? " · " + esc(r.genres.slice(0,3).join(", ")) : ""}`;
+
+  const bits = [];
+  if (w.sameAuthor) bits.push(`<b>${esc(T("reco.sameAuthor"))}</b>`);
+  if (w.tags && w.tags.length) bits.push(esc(T("reco.shares", { tags: w.tags.join(", ") })));
+  if (w.sharedUsers) bits.push(esc(T("reco.sharedReaders", { n: w.sharedUsers })));
+  if (!bits.length && w.tagsTotal) bits.push(esc(T("reco.sharedTags", { n: w.tagsTotal })));
+  const badge = w.both ? `<span class="owned">${esc(T("reco.both"))}</span>` : "";
+  return bits.join(" · ") + badge;
+}
+
 export function recoRowHTML(r){
   const meta = [r.type, r.annee, r.chapitres?r.chapitres+" ch.":null, r.statut, r.score?r.score+"/100":null].filter(Boolean).join(" · ");
   return `<div class="rec">
@@ -23,8 +39,8 @@ export function recoRowHTML(r){
     <div style="min-width:0">
       <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a>${isOwned(r)?'<span class="owned">déjà chez toi</span>':''}</div>
       <div class="rmeta">${esc(meta)}</div>
-      <div class="rwhy"><b>${r.votes||0} lecteurs</b> font le rapprochement${r.genres.length?" · "+esc(r.genres.slice(0,3).join(", ")):""}</div>
-      ${isOwned(r)?"":`<div class="ractions"><button class="btn sm" data-addreco="${r.id}">Ajouter à ma liste</button></div>`}
+      <div class="rwhy">${whyHTML(r)}</div>
+      ${isOwned(r)?"":`<div class="ractions"><button class="btn sm" data-addreco="${r.mb ?? r.id}">${esc(T("reco.add"))}</button></div>`}
     </div>
   </div>`;
 }
@@ -87,22 +103,22 @@ export function openSheet(d){
 
 export async function fillRecos(d, force){
   const box = $("recos");
-  box.innerHTML = `<p class="loading">Interrogation d'AniList</p>`;
+  box.innerHTML = `<p class="loading">${esc(T("reco.loading"))}</p>`;
   try{
-    const payload = await loadRecos(d, force);
+    const payload = await recosFor(d, force);
     if (current !== d) return;
     if (!payload.items.length){
-      box.innerHTML = `<p class="note">Aucun rapprochement voté sur cette fiche. <a href="${esc(payload.source)}" target="_blank" rel="noreferrer">Voir ${esc(payload.matched)} sur AniList</a></p>`;
+      box.innerHTML = `<p class="note">${esc(T("reco.none"))} <a href="${esc(payload.source)}" target="_blank" rel="noreferrer">${esc(T("reco.seeOn", { title: payload.matched }))}</a></p>`;
       return;
     }
     const visible = payload.items.filter(r => !state.hideOwned || !isOwned(r));
     box.innerHTML = visible.length
       ? visible.map(recoRowHTML).join("")
-      : `<p class="note">Les ${payload.items.length} titres recommandés ici sont déjà chez toi.</p>`;
+      : `<p class="note">${esc(T("reco.allOwned", { n: payload.items.length }))}</p>`;
     [...box.querySelectorAll("[data-addreco]")].forEach(b=>{
       b.onclick = () => {
-        const r = payload.items.find(x=>String(x.id)===b.dataset.addreco);
-        if (r && addFromMedia(r)){ b.textContent = "Ajouté"; b.disabled = true; }
+        const r = payload.items.find(x => String(x.mb ?? x.id) === b.dataset.addreco);
+        if (r && addFromMedia(r)){ b.textContent = T("reco.added"); b.disabled = true; }
       };
     });
   }catch(e){

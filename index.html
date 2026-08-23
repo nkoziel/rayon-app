@@ -210,7 +210,20 @@ const en = {
   "hydrate.resolving": "Fetching records · {done}/{total}",
   "hydrate.done": "{n} records of {total} · cached",
   "sheet.record": "Record",
-  "sheet.via": "via {source}"
+  "sheet.via": "via {source}",
+  "reco.loading": "Looking for connections…",
+  "reco.readers": "readers",
+  "reco.madeLink": "made the connection",
+  "reco.sameAuthor": "Same author",
+  "reco.shares": "shares {tags}",
+  "reco.sharedReaders": { "one": "{n} reader has both", "other": "{n} readers have both" },
+  "reco.sharedTags": { "one": "{n} shared tag", "other": "{n} shared tags" },
+  "reco.both": "tags and readers agree",
+  "reco.none": "No connection recorded for this series.",
+  "reco.seeOn": "See {title}",
+  "reco.allOwned": "All {n} titles recommended here are already yours.",
+  "reco.add": "Add to my list",
+  "reco.added": "Added"
 };
 const fr = {
   "app.title": "Rayon",
@@ -336,7 +349,20 @@ const fr = {
   "hydrate.resolving": "Récupération des fiches · {done}/{total}",
   "hydrate.done": "{n} fiches sur {total} · en cache",
   "sheet.record": "Fiche",
-  "sheet.via": "via {source}"
+  "sheet.via": "via {source}",
+  "reco.loading": "Recherche des rapprochements…",
+  "reco.readers": "lecteurs",
+  "reco.madeLink": "font le rapprochement",
+  "reco.sameAuthor": "Même auteur",
+  "reco.shares": "partage {tags}",
+  "reco.sharedReaders": { "one": "{n} lecteur a les deux", "other": "{n} lecteurs ont les deux" },
+  "reco.sharedTags": { "one": "{n} tag en commun", "other": "{n} tags en commun" },
+  "reco.both": "tags et lecteurs concordent",
+  "reco.none": "Aucun rapprochement recensé pour cette série.",
+  "reco.seeOn": "Voir {title}",
+  "reco.allOwned": "Les {n} titres recommandés ici sont déjà chez toi.",
+  "reco.add": "Ajouter à ma liste",
+  "reco.added": "Ajouté"
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -738,6 +764,27 @@ async function matchTitle(title) {
   const d = await mbGet(`/v1/series/match?q=${encodeURIComponent(String(title).slice(0, 120))}`);
   const first = Array.isArray(d) ? d[0] : d;
   return shapeSeries(first);
+}
+async function recommendations(mbId, kind = "similar", limit = 12) {
+  const path = kind === "readers" ? "readers-also-like" : "similar";
+  const d = await mbGet(`/v1/series/${encodeURIComponent(mbId)}/${path}?limit=${limit}`);
+  return (Array.isArray(d) ? d : []).map((r) => {
+    const m = shapeSeries(r.series);
+    if (!m) return null;
+    const tags = r.shared_tags || [];
+    return {
+      ...m,
+      why: {
+        kind: path,
+        score: r.score || 0,
+        sameAuthor: !!r.matched_author,
+        sharedUsers: r.shared_users || 0,
+        /* "core" tags define the series; they are the ones worth showing. */
+        tags: tags.filter((x) => x.weight === "core").map((x) => x.name).slice(0, 4),
+        tagsTotal: r.shared_tags_total || tags.length
+      }
+    };
+  }).filter(Boolean);
 }
 let running = false;
 const saveMb = () => kvSet("mb:v1", MBCACHE);
@@ -1466,6 +1513,44 @@ const CREDIT = {
   mangabaka: { name: "MangaBaka", url: "https://mangabaka.org", licence: "CC BY-NC-SA 4.0" },
   anilist: { name: "AniList", url: "https://anilist.co", licence: "" }
 };
+const KEY = (d) => "recos:v4:" + norm(d.t);
+function merge(similar, readers) {
+  const by = /* @__PURE__ */ new Map();
+  for (const r of similar) by.set(r.mb, r);
+  for (const r of readers) {
+    const seen = by.get(r.mb);
+    if (seen) {
+      seen.why.sharedUsers = r.why.sharedUsers;
+      seen.why.both = true;
+    } else by.set(r.mb, r);
+  }
+  return [...by.values()].sort((a, b) => {
+    if (a.why.both !== b.why.both) return a.why.both ? -1 : 1;
+    return (b.why.score || 0) - (a.why.score || 0);
+  });
+}
+async function recosFor(d, force) {
+  const key = KEY(d);
+  if (!force) {
+    const hit = await kvGet(key);
+    if (hit) return hit;
+  }
+  const mb = MBCACHE[norm(d.t)];
+  if (mb && mb.mb) {
+    const [similar, readers] = await Promise.all([
+      recommendations(mb.mb, "similar", 12).catch(() => []),
+      recommendations(mb.mb, "readers", 12).catch(() => [])
+    ]);
+    const items = merge(similar, readers);
+    if (items.length) {
+      const payload2 = { source: mb.url, matched: mb.titre, provider: "mangabaka", items };
+      kvSet(key, payload2);
+      return payload2;
+    }
+  }
+  const payload = await loadRecos(d, force);
+  return { ...payload, provider: "anilist" };
+}
 function provenanceHTML(d) {
   const t2 = totals(d);
   const unit = unitOf(d);
@@ -1624,6 +1709,17 @@ function closeSheet() {
   $("overlay").innerHTML = "";
   document.body.style.overflow = "";
 }
+function whyHTML(r) {
+  const w = r.why;
+  if (!w) return `<b>${r.votes || 0} ${esc(t("reco.readers"))}</b> ${esc(t("reco.madeLink"))}${r.genres && r.genres.length ? " · " + esc(r.genres.slice(0, 3).join(", ")) : ""}`;
+  const bits = [];
+  if (w.sameAuthor) bits.push(`<b>${esc(t("reco.sameAuthor"))}</b>`);
+  if (w.tags && w.tags.length) bits.push(esc(t("reco.shares", { tags: w.tags.join(", ") })));
+  if (w.sharedUsers) bits.push(esc(t("reco.sharedReaders", { n: w.sharedUsers })));
+  if (!bits.length && w.tagsTotal) bits.push(esc(t("reco.sharedTags", { n: w.tagsTotal })));
+  const badge = w.both ? `<span class="owned">${esc(t("reco.both"))}</span>` : "";
+  return bits.join(" · ") + badge;
+}
 function recoRowHTML(r) {
   const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut, r.score ? r.score + "/100" : null].filter(Boolean).join(" · ");
   return `<div class="rec">
@@ -1631,8 +1727,8 @@ function recoRowHTML(r) {
     <div style="min-width:0">
       <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a>${isOwned(r) ? '<span class="owned">déjà chez toi</span>' : ""}</div>
       <div class="rmeta">${esc(meta)}</div>
-      <div class="rwhy"><b>${r.votes || 0} lecteurs</b> font le rapprochement${r.genres.length ? " · " + esc(r.genres.slice(0, 3).join(", ")) : ""}</div>
-      ${isOwned(r) ? "" : `<div class="ractions"><button class="btn sm" data-addreco="${r.id}">Ajouter à ma liste</button></div>`}
+      <div class="rwhy">${whyHTML(r)}</div>
+      ${isOwned(r) ? "" : `<div class="ractions"><button class="btn sm" data-addreco="${r.mb ?? r.id}">${esc(t("reco.add"))}</button></div>`}
     </div>
   </div>`;
 }
@@ -1698,21 +1794,21 @@ function openSheet(d) {
 }
 async function fillRecos(d, force) {
   const box = $("recos");
-  box.innerHTML = `<p class="loading">Interrogation d'AniList</p>`;
+  box.innerHTML = `<p class="loading">${esc(t("reco.loading"))}</p>`;
   try {
-    const payload = await loadRecos(d, force);
+    const payload = await recosFor(d, force);
     if (current !== d) return;
     if (!payload.items.length) {
-      box.innerHTML = `<p class="note">Aucun rapprochement voté sur cette fiche. <a href="${esc(payload.source)}" target="_blank" rel="noreferrer">Voir ${esc(payload.matched)} sur AniList</a></p>`;
+      box.innerHTML = `<p class="note">${esc(t("reco.none"))} <a href="${esc(payload.source)}" target="_blank" rel="noreferrer">${esc(t("reco.seeOn", { title: payload.matched }))}</a></p>`;
       return;
     }
     const visible = payload.items.filter((r) => !state.hideOwned || !isOwned(r));
-    box.innerHTML = visible.length ? visible.map(recoRowHTML).join("") : `<p class="note">Les ${payload.items.length} titres recommandés ici sont déjà chez toi.</p>`;
+    box.innerHTML = visible.length ? visible.map(recoRowHTML).join("") : `<p class="note">${esc(t("reco.allOwned", { n: payload.items.length }))}</p>`;
     [...box.querySelectorAll("[data-addreco]")].forEach((b) => {
       b.onclick = () => {
-        const r = payload.items.find((x) => String(x.id) === b.dataset.addreco);
+        const r = payload.items.find((x) => String(x.mb ?? x.id) === b.dataset.addreco);
         if (r && addFromMedia(r)) {
-          b.textContent = "Ajouté";
+          b.textContent = t("reco.added");
           b.disabled = true;
         }
       };

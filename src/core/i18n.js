@@ -159,6 +159,20 @@ const en = {
 
   "sheet.record":              "Record",
   "sheet.via":                 "via {source}",
+
+  "reco.loading":              "Looking for connections…",
+  "reco.readers":              "readers",
+  "reco.madeLink":             "made the connection",
+  "reco.sameAuthor":           "Same author",
+  "reco.shares":               "shares {tags}",
+  "reco.sharedReaders":        {"one":"{n} reader has both","other":"{n} readers have both"},
+  "reco.sharedTags":           {"one":"{n} shared tag","other":"{n} shared tags"},
+  "reco.both":                 "tags and readers agree",
+  "reco.none":                 "No connection recorded for this series.",
+  "reco.seeOn":                "See {title}",
+  "reco.allOwned":             "All {n} titles recommended here are already yours.",
+  "reco.add":                  "Add to my list",
+  "reco.added":                "Added",
 };
 
 const fr = {
@@ -300,6 +314,20 @@ const fr = {
 
   "sheet.record":              "Fiche",
   "sheet.via":                 "via {source}",
+
+  "reco.loading":              "Recherche des rapprochements…",
+  "reco.readers":              "lecteurs",
+  "reco.madeLink":             "font le rapprochement",
+  "reco.sameAuthor":           "Même auteur",
+  "reco.shares":               "partage {tags}",
+  "reco.sharedReaders":        {"one":"{n} lecteur a les deux","other":"{n} lecteurs ont les deux"},
+  "reco.sharedTags":           {"one":"{n} tag en commun","other":"{n} tags en commun"},
+  "reco.both":                 "tags et lecteurs concordent",
+  "reco.none":                 "Aucun rapprochement recensé pour cette série.",
+  "reco.seeOn":                "Voir {title}",
+  "reco.allOwned":             "Les {n} titres recommandés ici sont déjà chez toi.",
+  "reco.add":                  "Ajouter à ma liste",
+  "reco.added":                "Ajouté",
 };
 
 const LOCALES = { en, fr };
