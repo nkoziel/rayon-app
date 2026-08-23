@@ -9,10 +9,23 @@ stored in your browser.
 ## Folder contents
 
 ```
-index.html              the application
+index.html              the built application — ONE self-contained file (generated)
+src/                    the source: index.html shell, style.css, main.js
 manifest.webmanifest    install metadata
 sw.js                   service worker (offline support)
 icons/                  192, 512, maskable, apple-touch icons
+tools/                  build publish step and the verification harness
+```
+
+> **`index.html` at the root is generated. Edit `src/`, then run `npm run build`** — the build
+> overwrites the root file. It is committed on purpose so the app stays openable straight from
+> a clone, with no build step.
+
+```bash
+npm install
+npm run build      # src/ -> one self-contained index.html at the root
+npm run verify     # syntax + case tables, zero dependencies
+npm run dev        # Vite dev server
 ```
 
 ## 1. Try it right now

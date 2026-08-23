@@ -18,11 +18,33 @@ Consequences while that migration is in progress:
 - French must stay a *complete* locale, not a partial fallback — the owner uses the app in
   French. A missing key falling back to English is a bug, not a graceful degradation.
 
-## State of the code
+## Layout — read this before editing anything
 
-`index.html` is a **single ~1,970-line file** (HTML + CSS + inline JS). The module split is
-planned (see `REVIEW.md` §8 phase 1) but **not done yet**. Until it is: edit with targeted
-`Edit` calls, never rewrite the whole file.
+> **The root `index.html` is a BUILD ARTIFACT. Never edit it.**
+> The next `npm run build` overwrites it and your change is gone without a trace.
+
+| Path | What it is |
+|---|---|
+| `src/main.js` | **the application** — all the JS, source of truth |
+| `src/style.css` | all the CSS |
+| `src/index.html` | the page shell (markup only) |
+| `index.html` (root) | generated single file, committed, served by Pages |
+| `sw.js`, `manifest.webmanifest`, `icons/` | PWA files, outside the bundle, edited directly |
+
+```
+npm run build      # src/ -> dist/index.html -> copied to the repo root
+npm run verify     # zero-dependency checks, see below
+npm run dev        # Vite dev server on src/
+```
+
+The root file is committed on purpose: GitHub Pages serves the repo root, and cloning the repo
+and double-clicking `index.html` has to keep working with no build step. **Rebuild and commit
+the root file in the same commit as the `src/` change** — otherwise the deployed app silently
+lags behind the source. `npm run verify` fails if it detects that.
+
+`src/main.js` is still one ~2,000-line module; splitting it into `src/core`, `src/data`,
+`src/ui`… is the remaining part of phase 4. It runs as an ES module, so top-level declarations
+are **not** global — `window.__rayon` exposes them deliberately for console debugging.
 
 ## Invariants — do not violate
 
