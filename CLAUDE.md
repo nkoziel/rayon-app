@@ -67,6 +67,22 @@ planned (see `REVIEW.md` §8 phase 1) but **not done yet**. Until it is: edit wi
 | MangaDex API | totals, volume split | CORS fine on `api.mangadex.org`; the image CDN is not |
 | MangaBaka | cross-database ids, metadata, recommendations | base URL is `api.mangabaka.org` (**not** `.dev`, which is down); CC BY-NC-SA 4.0, attribution required, non-commercial |
 
+## Verifying a change
+
+```
+node tools/verify.js
+```
+
+Zero dependencies. Parses the inline `<script>` so syntax errors surface without a browser,
+then extracts the pure functions **by source from `index.html`** and runs case tables against
+them — so it tests the code that actually ships, not a copy that can drift.
+
+Run it after every edit to `index.html`. Add a row to the relevant table whenever you fix a
+parsing bug; that is how §1.1 and §1.6 stopped being able to regress. When the module split
+lands, these tables move to Vitest unchanged.
+
+Anything involving the DOM, storage or the network still needs a real browser.
+
 ## Environment
 
 - **Verify Node/npm before assuming a build step** — they were absent on this machine as of

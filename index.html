@@ -1318,9 +1318,33 @@ async function readZip(file){
   return pages;
 }
 
+/* Read a chapter number out of a filename.
+   The old version fell back to "first number in the name", which meant
+   "[2024] Vol.3 - 12.cbz" returned 2024 — and finish() writes that straight into progress,
+   irreversibly. Returning null is always safer than returning a wrong number: the caller
+   then just advances by one. See REVIEW.md §1.6. */
 const chapNumOf = name => {
-  const m = String(name).match(/(?:ch(?:ap(?:ter|itre)?)?[\s._-]*)(\d+(?:\.\d+)?)/i) || String(name).match(/(\d+(?:\.\d+)?)/);
-  return m ? parseFloat(m[1]) : null;
+  let s = String(name).replace(/\.(cbz|zip|cbr|rar|7z|pdf)$/i, "");
+  /* bracketed groups hold scanlation tags, years, resolutions — never the chapter */
+  s = s.replace(/[\[\(\{][^\]\)\}]*[\]\)\}]/g, " ");
+  /* release dates, both orders — otherwise the month reads as a chapter number */
+  s = s.replace(/\b(?:19|20)\d{2}[-._/]\d{1,2}[-._/]\d{1,2}\b/g, " ")
+       .replace(/\b\d{1,2}[-._/]\d{1,2}[-._/](?:19|20)\d{2}\b/g, " ");
+
+  /* an explicit chapter marker always wins */
+  const m = s.match(/\bch(?:ap(?:ter|itre)?)?\.?[\s._-]*(\d+(?:\.\d+)?)/i);
+  if (m) return parseFloat(m[1]);
+
+  /* strip volume markers WITH their number, so the fallback cannot pick them up:
+     a volume number is not a chapter number */
+  const noVol = s
+    .replace(/\b(?:vol(?:ume)?|tome)\.?[\s._-]*\d+(?:\.\d+)?/ig, " ")
+    .replace(/\bt\.?\s?\d+(?:\.\d+)?/ig, " ");
+
+  /* fall back to the first bare number that is not a plausible year */
+  const nums = noVol.match(/\d+(?:\.\d+)?/g) || [];
+  const ok = nums.filter(n => !/^(?:19|20)\d{2}$/.test(n));
+  return ok.length ? parseFloat(ok[0]) : null;
 };
 
 async function addFiles(entry, fileList){
@@ -1483,8 +1507,20 @@ function openReader(entry, chapter, all){
     chapter.done = true; chapter.lastPage = 0;
     if (chapter.fs || chapter.pf) saveFsProgress(chapter); else await putChapter(chapter);
     const n = chapter.num;
-    if (n && n > (entry.r||0)) entry.r = n;
-    else if (!n) entry.r = (entry.r||0) + 1;
+    const cur = entry.r || 0;
+    if (n && n > cur){
+      /* chapNumOf() is stricter now, but a filename can still lie in ways it cannot detect.
+         Overwriting progress is irreversible, so a big forward jump has to be confirmed
+         rather than applied silently. See REVIEW.md §1.6. */
+      const tot = totals(entry).ch || 0;
+      const suspicious = (n - cur > 5) || (tot && n > tot);
+      if (!suspicious || confirm(
+            `Ce fichier indique le chapitre ${n}, alors que ta progression est à ${cur}`
+            + (tot ? ` sur ${tot}` : "") + `.\n\nMettre ta progression à ${n} ?`))
+        entry.r = n;
+      else entry.r = cur + 1;
+    }
+    else if (!n) entry.r = cur + 1;
     entry.d = new Date().toISOString().slice(0,10);
     saveLib(); renderLibrary(); boot();
     const idx = all.findIndex(c=>c.id===chapter.id);
