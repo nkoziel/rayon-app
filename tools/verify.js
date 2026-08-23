@@ -19,31 +19,49 @@ const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 
-const FILE = path.join(__dirname, '..', 'index.html');
-const html = fs.readFileSync(FILE, 'utf8');
+/* Source of truth is src/main.js. The root index.html is a build artifact — testing that
+   would test the bundler, not the code. */
+const FILE = path.join(__dirname, '..', 'src', 'main.js');
+const source = fs.readFileSync(FILE, 'utf8');
 
 let failures = 0;
 const fail = (msg) => { failures++; console.log('  FAIL ' + msg); };
 const section = (name) => console.log('\n=== ' + name + ' ===');
 
 /* ---------- 1. syntax ---------- */
-section('Syntaxe du script inline');
-const blocks = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
-if (!blocks.length) fail('aucun bloc <script> trouve');
-blocks.forEach((b, i) => {
-  try {
-    new vm.Script(b[1], { filename: `index.html#${i}` });
-    console.log(`  OK   script #${i} (${b[1].split('\n').length} lignes)`);
-  } catch (e) {
-    fail(`script #${i} : ${e.message}`);
-  }
-});
+section('Syntaxe de src/main.js');
+try {
+  /* vm.Script cannot parse import/export. Once the module split lands, strip those lines
+     before parsing (or move to a real parser) — for now main.js has none. */
+  new vm.Script(source, { filename: 'src/main.js' });
+  console.log(`  OK   ${source.split('\n').length} lignes`);
+} catch (e) {
+  fail(`src/main.js : ${e.message}`);
+}
+
+/* ---------- 1b. the published file must stay self-contained ---------- */
+section('index.html publie — un seul fichier, aucune dependance locale');
+const builtPath = path.join(__dirname, '..', 'index.html');
+if (!fs.existsSync(builtPath)) fail('index.html absent — lancer `npm run build`');
+else {
+  const built = fs.readFileSync(builtPath, 'utf8');
+  const externals = [...built.matchAll(/<(?:script[^>]*\ssrc|link[^>]*\shref)=["']([^"']+)["']/g)]
+    .map(m => m[1])
+    .filter(u => !/^(https?:|data:|#)/.test(u) && !/^\.?\/?(icons\/|manifest\.webmanifest)/.test(u));
+  if (externals.length) externals.forEach(u => fail('reference externe : ' + u));
+  else console.log(`  OK   autonome (${(Buffer.byteLength(built, 'utf8') / 1024).toFixed(1)} Ko)`);
+
+  /* the build must not lag behind the source it was made from */
+  const marker = 'function mergeLibraries';
+  if (source.includes(marker) && !built.includes(marker))
+    fail('index.html ne contient pas le code de src/main.js — build a relancer');
+}
 
 /* ---------- helpers ---------- */
 /* Pull one top-level `const NAME = ...;` statement out of index.html by line, and evaluate it.
    Line-based rather than one big regex: these declarations span several lines and end with a
    trailing `//` comment after the semicolon, which a `;\n` pattern silently misses. */
-const srcLines = html.split('\n');
+const srcLines = source.split('\n');
 function extract(name) {
   const start = srcLines.findIndex(l => l.startsWith(`const ${name} = `));
   if (start === -1) { fail(`declaration de ${name} introuvable dans index.html`); return null; }

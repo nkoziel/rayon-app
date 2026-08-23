@@ -1,0 +1,16 @@
+{
+  "name": "rayon-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Manga library, progress tracking and AniList recommendations. Standalone PWA.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node tools/publish.js",
+    "verify": "node tools/verify.js",
+    "test": "node tools/verify.js"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "vite-plugin-singlefile": "^2.0.0"
+  }
+}

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rayon — bibliothèque manga & recommandations</title>
+<meta name="description" content="Ta bibliothèque manga, webtoon et manhwa, et les recommandations votées par les lecteurs d'AniList.">
+<meta name="theme-color" content="#16150F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <div>
+      <p class="kicker" id="kicker">Bibliothèque locale</p>
+      <h1 id="mastTitle">Rayon<span class="ghost" aria-hidden="true">Rayon</span></h1>
+    </div>
+    <div class="vert" aria-hidden="true" id="vert"></div>
+  </header>
+  <div class="stats" id="stats"></div>
+
+  <!-- ===== onglet bibliothèque ===== -->
+  <section id="viewLibrary">
+    <div id="onboard"></div>
+    <div class="toolbar" id="libTools">
+      <div class="row">
+        <input type="search" id="q" placeholder="Titre, auteur, genre…" aria-label="Chercher">
+        <button class="btn ghost filterbtn" id="filterBtn" aria-expanded="false">Filtres<span class="dot hidden" id="filterDot"></span></button>
+        <button class="btn ghost" id="moreBtn2" aria-expanded="false">•••</button>
+      </div>
+      <div class="filtersum" id="filterSum"></div>
+      <div class="panel hidden" id="filterPanel">
+        <div class="chiprow" id="typeLibRow" role="group" aria-label="Type"></div>
+        <div class="chiprow" id="shelfRow" role="group" aria-label="Rayon"></div>
+        <div class="chiprow" id="srcRow" role="group" aria-label="Source"></div>
+        <div class="chiprow" id="sortRow" role="group" aria-label="Tri"></div>
+      </div>
+      <div class="morebar hidden" id="moreBar">
+        <button class="btn ghost" id="viewBtn">Vue liste</button>
+        <button class="btn ghost" id="unitBtn">Suivi : chapitres</button>
+        <button class="btn ghost" id="mdBatch">Vérifier les sorties</button>
+        <button class="btn ghost" id="folderBtn">Dossier Mihon</button>
+        <input type="file" id="rootDir" class="hidden" webkitdirectory directory multiple>
+        <button class="btn ghost" id="importBtn">Importer</button>
+        <button class="btn ghost" id="exportBtn">Exporter</button>
+        <button class="btn ghost danger" id="resetBtn">Tout effacer</button>
+        <input type="file" id="file" accept=".tachibk,.json,.gz" class="hidden">
+      </div>
+      <div class="statusline" id="statusline"></div>
+    </div>
+    <div id="pickSummary"></div>
+    <div id="results"></div>
+  </section>
+
+  <!-- ===== onglet découvrir ===== -->
+  <section id="viewDiscover" class="hidden">
+    <div class="toolbar">
+      <div class="row">
+        <button class="btn" id="runDiscover">Analyser</button>
+        <button class="btn ghost" id="dFilterBtn" aria-expanded="false">Filtres</button>
+        <button class="btn ghost" id="resetDismissed">Réafficher les écartés</button>
+      </div>
+      <div class="panel hidden" id="dFilterPanel">
+        <div class="chiprow" id="seedRow" role="group" aria-label="Séries analysées"></div>
+        <div class="chiprow" id="typeRow" role="group" aria-label="Type"></div>
+        <div class="chiprow" id="dsortRow" role="group" aria-label="Tri"></div>
+      </div>
+      <div class="progress hidden" id="discoverProgress"><i style="width:0%"></i></div>
+      <div class="statusline" id="discoverStatus"></div>
+    </div>
+    <div id="discoverBox"></div>
+  </section>
+
+  <p class="foot">
+    Recommandations : API AniList, votées par les lecteurs.<br>
+    Tout est stocké dans ce navigateur. Aucune donnée n'est envoyée ailleurs.
+  </p>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" id="tabLibrary" aria-selected="true"><span class="badge" id="tabLibN">0</span>Bibliothèque</button>
+  <button class="tab" role="tab" id="tabDiscover" aria-selected="false"><span class="badge" id="tabDiscN">—</span>Découvrir</button>
+  <button class="tab" role="tab" id="tabAdd" aria-selected="false"><span class="badge">＋</span>Ajouter</button>
+</nav>
+
+<div id="overlay"></div>
+<div id="modalHost"></div>
+<div class="dropzone hidden" id="dropzone">Dépose ta sauvegarde .tachibk ou ton export .json</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>
