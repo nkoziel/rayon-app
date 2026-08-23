@@ -8,6 +8,9 @@ import { mdResolve, mdAggregate } from './data/mangadex.js';
 import { totals, unitOf, SRCLABEL, SRCNOTE } from './data/totals.js';
 import { importFile, exportLib, mergeLibraries, purgeSeriesData, resetEverything } from './import/library.js';
 import { mihonAvailable, openInMihon } from './ui/mihon.js';
+import { addFromMedia, openAddModal } from './ui/add.js';
+import { runDiscover, renderDiscover, visibleDiscover } from './ui/discover.js';
+import { onLibraryChanged } from './ui/refresh.js';
 import { closeModal } from './core/dom.js';
 import { store, db, forgetDb, kvGet, kvSet, kvDel, DB_NAME } from './core/store.js';
 import {
@@ -15,81 +18,6 @@ import {
   OWNED, refreshOwned, isOwned, DISMISSED, saveDismissed, state,
   migrateCaches, loadCaches, CACHE_KEYS, DEAD_KEYS
 } from './core/state.js';
-
-/* ============================================================
-   Ajout manuel
-   ============================================================ */
-function addFromMedia(m, opts){
-  opts = opts || {};
-  if (LIB.entries.some(e => (e.al && e.al===m.id) || norm(e.t)===norm(m.titre))){
-    toast("Déjà dans ta liste"); return false;
-  }
-  LIB.entries.unshift({
-    id: uid(), t: m.titre, a: m.auteur, s: opts.source || "Ajout manuel",
-    st: m.statut || "Inconnu", g: m.genres.slice(0,6),
-    r: opts.read || 0, rv: 0, n: m.chapitres || 0, d: "",
-    ad: new Date().toISOString().slice(0,10), m: m.type === "Manhwa" ? "Webtoon" : "",
-    al: m.id, f: 1, origin: "manuel"
-  });
-  META[norm(m.titre)] = m; markMetaDirty();
-  saveLib(); saveMeta(); boot();
-  toast("« "+m.titre+" » ajouté");
-  return true;
-}
-
-function openAddModal(prefill){
-  $("modalHost").innerHTML = `
-    <div class="modal" id="modalScrim">
-      <div class="modalbox" role="dialog" aria-label="Ajouter un titre">
-        <div class="modalhead">
-          <h3>Ajouter un titre</h3>
-          <div class="row">
-            <input type="search" id="addQ" placeholder="Nom du manga, manhwa, webtoon…" aria-label="Chercher un titre" style="flex:1 1 auto">
-            <button class="btn ghost" id="addClose">Fermer</button>
-          </div>
-          <p class="rmeta" style="margin:8px 0 0">Recherche dans le catalogue AniList — plus de 100 000 séries.</p>
-        </div>
-        <div id="addResults"><p class="note" style="margin:14px 15px">Tape au moins deux lettres pour lancer la recherche.</p></div>
-      </div>
-    </div>`;
-  const input = $("addQ");
-  $("addClose").onclick = closeModal;
-  $("modalScrim").onclick = e => { if (e.target.id === "modalScrim") closeModal(); };
-  let timer = null, seq = 0;
-  const run = async () => {
-    const term = input.value.trim();
-    if (term.length < 2){ $("addResults").innerHTML = `<p class="note" style="margin:14px 15px">Tape au moins deux lettres.</p>`; return; }
-    const mine = ++seq;
-    $("addResults").innerHTML = `<p class="loading" style="margin:14px 15px">Recherche</p>`;
-    try{
-      const data = await gql(SEARCH_PAGE_Q, {s: term});
-      if (mine !== seq) return;
-      const hits = (data.Page.media||[]).map(shapeMedia).filter(Boolean);
-      if (!hits.length){ $("addResults").innerHTML = `<p class="note" style="margin:14px 15px">Rien trouvé pour « ${esc(term)} ».</p>`; return; }
-      $("addResults").innerHTML = hits.map((h,i)=>{
-        const owned = isOwned(h);
-        const meta = [h.type, h.annee, h.chapitres?h.chapitres+" ch.":null, h.statut, h.score?h.score+"/100":null].filter(Boolean).join(" · ");
-        return `<div class="hit">
-          ${h.cover?`<img src="${esc(h.cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
-          <span style="min-width:0">
-            <span class="ht">${esc(h.titre)}</span>${owned?'<span class="owned">déjà chez toi</span>':''}<br>
-            <span class="hm">${esc(meta)}${h.auteur?" · "+esc(h.auteur):""}</span>
-          </span>
-          <span class="act"><button class="btn sm ${owned?'ghost':''}" data-add="${i}" ${owned?'disabled':''}>${owned?'Ajouté':'Ajouter'}</button></span>
-        </div>`;
-      }).join("");
-      [...$("addResults").querySelectorAll("[data-add]")].forEach(b=>{
-        b.onclick = () => { if (addFromMedia(hits[+b.dataset.add])){ b.textContent = "Ajouté"; b.disabled = true; b.classList.add("ghost"); } };
-      });
-    }catch(e){
-      if (mine !== seq) return;
-      $("addResults").innerHTML = `<p class="err" style="margin:14px 15px">${esc(e.message)}</p>`;
-    }
-  };
-  input.addEventListener("input", ()=>{ clearTimeout(timer); timer = setTimeout(run, 420); });
-  if (prefill){ input.value = prefill; run(); }
-  input.focus();
-}
 
 /* ============================================================
    Bibliothèque : filtres et rendu
@@ -434,144 +362,6 @@ document.addEventListener("keydown", e => {
 });
 
 /* ============================================================
-   Découvrir
-   ============================================================ */
-
-async function runDiscover(){
-  const btn = $("runDiscover");
-  const bar = $("discoverProgress");
-  btn.disabled = true; bar.classList.remove("hidden");
-  // une série par titre exact d'abord (fonctionne même avant l'hydratation AniList),
-  // puis fusion des variantes de titre qui pointent vers la même fiche une fois l'identifiant connu
-  const byTitle = new Map();
-  LIB.entries.filter(d => d.r > 0 || d.origin === "manuel").forEach(d => {
-    const k = norm(d.t);
-    const prev = byTitle.get(k);
-    if (!prev || (d.r||0) > (prev.r||0)) byTitle.set(k, d);
-  });
-  const byAl = new Map();
-  for (const d of byTitle.values()){
-    const k = d.al ? "al:"+d.al : "t:"+norm(d.t);
-    const prev = byAl.get(k);
-    if (!prev || (d.r||0) > (prev.r||0)) byAl.set(k, d);
-  }
-  const limit = state.seeds === "Tout" ? 999 : state.seeds;
-  const seeds = [...byAl.values()].sort((a,b)=> (b.r||1) - (a.r||1)).slice(0, limit);
-  if (!seeds.length){
-    $("discoverBox").innerHTML = `<p class="note">Ajoute d'abord quelques titres, puis relance l'analyse.</p>`;
-    btn.disabled = false; bar.classList.add("hidden"); return;
-  }
-  const tally = new Map();
-  let failures = 0;
-  $("discoverStatus").textContent = `${seeds.length} séries à interroger · environ ${Math.ceil(seeds.length*1.4/60)} min`;
-  for (let i=0;i<seeds.length;i++){
-    $("discoverStatus").textContent = `${i+1}/${seeds.length} · ${seeds[i].t}`;
-    bar.firstElementChild.style.width = Math.round((i)/seeds.length*100)+"%";
-    let payload;
-    try{ payload = await loadRecos(seeds[i], false); }
-    catch(e){ failures++; $("discoverStatus").textContent = e.message; await sleep(1200); continue; }
-    payload.items.forEach(r=>{
-      if (isOwned(r)) return;
-      const prev = tally.get(r.id);
-      const weight = Math.max(1, seeds[i].r || 1);
-      if (prev){
-        prev.votes += r.votes;
-        prev.weight += r.votes*Math.log10(weight+10);
-        if (!prev.from.some(x => norm(x) === norm(seeds[i].t))) prev.from.push(seeds[i].t);
-      }
-      else tally.set(r.id, Object.assign({}, r, {from:[seeds[i].t], weight: r.votes*Math.log10(weight+10)}));
-    });
-    renderDiscover(rankTally(tally), true);
-    await sleep(700);
-  }
-  bar.firstElementChild.style.width = "100%";
-  setDiscover({ at: new Date().toISOString(), seeds: seeds.map(s=>s.t), items: rankTally(tally).slice(0,60) });
-  kvSet("discover:v1", DISCOVER);
-  $("discoverStatus").textContent = failures ? `Terminé · ${failures} série(s) sans fiche AniList` : "Analyse terminée";
-  bar.classList.add("hidden");
-  btn.disabled = false;
-  renderDiscover();
-  $("tabDiscN").textContent = visibleDiscover().length || "—";
-}
-
-function rankTally(tally){
-  const seen = new Map();
-  for (const r of tally.values()){
-    const k = norm(r.romaji || r.titre);
-    const prev = seen.get(k);
-    if (prev){
-      prev.votes += r.votes; prev.weight += r.weight;
-      r.from.forEach(f => { if (!prev.from.some(x=>norm(x)===norm(f))) prev.from.push(f); });
-    } else seen.set(k, r);
-  }
-  return [...seen.values()].sort((a,b)=> b.from.length-a.from.length || b.weight-a.weight);
-}
-
-function visibleDiscover(){
-  if (!DISCOVER) return [];
-  return DISCOVER.items.filter(r=>{
-    if (DISMISSED.has(r.id)) return false;
-    if (isOwned(r)) return false;
-    if (state.type !== "Tous" && r.type !== state.type) return false;
-    return true;
-  }).sort((a,b)=>{
-    if (state.dsort === "Note") return (b.score||0)-(a.score||0);
-    if (state.dsort === "Popularité") return (b.pop||0)-(a.pop||0);
-    return b.from.length-a.from.length || b.weight-a.weight;
-  });
-}
-
-function discoverCardHTML(r, i){
-  const meta = [r.type, r.annee, r.chapitres?r.chapitres+" ch.":null, r.statut].filter(Boolean).join(" · ");
-  return `<article class="reccard">
-    ${r.cover?`<img class="cov" src="${esc(r.cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
-    <div class="body">
-      <div class="rank">${String(i+1).padStart(2,"0")}${r.score?` · ${r.score}/100`:""}</div>
-      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a></div>
-      <div class="rmeta">${esc(meta)}</div>
-      <div class="rwhy">Parce que tu lis <b>${esc(r.from.slice(0,3).join(", "))}</b>${r.from.length>3?` +${r.from.length-3}`:""} · ${r.votes} votes</div>
-      <div class="ractions">
-        <button class="btn sm" data-add="${r.id}">Ajouter</button>
-        <button class="btn sm ghost" data-skip="${r.id}">Pas pour moi</button>
-      </div>
-    </div>
-  </article>`;
-}
-
-function renderDiscover(partial, isPartial){
-  if (state.tab !== "discover" && !isPartial) return;
-  const box = $("discoverBox");
-  const items = isPartial ? partial.filter(r=>!DISMISSED.has(r.id)).slice(0,30) : visibleDiscover();
-  if (!LIB.entries.length){
-    box.innerHTML = `<p class="note">Ta bibliothèque est vide. Ajoute quelques titres depuis l'onglet <b>Ajouter</b>, ou importe une sauvegarde, puis lance l'analyse.</p>`;
-    return;
-  }
-  if (!items.length){
-    box.innerHTML = DISCOVER
-      ? `<p class="note">Plus rien à proposer avec ces filtres. Change de type, réaffiche les écartés, ou relance l'analyse après avoir lu de nouveaux titres.</p>`
-      : `<p class="note">Lance l'analyse : chaque série que tu lis est envoyée à AniList, et les titres qui reviennent depuis plusieurs d'entre elles remontent en tête.</p>`;
-    return;
-  }
-  const seedLine = DISCOVER && !isPartial
-    ? `<p class="note" style="margin-bottom:12px">Croisement de ${DISCOVER.seeds.length} séries : ${esc(DISCOVER.seeds.join(", "))}.</p>` : "";
-  box.innerHTML = seedLine + `<div class="recgrid">${items.map(discoverCardHTML).join("")}</div>`;
-  [...box.querySelectorAll("[data-add]")].forEach(b=>{
-    b.onclick = () => {
-      const r = items.find(x=>String(x.id)===b.dataset.add);
-      if (r && addFromMedia(r)){ renderDiscover(); }
-    };
-  });
-  [...box.querySelectorAll("[data-skip]")].forEach(b=>{
-    b.onclick = () => {
-      DISMISSED.add(+b.dataset.skip);
-      saveDismissed();
-      renderDiscover();
-      $("tabDiscN").textContent = visibleDiscover().length || "—";
-    };
-  });
-}
-
-/* ============================================================
    Navigation, amorçage
    ============================================================ */
 function chips(el, values, currentVal, onPick, counts){
@@ -770,6 +560,10 @@ $("unitBtn").textContent = T(state.unit === "ch" ? "unit.chapters" : "unit.volum
 
 /* What has to happen after a library is replaced or merged. Passed into importFile so the
    import layer does not have to reach back up into the UI. */
+/* One place says what "the library changed" means; ui/refresh.js lets any module ask for it
+   without importing this file. */
+onLibraryChanged(() => { boot(); });
+
 function afterImport(){ boot(); hydrate(renderLibrary); }
 
 (async function start(){
