@@ -210,6 +210,8 @@ const en = {
   "discover.noneLeft":         "Nothing left to suggest with these filters. Change the type, show dismissed titles again, or run the analysis after reading something new.",
   "discover.intro":            "Run the analysis: each series you read is looked up, and the titles that come back from several of them rise to the top.",
   "discover.crossed":          "Crossed {n} series: {seeds}.",
+
+  "import.consolidated":       "{n} rows left out (not in your favourites, or the same series on another source)",
 };
 
 const fr = {
@@ -402,6 +404,8 @@ const fr = {
   "discover.noneLeft":         "Plus rien à proposer avec ces filtres. Change de type, réaffiche les écartés, ou relance l'analyse après avoir lu de nouveaux titres.",
   "discover.intro":            "Lance l'analyse : chaque série que tu lis est recherchée, et les titres qui reviennent depuis plusieurs d'entre elles remontent en tête.",
   "discover.crossed":          "Croisement de {n} séries : {seeds}.",
+
+  "import.consolidated":       "{n} lignes écartées (hors favoris, ou même série sur une autre source)",
 };
 
 const LOCALES = { en, fr };

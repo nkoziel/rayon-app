@@ -8,7 +8,7 @@ import { parseVolumes, formatVolumes } from '../core/volumes.js';
 import { LIB, setLib, saveLib, setDiscover, META, MDCACHE, markMetaDirty, saveMeta } from '../core/state.js';
 import { store, db, forgetDb, kvDel, kvSet, DB_NAME } from '../core/store.js';
 import { t as T } from '../core/i18n.js';
-import { parseBackup } from './tachibk.js';
+import { parseBackup, consolidateMihon } from './tachibk.js';
 
 const mergeOwned = (a, b) => formatVolumes([...parseVolumes(a), ...parseVolumes(b)]);
 
@@ -101,11 +101,18 @@ export async function importFile(file, onImported = () => {}){
   try{
     $("statusline").textContent = T("import.reading", { name: file.name });
     const raw = new Uint8Array(await file.arrayBuffer());
-    let entries, label;
+    let entries, label, note = "";
     if (raw[0]===0x1f && raw[1]===0x8b){
       if (!("DecompressionStream" in window)) throw new Error(T("import.noGzip"));
       const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"));
-      entries = parseBackup(new Uint8Array(await new Response(stream).arrayBuffer()));
+      const all = parseBackup(new Uint8Array(await new Response(stream).arrayBuffer()));
+      /* A backup holds every series you ever opened, once per source. Keep the favourites and
+         fold the abandoned copies' progress into them — see consolidateMihon. */
+      const c = consolidateMihon(all);
+      entries = c.entries;
+      /* Say what was left out. Silently dropping half the rows of a file the user just handed
+         over is how an import loses someone's trust. */
+      if (all.length !== entries.length) note = T("import.consolidated", { n: all.length - entries.length });
       label = T("import.mihonBackup", { name: file.name });
     } else {
       const json = JSON.parse(new TextDecoder().decode(raw));
@@ -139,7 +146,7 @@ export async function importFile(file, onImported = () => {}){
 
     saveLib();
     setDiscover(null); kvDel("discover:v1");   // the previous run's results describe another library
-    toast(msg);
+    toast(note ? msg + " · " + note : msg);
     onImported();
   }catch(e){
     $("statusline").textContent = "";

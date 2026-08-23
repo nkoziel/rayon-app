@@ -119,6 +119,29 @@ Gotchas worth keeping:
 - Badge colours were measured, not picked: `--press` (4.01:1) and `--vermilion` (3.75:1) both
   fail WCAG AA on `--paper` at 9px, so the badges use darker shades of their own.
 
+## Importing a Mihon backup
+
+A `.tachibk` is a record of the **app**, not of the library. It keeps every series ever opened,
+including ones removed from favourites, and **one row per source** — migrate a series between
+Asura Scans and Mangakakalot and it appears twice.
+
+`consolidateMihon()` in `import/tachibk.js` fixes both, and its rules came from measuring a real
+232-entry backup rather than from the schema:
+
+| | |
+|---|---|
+| favourite flag | protobuf field **100**. kotlinx omits the `= true` default, so **absent = favourite**, `0` = un-favourited. 118 absent, 114 zero. |
+| duplicates | every one of the 43 duplicated titles had exactly **one** favourite copy, so honouring the flag removes them all — no dedup heuristic has to guess a winner |
+| progress | the favourite copy can hold **less** than the copy it replaced (Berserk: favourite 0 read, abandoned copy 393). Fold, never drop: progress takes the highest value in the group |
+
+Result on that backup: 232 rows → 118 series, 43 duplicate titles → 0, Berserk keeps its 393.
+Chapters read drops 32,308 → 13,586, because the old number counted the same chapters once per
+source. The import toast reports how many rows were left out.
+
+Two guards worth keeping: two favourites under one title are left alone (deliberately separate
+series), and two different AniList ids sharing a title are never folded — same rule as
+`mergeLibraries`.
+
 ## Data sources
 
 | Source | Use | Constraint |

@@ -3,6 +3,7 @@
    per varint (REVIEW.md §2.4) — a Web Worker is the textbook fix if imports get slow. */
 
 import { uid } from '../core/dom.js';
+import { norm } from '../core/norm.js';
 import { t } from '../core/i18n.js';
 
 /* ============================================================
@@ -28,6 +29,62 @@ const group = fields => { const g={}; fields.forEach(x=>{ (g[x.f]=g[x.f]||[]).pu
 const MSTATUS = {0:"Inconnu",1:"En cours",2:"Terminé",3:"Sous licence",4:"Publication terminée",5:"Annulé",6:"En pause"};
 const MMODE = {0:"",1:"Gauche→Droite",2:"Droite→Gauche",3:"Vertical",4:"Webtoon",5:"Vertical continu"};
 const isoDay = ms => ms ? new Date(Number(ms)).toISOString().slice(0,10) : "";
+
+/* A Mihon backup is a record of the app, not of the library: it keeps every series you ever
+ * opened, including the ones you removed from your favourites, and it keeps one row per SOURCE.
+ * Importing it raw gives you series you deliberately dropped, and the same series three times
+ * because you migrated it between Asura Scans, Mangakakalot and MangaFire.
+ *
+ * Measured on a real 232-entry backup: 118 favourites, 114 un-favourited, and 43 titles present
+ * more than once. Every single duplicate group had exactly one favourite copy — so honouring the
+ * favourite flag fixes the duplicates too, and no separate dedup heuristic has to guess which
+ * copy wins.
+ *
+ * The one thing that flag does NOT get right is progress. When you migrate a series and do not
+ * carry the history over, the favourite copy can hold LESS than the copy you abandoned: in that
+ * backup Berserk's favourite copy was at 0 read while the abandoned one held 393. Dropping the
+ * un-favourited rows outright would have thrown away 625 chapters of real reading. So the rows
+ * are folded into the survivor rather than deleted, and progress takes the highest value seen —
+ * the same rule mergeLibraries uses: progress never moves backwards.
+ */
+export function consolidateMihon(entries){
+  const groups = new Map();
+  for (const e of entries){
+    const k = norm(e.t);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(e);
+  }
+
+  const out = [];
+  let dropped = 0, folded = 0;
+  for (const rows of groups.values()){
+    const favs = rows.filter(e => e.f);
+    if (!favs.length){ dropped += rows.length; continue; }   // removed from the library on purpose
+
+    /* Two favourites under one title are two series the user deliberately keeps apart, so they
+       are left alone rather than having each other's progress folded in. */
+    if (favs.length > 1){
+      dropped += rows.length - favs.length;
+      out.push(...favs);
+      continue;
+    }
+
+    const keep = favs[0];
+    for (const e of rows){
+      if (e === keep) continue;
+      /* Two different AniList ids under one title are two different series - same guard as
+         mergeLibraries. Such a row is dropped as un-favourited, not folded in. */
+      if (keep.al && e.al && String(keep.al) !== String(e.al)){ dropped++; continue; }
+      if ((e.r || 0) > (keep.r || 0)){ keep.r = e.r; keep.d = e.d || keep.d; }
+      if ((e.n || 0) > (keep.n || 0)) keep.n = e.n;
+      if (!keep.al && e.al) keep.al = e.al;
+      folded++;
+    }
+    if (keep.n < keep.r) keep.n = keep.r;
+    out.push(keep);
+  }
+  return { entries: out, dropped, folded };
+}
 
 export function parseBackup(bytes){
   const top = pbParse(bytes,0,bytes.length);
