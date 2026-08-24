@@ -39,14 +39,17 @@ function merge(similar, readers){
   });
 }
 
-export async function recosFor(d, force){
+/* `record` is the caller's own MangaBaka record, for a series that is not in the library and
+   therefore not in MBCACHE - the Discover preview. Without it the preview would silently fall
+   back to AniList and give a different answer than the same series gives once added. */
+export async function recosFor(d, force, record){
   const key = KEY(d);
   if (!force){
     const hit = await kvGet(key);
     if (hit) return hit;
   }
 
-  const mb = MBCACHE[norm(d.t)];
+  const mb = (record && record.mb) ? record : MBCACHE[norm(d.t)];
   if (mb && mb.mb){
     const [similar, readers] = await Promise.all([
       recommendations(mb.mb, "similar", 12).catch(() => []),

@@ -78,7 +78,10 @@ export function shapeSeries(s){
     id: (src.anilist && src.anilist.id) || null,     // keep the AniList id where one exists
     titre: s.title || s.romanized_title || s.native_title || "",
     romaji: s.romanized_title || s.title || "",
-    url: `https://mangabaka.org/series/${s.id}`,
+    /* The public page is /{id}. `/series/{id}` looks right and 404s - it is the API path,
+       not the site's. The record's own links[] ends with the canonical URL, which is how this
+       was settled rather than guessed. */
+    url: `https://mangabaka.org/${s.id}`,
     cover: cover.url,
     blurhash: cover.blurhash,
     type: s.type ? s.type[0].toUpperCase() + s.type.slice(1) : "",
@@ -91,8 +94,10 @@ export function shapeSeries(s){
     pop: s.popularity && s.popularity.global != null ? Number(s.popularity.global) : 0,
     annee: s.year || null,
     genres: (s.genres || []).map(g => (typeof g === "string" ? g : g.name)).filter(Boolean).slice(0, 8),
-    auteur: [...(s.authors || []), ...(s.artists || [])]
-      .map(a => (typeof a === "string" ? a : a && a.name)).filter(Boolean).join(", "),
+    /* Deduplicated: when one person both writes and draws - which is most manga - they appear
+       in authors AND artists, and the sheet read "Tatsuki Fujimoto, Tatsuki Fujimoto". */
+    auteur: [...new Set([...(s.authors || []), ...(s.artists || [])]
+      .map(a => (typeof a === "string" ? a : a && a.name)).filter(Boolean))].join(", "),
     desc: (s.description || "").slice(0, 900),
     /* Every alternative title, which is what makes matching a Mihon folder name work. */
     aliases: (s.titles || []).map(x => x && x.title).filter(Boolean),

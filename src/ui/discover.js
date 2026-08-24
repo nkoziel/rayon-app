@@ -21,6 +21,7 @@ import { t as T } from '../core/i18n.js';
 import { recosFor } from '../data/recos.js';
 import { whyHTML, mergeWhy, strengthOf, signalsOf } from './why.js';
 import { addFromMedia } from './add.js';
+import { openPreview, openSheet } from './sheet.js';
 import { discoverChanged } from './refresh.js';
 
 /* MangaBaka items carry `mb`; their AniList `id` is often null, so keying the tally on `id`
@@ -140,7 +141,7 @@ function discoverCardHTML(r, i){
     ${r.cover?`<img class="cov" src="${esc(r.cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
     <div class="body">
       <div class="rank">${String(i+1).padStart(2,"0")}${r.score?` · ${r.score}/100`:""}</div>
-      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a></div>
+      <div class="rtitle"><button class="titlelink" data-open="${esc(keyOf(r))}">${esc(r.titre)}</button></div>
       <div class="rmeta">${esc(meta)}</div>
       <div class="rseed">${esc(T("discover.because", { seeds: r.from.slice(0,3).join(", ") }))}${r.from.length>3?` +${r.from.length-3}`:""}</div>
       <div class="rwhy">${whyHTML(r)}</div>
@@ -169,6 +170,18 @@ export function renderDiscover(partial, isPartial){
   const seedLine = DISCOVER && !isPartial
     ? `<p class="note" style="margin-bottom:12px">${esc(T("discover.crossed", { n: DISCOVER.seeds.length, seeds: DISCOVER.seeds.join(", ") }))}</p>` : "";
   box.innerHTML = seedLine + `<div class="recgrid">${items.map(discoverCardHTML).join("")}</div>`;
+  /* The title used to be a link to mangabaka.org - and to the wrong path, so it 404'd. A
+     recommendation now opens the same sheet a series in the library opens: same layout, same
+     recommendations, same record, with Add where the tracker would be. */
+  [...box.querySelectorAll("[data-open]")].forEach(b=>{
+    b.onclick = () => {
+      const r = items.find(x=>keyOf(x)===b.dataset.open);
+      if (!r) return;
+      const mine = LIB.entries.find(x => norm(x.t) === norm(r.titre));
+      if (mine) { openSheet(mine); return; }
+      openPreview(r, () => { renderDiscover(); discoverChanged(); $("tabDiscN").textContent = visibleDiscover().length || "—"; });
+    };
+  });
   [...box.querySelectorAll("[data-add]")].forEach(b=>{
     b.onclick = () => {
       const r = items.find(x=>keyOf(x)===b.dataset.add);

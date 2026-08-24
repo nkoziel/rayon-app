@@ -91,6 +91,29 @@ describe('shapeSeries', () => {
   });
 });
 
+/* The sheet and the Discover list both link here, so a wrong path is a dead end on every
+   screen at once. `/series/{id}` is the API's path, not the site's, and it 404s - the record's
+   own links[] ends with the canonical URL, which is how this was settled. */
+describe('credits', () => {
+  it('lists a writer-artist once, not twice', () => {
+    /* Most manga are written and drawn by the same person, so they land in authors AND
+       artists and the sheet read "Tatsuki Fujimoto, Tatsuki Fujimoto". */
+    const solo = { ...ONE_PIECE, authors: [{ name: 'Eiichiro Oda' }], artists: [{ name: 'Eiichiro Oda' }] };
+    expect(shapeSeries(solo).auteur).toBe('Eiichiro Oda');
+  });
+
+  it('keeps a genuine pair', () => {
+    const duo = { ...ONE_PIECE, authors: [{ name: 'Writer' }], artists: [{ name: 'Artist' }] };
+    expect(shapeSeries(duo).auteur).toBe('Writer, Artist');
+  });
+});
+
+describe('the public URL', () => {
+  it('is /{id}, not /series/{id}', () => {
+    expect(shapeSeries(ONE_PIECE).url).toBe('https://mangabaka.org/377');
+  });
+});
+
 describe('shapeSeries — missing data', () => {
   it('returns null for nothing', () => {
     expect(shapeSeries(null)).toBeNull();

@@ -22,7 +22,7 @@ export function recoRowHTML(r){
   return `<div class="rec">
     ${r.cover?`<img class="cover" src="${esc(r.cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
     <div style="min-width:0">
-      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a>${isOwned(r)?'<span class="owned">déjà chez toi</span>':''}</div>
+      <div class="rtitle"><button class="titlelink" data-open="${esc(String(r.mb ?? r.id))}">${esc(r.titre)}</button>${isOwned(r)?'<span class="owned">déjà chez toi</span>':''}</div>
       <div class="rmeta">${esc(meta)}</div>
       <div class="rwhy">${whyHTML(r)}</div>
       ${isOwned(r)?"":`<div class="ractions"><button class="btn sm" data-addreco="${r.mb ?? r.id}">${esc(T("reco.add"))}</button></div>`}
@@ -30,11 +30,40 @@ export function recoRowHTML(r){
   </div>`;
 }
 
-export function openSheet(d){
+/* Turn a recommendation into something openSheet() can render.
+ *
+ * A series you have not added has no entry, so it has no id, no progress and no source. It
+ * still has everything the sheet is mostly made of: cover, genres, description, the record and
+ * its recommendations. Rather than build a second, thinner screen for it - which is how the
+ * two views drifted apart in the first place - the sheet takes a provisional entry and swaps
+ * the tracking block for an Add button. One screen, whether the series is yours or not. */
+export function previewEntry(r){
+  return {
+    id: "preview:" + (r.mb ?? r.id),
+    t: r.titre, a: r.auteur || "", s: T("preview.notInLibrary"),
+    st: r.statut || "", g: r.genres || [],
+    r: 0, ownedVol: "", n: r.chapitres || 0, d: "", ad: "",
+    al: r.id || null, m: r.type === "Manhwa" ? "Webtoon" : "", origin: "preview",
+  };
+}
+
+/* Open the sheet for a recommendation that is not in the library. The record is handed in
+   directly: MBCACHE only holds series you own, so recordOf() would find nothing. */
+export function openPreview(r, onAdded){
+  /* recordOf() is what normally stamps `src`, and the credit line the CC BY-NC-SA licence
+     requires is built from it. A record handed in directly skips that, and the sheet rendered
+     "via" followed by nothing — an attribution failure, not a cosmetic one. */
+  const record = r.src ? r : { ...r, src: r.mb ? "mangabaka" : "anilist" };
+  openSheet(previewEntry(r), { record, preview: true, onAdded });
+}
+
+export function openSheet(d, opts){
   if (!d) return;
+  opts = opts || {};
   current = d;
-  /* Source-agnostic: MangaBaka when we have it, AniList otherwise. */
-  const meta = recordOf(d);
+  const preview = !!opts.preview;
+  /* Source-agnostic: the record handed in for a preview, else MangaBaka, else AniList. */
+  const meta = opts.record || recordOf(d);
   const pct = d.n ? Math.min(100, Math.round(d.r/d.n*100)) : 0;
   const behind = meta && meta.chapitres ? meta.chapitres - d.r : null;
     const hmeta = [meta&&meta.type, meta&&meta.annee, meta&&meta.statut,
@@ -57,14 +86,18 @@ export function openSheet(d){
           ${d.origin==="manuel"?'<span class="pill hi">Ajout manuel</span>':''}
           ${(meta?meta.genres:d.g).slice(0,8).map(g=>`<span class="pill">${esc(g)}</span>`).join("")}
         </div>
-        <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
+        ${preview
+          ? `<div class="trackline"><button class="btn" id="addBtn" style="flex:1 1 auto">${esc(T("reco.add"))}</button>
+             <button class="btn ghost" id="skipBtn">${esc(T("discover.skip"))}</button></div>
+             <p class="rmeta" style="margin:0 0 4px">${esc(T("preview.hint"))}</p>`
+          : `<div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>`}
         ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(T("mihon.search"))}</button>
         <p class="rmeta" style="margin:6px 0 0">${esc(T("mihon.hint"))}</p>` : ""}
         <dl>
-          <dt>Dernière fois</dt><dd>${esc(d.d||"—")}</dd>
-          <dt>Ajouté le</dt><dd>${esc(d.ad||"—")}</dd>
+          ${preview ? "" : `<dt>Dernière fois</dt><dd>${esc(d.d||"—")}</dd>
+          <dt>Ajouté le</dt><dd>${esc(d.ad||"—")}</dd>`}
           <dt>Auteur</dt><dd>${esc((meta&&meta.auteur)||d.a||"—")}</dd>
-          <dt>Source</dt><dd>${esc(d.s)}</dd>
+          ${preview ? "" : `<dt>Source</dt><dd>${esc(d.s)}</dd>`}
           ${meta ? `<dt>${esc(T("sheet.record"))}</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)}</a> ${esc(T("sheet.via", { source: (CREDIT[meta.src]||{}).name || "" }))}${(CREDIT[meta.src]||{}).licence ? ` <span class="rmeta">(${esc(CREDIT[meta.src].licence)})</span>` : ""}</dd>` : ""}
         </dl>
         ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
@@ -75,25 +108,37 @@ export function openSheet(d){
   document.body.style.overflow = "hidden";
   $("scrim").onclick = closeSheet;
   const cb = $("closeBtn"); cb.onclick = closeSheet; cb.focus();
-  $("refresh").onclick = () => fillRecos(d, true);
+  $("refresh").onclick = () => fillRecos(d, true, opts.record);
   const moreBtn = $("moreBtn");
   if (moreBtn) moreBtn.onclick = () => {
     const el = $("desc"); el.classList.toggle("clamped");
     moreBtn.textContent = el.classList.contains("clamped") ? "Lire la suite" : "Replier";
   };
-  wireTracker(d, closeSheet);   // also wires removeBtn — see REVIEW.md §1.4
+  if (preview){
+    /* Adding re-opens the sheet on the real entry, so the screen the user is looking at becomes
+       the tracking one without a second click. */
+    $("addBtn").onclick = () => {
+      if (!addFromMedia(opts.record, { source: T("preview.fromDiscover") })) return;
+      if (opts.onAdded) opts.onAdded();
+      const added = LIB.entries.find(x => norm(x.t) === norm(d.t));
+      if (added) openSheet(added); else closeSheet();
+    };
+    $("skipBtn").onclick = () => { closeSheet(); if (opts.onSkip) opts.onSkip(); };
+  } else {
+    wireTracker(d, closeSheet);   // also wires removeBtn — see REVIEW.md §1.4
+  }
   const mb = $("mihonBtn");
   /* The share sheet needs the click's user activation, so this stays in the handler and is not
      awaited into a later tick. A refusal is the user changing their mind, not a failure. */
   if (mb) mb.onclick = () => { openInMihon(d.t).catch(() => toast(T("mihon.failed"))); };
-  fillRecos(d, false);
+  fillRecos(d, false, opts.record);
 }
 
-export async function fillRecos(d, force){
+export async function fillRecos(d, force, record){
   const box = $("recos");
   box.innerHTML = `<p class="loading">${esc(T("reco.loading"))}</p>`;
   try{
-    const payload = await recosFor(d, force);
+    const payload = await recosFor(d, force, record);
     if (current !== d) return;
     if (!payload.items.length){
       box.innerHTML = `<p class="note">${esc(T("reco.none"))} <a href="${esc(payload.source)}" target="_blank" rel="noreferrer">${esc(T("reco.seeOn", { title: payload.matched }))}</a></p>`;
@@ -103,6 +148,16 @@ export async function fillRecos(d, force){
     box.innerHTML = visible.length
       ? visible.map(recoRowHTML).join("")
       : `<p class="note">${esc(T("reco.allOwned", { n: payload.items.length }))}</p>`;
+    /* Same screen whether the series is yours or not: a recommendation opens the sheet, not a
+       tab on someone else's website. */
+    [...box.querySelectorAll("[data-open]")].forEach(b=>{
+      b.onclick = () => {
+        const r = payload.items.find(x => String(x.mb ?? x.id) === b.dataset.open);
+        if (!r) return;
+        const mine = LIB.entries.find(x => norm(x.t) === norm(r.titre));
+        if (mine) openSheet(mine); else openPreview(r);
+      };
+    });
     [...box.querySelectorAll("[data-addreco]")].forEach(b=>{
       b.onclick = () => {
         const r = payload.items.find(x => String(x.mb ?? x.id) === b.dataset.addreco);
