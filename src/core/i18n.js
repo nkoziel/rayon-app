@@ -221,6 +221,8 @@ const en = {
 
   "mihon.search":              "Search in Mihon",
   "mihon.failed":              "Could not open the share sheet",
+
+  "mihon.hint":                "Opens the Android share sheet. Mihon appears there as “Search”, with its own icon — Android shows the activity name, not the app name.",
 };
 
 const fr = {
@@ -424,6 +426,8 @@ const fr = {
 
   "mihon.search":              "Chercher dans Mihon",
   "mihon.failed":              "Impossible d'ouvrir le partage",
+
+  "mihon.hint":                "Ouvre le partage Android. Mihon y apparaît sous le nom « Recherche », avec son icône — Android affiche le nom de l’activité, pas celui de l’app.",
 };
 
 const LOCALES = { en, fr };

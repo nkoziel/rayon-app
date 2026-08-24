@@ -30,6 +30,15 @@
  * and the Web Share API maps `text` onto EXTRA_TEXT. So sharing the title reaches exactly the
  * cross-source search the intent was aiming at. It costs one tap — picking Mihon in the sheet —
  * and unlike the intent it actually arrives.
+ *
+ * One thing to know when reading a bug report about this: in the share sheet Mihon is NOT
+ * labelled "Mihon". DeepLinkActivity declares android:label="@string/action_search", and Android
+ * shows the activity's label rather than the app's, so it appears as "Search" / "Recherche" with
+ * the app icon. That is official Mihon's own labelling — nothing here can change it, which is
+ * why the sheet says so next to the button. A fork installed alongside official Mihon shows up
+ * the same way, and the two are told apart only by their icon.
+ *
+ * All of the above was checked against mihonapp/mihon on main, not only against a local fork.
  */
 
 const isAndroid = () => /android/i.test(navigator.userAgent);

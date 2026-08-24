@@ -262,7 +262,8 @@ const en = {
   "why.author": "Same author",
   "filter.why": "Reason",
   "mihon.search": "Search in Mihon",
-  "mihon.failed": "Could not open the share sheet"
+  "mihon.failed": "Could not open the share sheet",
+  "mihon.hint": "Opens the Android share sheet. Mihon appears there as “Search”, with its own icon — Android shows the activity name, not the app name."
 };
 const fr = {
   "app.title": "Rayon",
@@ -443,7 +444,8 @@ const fr = {
   "why.author": "Même auteur",
   "filter.why": "Raison",
   "mihon.search": "Chercher dans Mihon",
-  "mihon.failed": "Impossible d'ouvrir le partage"
+  "mihon.failed": "Impossible d'ouvrir le partage",
+  "mihon.hint": "Ouvre le partage Android. Mihon y apparaît sous le nom « Recherche », avec son icône — Android affiche le nom de l’activité, pas celui de l’app."
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -1949,7 +1951,8 @@ function openSheet(d) {
           ${(meta ? meta.genres : d.g).slice(0, 8).map((g) => `<span class="pill">${esc(g)}</span>`).join("")}
         </div>
         <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
-        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(t("mihon.search"))}</button>` : ""}
+        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(t("mihon.search"))}</button>
+        <p class="rmeta" style="margin:6px 0 0">${esc(t("mihon.hint"))}</p>` : ""}
         <dl>
           <dt>Dernière fois</dt><dd>${esc(d.d || "—")}</dd>
           <dt>Ajouté le</dt><dd>${esc(d.ad || "—")}</dd>

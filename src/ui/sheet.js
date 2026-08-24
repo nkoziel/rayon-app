@@ -58,7 +58,8 @@ export function openSheet(d){
           ${(meta?meta.genres:d.g).slice(0,8).map(g=>`<span class="pill">${esc(g)}</span>`).join("")}
         </div>
         <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
-        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(T("mihon.search"))}</button>` : ""}
+        ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(T("mihon.search"))}</button>
+        <p class="rmeta" style="margin:6px 0 0">${esc(T("mihon.hint"))}</p>` : ""}
         <dl>
           <dt>Dernière fois</dt><dd>${esc(d.d||"—")}</dd>
           <dt>Ajouté le</dt><dd>${esc(d.ad||"—")}</dd>
