@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseVolumes, formatVolumes, ownsVolume, toggleVolume, addRange,
   countVolumes, missingVolumes, gapVolumes, isComplete,
+  gridSize, lastOwned, volumeBar, GRID_MIN, GRID_SLACK,
 } from '../src/core/volumes.js';
 
 /* Owned volumes are stored as a range string on the entry: "1-7,9,12-14".
@@ -137,5 +138,59 @@ describe('countVolumes / isComplete', () => {
     expect(isComplete('1-6', 6)).toBe(true);
     expect(isComplete('1-5', 6)).toBe(false);
     expect(isComplete('1-6', null)).toBe(false);
+  });
+});
+
+/* The grid used to render only the volumes already owned when no total was known, so a series
+   on a device with a cold metadata cache offered nothing to tap and the feature looked broken.
+   Reported from Android, where the caches are separate from the desktop's. */
+describe('gridSize — the grid has to exist before any total is known', () => {
+  it('offers a usable grid for an empty collection with no total', () => {
+    expect(gridSize(0, 0)).toBe(GRID_MIN);
+    expect(gridSize(null, 0)).toBe(GRID_MIN);
+    expect(gridSize(undefined, 0)).toBe(GRID_MIN);
+  });
+
+  it('always runs past the last volume owned, so the next one is one tap away', () => {
+    expect(gridSize(0, 20)).toBe(20 + GRID_SLACK);
+    expect(gridSize(0, 7)).toBe(Math.max(7 + GRID_SLACK, GRID_MIN));
+  });
+
+  it('uses the total when there is one', () => {
+    expect(gridSize(34, 12)).toBe(34);
+  });
+
+  it('never stops short of the collection, even past the published total', () => {
+    /* Scantrad and official editions number differently; a volume owned with no cell is a
+       volume that cannot be un-ticked. */
+    expect(gridSize(34, 36)).toBe(36);
+  });
+});
+
+describe('lastOwned', () => {
+  it.each([['', 0], [null, 0], ['1-3', 3], ['1-3,9', 9], ['12', 12]])('%s -> %i', (s, n) => {
+    expect(lastOwned(s)).toBe(n);
+  });
+});
+
+describe('volumeBar — the shelf at a glance', () => {
+  it('gives one mark per volume when the run is short enough', () => {
+    expect(volumeBar('1-3', 5)).toEqual(['own','own','own','none','none']);
+  });
+
+  it('is empty without a total, rather than guessing a length', () => {
+    expect(volumeBar('1-3', 0)).toEqual([]);
+    expect(volumeBar('1-3', null)).toEqual([]);
+  });
+
+  it('never reports a bucket as owned unless every volume in it is', () => {
+    const bar = volumeBar('1-50', 100, 10);       // 10 buckets of 10, first five full
+    expect(bar).toEqual(['own','own','own','own','own','none','none','none','none','none']);
+    expect(volumeBar('1-45', 100, 10)[4]).toBe('part');
+  });
+
+  it('covers the whole run, one bucket per slot', () => {
+    expect(volumeBar('1-100', 100, 40)).toHaveLength(40);
+    expect(volumeBar('1-100', 100, 40).every(x => x === 'own')).toBe(true);
   });
 });

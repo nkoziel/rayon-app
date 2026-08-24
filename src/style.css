@@ -105,6 +105,10 @@ input[type=search]{flex:1 1 190px;min-width:0}
 .rank{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--vermilion);letter-spacing:.1em}
 .rtitle{overflow-wrap:anywhere;font-family:'Anton',sans-serif;text-transform:uppercase;font-size:15px;line-height:1.06}
 .rtitle a{color:inherit;text-decoration:none;border-bottom:1.5px solid var(--vermilion)}
+/* A recommendation's title opens the sheet, so it is a button - but it has to keep reading as
+   a title, not as a control. */
+.titlelink{font:inherit;color:inherit;text-align:left;background:none;border:0;padding:0;
+           border-bottom:1.5px solid var(--vermilion);cursor:pointer}
 .rmeta{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim)}
 .rwhy{font-size:12px;line-height:1.4;color:var(--ink-soft)}
 .rwhy b{color:var(--press);font-family:'Space Mono',monospace;font-weight:400}
@@ -194,6 +198,17 @@ dd{margin:0}
 .vol{font-family:'Space Mono',monospace;font-size:12px;min-width:36px;height:36px;padding:0 6px;
      border:1.5px solid var(--dim);background:transparent;color:var(--dim);cursor:pointer}
 .vol.own{background:var(--ink);border-color:var(--ink);color:var(--paper-hi)}
+/* Past the published count, or past the collection when nothing is published: still tappable,
+   but dashed, because the app is not claiming these volumes exist. */
+.vol.ghosted{border-style:dashed}
+/* A hole below what you own - the gap on the shelf, and the one worth closing first. */
+.vol.gap{border-color:var(--vermilion);border-width:2px;color:var(--vermilion)}
+.vol.own.ghosted{background:var(--ink-soft);border-color:var(--ink-soft)}
+/* How full the shelf is, in one glance - the sheet under the grid, and each shopping row. */
+.shelfbar{display:block;height:9px;border:1.5px solid var(--ink);background:var(--paper-hi);
+          margin:0 0 8px;overflow:hidden}
+.shelfbar>span{display:block;height:100%;background:var(--ink)}
+.shelfbar.thin{height:5px;margin:3px 0 1px;border-width:1px;max-width:240px}
 .vol:focus-visible{outline:2px solid var(--press);outline-offset:2px}
 .remain.zero,.rmeta.zero{color:var(--press)}
 /* les deux signaux de recommandation concordent : le signal le plus fort disponible */

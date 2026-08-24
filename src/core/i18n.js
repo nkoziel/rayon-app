@@ -145,7 +145,7 @@ const en = {
   "vol.ownedCount":            {"one":"{n} volume owned","other":"{n} volumes owned"},
   "vol.missingCount":          {"one":"{n} missing","other":"{n} missing"},
   "vol.complete":              "Complete",
-  "vol.noTotal":               "No known volume count — set it to build a shopping list",
+  "vol.gapsHint":              {"one":"{n} hole below what you already own","other":"{n} holes below what you already own"},
   "vol.ownRange":              "I own 1 to N",
   "vol.ownRangePrompt":        "Which volumes do you own? For example 1-12, or a single number.",
 
@@ -184,6 +184,7 @@ const en = {
   "shop.startNote":            "read, owned in print: nothing yet",
   "shop.missing":              "Missing:",
   "shop.ownedOf":              "{n} of {total} volumes",
+  "shop.ownedNoTotal":         {"one":"{n} volume owned · total unknown","other":"{n} volumes owned · total unknown"},
   "shop.gap":                  {"one":"{n} gap","other":"{n} gaps"},
   "shop.volumesOwned":         "Volumes owned",
   "shop.volumesMissing":       "Missing",
@@ -218,6 +219,10 @@ const en = {
   "why.tags":                  "Same style",
   "why.author":                "Same author",
   "filter.why":                "Reason",
+
+  "preview.notInLibrary":      "Not in your collection",
+  "preview.hint":              "Not added yet — the tracking block appears once it is in your collection.",
+  "preview.fromDiscover":      "Discover",
 
   "mihon.search":              "Search in Mihon",
   "mihon.failed":              "Could not open the share sheet",
@@ -350,7 +355,7 @@ const fr = {
   "vol.ownedCount":            {"one":"{n} tome possédé","other":"{n} tomes possédés"},
   "vol.missingCount":          {"one":"{n} manquant","other":"{n} manquants"},
   "vol.complete":              "Complète",
-  "vol.noTotal":               "Nombre de tomes inconnu — saisis-le pour avoir une liste de courses",
+  "vol.gapsHint":              {"one":"{n} trou sous ce que tu possèdes déjà","other":"{n} trous sous ce que tu possèdes déjà"},
   "vol.ownRange":              "Je possède 1 à N",
   "vol.ownRangePrompt":        "Quels tomes possèdes-tu ? Par exemple 1-12, ou un seul numéro.",
 
@@ -389,6 +394,7 @@ const fr = {
   "shop.startNote":            "lus, possédés en papier : rien encore",
   "shop.missing":              "Manquants :",
   "shop.ownedOf":              "{n} tomes sur {total}",
+  "shop.ownedNoTotal":         {"one":"{n} tome possédé · total inconnu","other":"{n} tomes possédés · total inconnu"},
   "shop.gap":                  {"one":"{n} trou","other":"{n} trous"},
   "shop.volumesOwned":         "Tomes possédés",
   "shop.volumesMissing":       "Manquants",
@@ -423,6 +429,10 @@ const fr = {
   "why.tags":                  "Même style",
   "why.author":                "Même auteur",
   "filter.why":                "Raison",
+
+  "preview.notInLibrary":      "Pas dans ta collection",
+  "preview.hint":              "Pas encore ajoutée — le bloc de suivi apparaît une fois la série dans ta collection.",
+  "preview.fromDiscover":      "Découvrir",
 
   "mihon.search":              "Chercher dans Mihon",
   "mihon.failed":              "Impossible d'ouvrir le partage",

@@ -80,12 +80,30 @@ describe('shoppingRows — the two lists are different purchases', () => {
     expect(shoppingRows().rows).toHaveLength(0);
   });
 
+  /* This case used to assert the opposite, and the assertion was the bug: a series you own
+     volumes of but whose length nobody publishes matched neither list and disappeared from the
+     screen, while still counting towards the totals above it. It reads as a rendering fault,
+     and it is the normal state of every series on a device whose metadata cache is still cold.
+     It belongs in "continue": you own some, you are not finished. */
   it('lists a series with no known total, without inventing missing volumes', () => {
     setLib({ label: 't', entries: [entry({ id: 'a', t: 'Unknown', unit: 'vol', ownedVol: '1-3' })] });
-    const { rows, cont } = shoppingRows();
+    const { rows, cont, start, done } = shoppingRows();
     expect(rows).toHaveLength(1);
-    expect(rows[0].missing).toEqual([]);
-    expect(cont).toHaveLength(0);      // nothing known to be missing, so nothing to buy
+    expect(rows[0].missing).toEqual([]);   // no total, so nothing is *known* to be missing
+    expect(rows[0].cost).toBe(0);          // and nothing is claimed about the cost
+    expect(cont).toHaveLength(1);          // but the series is still on screen
+    expect(start).toHaveLength(0);
+    expect(done).toHaveLength(0);
+  });
+
+  it('sorts series with a known total above those without', () => {
+    withTotal('Known', 10);
+    setLib({ label: 't', entries: [
+      entry({ id: 'a', t: 'Unknown', unit: 'vol', ownedVol: '1-3' }),
+      entry({ id: 'b', t: 'Known',   unit: 'vol', ownedVol: '1-9' }),
+    ] });
+    /* Without a total the ratio is 0, so the rows you can act on stay at the top. */
+    expect(shoppingRows().cont.map(r => r.d.t)).toEqual(['Known', 'Unknown']);
   });
 });
 

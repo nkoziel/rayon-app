@@ -61,7 +61,14 @@ function shoppingRow(d){
 
 export function shoppingRows(){
   const rows = LIB.entries.filter(inShopping).map(shoppingRow);
-  const cont = rows.filter(r => r.owned > 0 && r.missing.length > 0)
+  /* Owned but not finished. The test is deliberately "not complete" rather than "has missing
+     volumes": missingVolumes() returns [] when no total is published, so a series you own six
+     of but whose length nobody has counted used to match NEITHER list and vanished from the
+     screen entirely - while still counting towards the totals above it, which is what made it
+     look like a rendering bug rather than a filter. No total is the normal state on a device
+     whose metadata cache is still cold. It sorts last, since ratio is 0 without a total: the
+     rows you can actually act on stay at the top. */
+  const cont = rows.filter(r => r.owned > 0 && !r.complete)
                    .sort((a, b) => b.ratio - a.ratio);
   const start = rows.filter(r => r.owned === 0)
                     .sort((a, b) => (b.d.r || 0) - (a.d.r || 0));   // most-read first
@@ -95,7 +102,8 @@ function rowHTML(r, showGaps){
     ${cover ? `<img src="${esc(cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
     <span class="si">
       <span class="st">${esc(r.d.t)}</span>
-      <span class="sm">${r.tot ? esc(T("shop.ownedOf", { n: r.owned, total: r.tot })) : esc(T("vol.noTotal"))}</span>
+      <span class="sm">${r.tot ? esc(T("shop.ownedOf", { n: r.owned, total: r.tot })) : esc(T("shop.ownedNoTotal", { n: r.owned }))}</span>
+      ${r.tot ? `<span class="shelfbar thin"><span style="width:${Math.min(100, Math.round(r.owned / r.tot * 100))}%"></span></span>` : ""}
       ${r.missing.length ? `<span class="sv">${esc(T("shop.missing"))} ${esc(runs(r.missing).join(", "))}</span>` : ""}
     </span>
     <span class="sc">${r.missing.length ? esc(money(r.cost)) : ""}${gapBadge}</span>

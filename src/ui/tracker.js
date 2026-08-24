@@ -7,7 +7,8 @@ import { norm } from '../core/norm.js';
 import { LIB, MDCACHE, saveLib, state } from '../core/state.js';
 import { t as T } from '../core/i18n.js';
 import { totals, unitOf, progressOf, SRCLABEL, SRCNOTE } from '../data/totals.js';
-import { parseVolumes, toggleVolume, addRange, countVolumes, missingVolumes } from '../core/volumes.js';
+import { parseVolumes, toggleVolume, addRange, countVolumes, missingVolumes,
+         gapVolumes, gridSize, lastOwned } from '../core/volumes.js';
 import { mdAggregate } from '../data/mangadex.js';
 import { purgeSeriesData } from '../import/library.js';
 import { libraryChanged } from './refresh.js';
@@ -66,28 +67,50 @@ export function trackerHTML(d){
 }
 
 /* One button per volume: tap to say you own it. Big targets, gaps visible at a glance —
-   this is meant to be read at arm's length in a shop, not studied. */
+   this is meant to be read at arm's length in a shop, not studied.
+
+   The grid renders whether or not a volume count is known; see gridSize() in core/volumes.js
+   for why that matters more than it looks. Cells past what is known to exist are drawn dashed:
+   still tappable, because you own what you own, but the app does not claim they were
+   published. */
 function volumeGridHTML(d, total){
-  const owned = new Set(parseVolumes(d.ownedVol));
-  const n = countVolumes(d.ownedVol);
-  if (!total){
-    return `<div class="trackline"><span class="rmeta">${esc(T("vol.noTotal"))}</span>
-      <span class="rmeta" style="margin-left:auto">${esc(T("vol.ownedCount", { n }))}</span></div>
-      ${n ? `<div class="volgrid">${[...owned].sort((a,b)=>a-b).map(v=>volBtn(v,true)).join("")}</div>` : ""}`;
-  }
-  const cells = [];
-  for (let v = 1; v <= total; v++) cells.push(volBtn(v, owned.has(v)));
+  const list = parseVolumes(d.ownedVol);
+  const owned = new Set(list);
+  const n = list.length;
+  const max = lastOwned(d.ownedVol);
+  const size = gridSize(total, max);
   const missing = missingVolumes(d.ownedVol, total).length;
+  const gaps = gapVolumes(d.ownedVol).length;
+
+  /* A hole BELOW what you already own is a different fact from a volume you simply have not
+     reached yet, and it is the one worth acting on: it is the gap on the shelf. Drawn as such
+     they were indistinguishable — volume 10 missing out of 1-14 owned looked exactly like
+     volume 40 of 42 not yet bought. */
+  const gapSet = new Set(gapVolumes(d.ownedVol));
+  const cells = [];
+  for (let v = 1; v <= size; v++)
+    cells.push(volBtn(v, owned.has(v), total ? v > total : v > max, gapSet.has(v)));
+
+  /* The count on the left, and on the right the one thing worth acting on: what is still
+     missing, or that the collection is finished. Nothing on the right when no total is known —
+     the line above it already says "total inconnu" and the provenance block below says what to
+     do about it. Saying it a third time here only pushes the grid down the screen. */
+  const head = total
+    ? `<span class="rmeta">${esc(T("vol.ownedOf", { n, total }))}</span>
+       <span class="rmeta ${missing ? "" : "zero"}" style="margin-left:auto">${esc(missing ? T("vol.missingCount", { n: missing }) : T("vol.complete"))}</span>`
+    : `<span class="rmeta">${esc(T("vol.ownedCount", { n }))}</span>`;
+
+  const pct = total ? Math.min(100, Math.round(n / total * 100)) : 0;
+
   return `
-    <div class="trackline">
-      <span class="rmeta">${esc(T("vol.ownedOf", { n, total }))}</span>
-      <span class="rmeta ${missing ? "" : "zero"}" style="margin-left:auto">${esc(missing ? T("vol.missingCount", { n: missing }) : T("vol.complete"))}</span>
-    </div>
-    <div class="volgrid" role="group" aria-label="${esc(T("vol.gridLabel"))}">${cells.join("")}</div>`;
+    <div class="trackline">${head}</div>
+    ${total ? `<div class="shelfbar" role="img" aria-label="${esc(T("vol.ownedOf", { n, total }))}"><span style="width:${pct}%"></span></div>` : ""}
+    <div class="volgrid" role="group" aria-label="${esc(T("vol.gridLabel"))}">${cells.join("")}</div>
+    ${gaps ? `<p class="rmeta zero" style="margin:0 0 6px">${esc(T("vol.gapsHint", { n: gaps }))}</p>` : ""}`;
 }
 
-const volBtn = (v, owned) =>
-  `<button class="vol ${owned ? "own" : ""}" data-vol="${v}" aria-pressed="${owned}">${v}</button>`;
+const volBtn = (v, owned, ghost, gap) =>
+  `<button class="vol ${owned ? "own" : ""} ${ghost ? "ghosted" : ""} ${gap ? "gap" : ""}" data-vol="${v}" aria-pressed="${owned}">${v}</button>`;
 
 export function refreshTracker(d, onRemoved){
   $("trackwrap").innerHTML = trackerHTML(d);
@@ -118,7 +141,10 @@ export function wireTracker(d, onRemoved){
     const or = $("ownRange");
     if (or) or.onclick = () => {
       /* "I own 1 to 12" in one gesture rather than twelve taps. */
-      const v = prompt(T("vol.ownRangePrompt"), "1-" + (totals(d).vol || 1));
+      /* "1-1" is a useless suggestion, and it is what a series with no published total used
+         to offer. Fall back to the collection's own reach, then to nothing at all. */
+      const hint = totals(d).vol || lastOwned(d.ownedVol) || "";
+      const v = prompt(T("vol.ownRangePrompt"), "1-" + hint);
       if (!v) return;
       const m = String(v).match(/^\s*(\d+)\s*[-–]\s*(\d+)\s*$/);
       if (m) d.ownedVol = addRange(d.ownedVol, +m[1], +m[2]);
