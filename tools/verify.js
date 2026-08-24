@@ -24,6 +24,17 @@ function jsFiles(dir){
     return e.isDirectory() ? jsFiles(p) : (e.name.endsWith('.js') ? [p] : []);
   });
 }
+/* Everything the bundle is built from, not only the JavaScript: a CSS-only change still
+   makes the published page stale, and the staleness check below has to see it. */
+function allSourceFiles(){
+  return fs.readdirSync(SRC, { withFileTypes: true }).flatMap(e => {
+    const p = path.join(SRC, e.name);
+    if (e.isDirectory()) return jsFiles(p).concat(
+      fs.readdirSync(p).filter(n => /\.(css|html)$/.test(n)).map(n => path.join(p, n)));
+    return /\.(js|css|html)$/.test(e.name) ? [p] : [];
+  });
+}
+
 const files = jsFiles(SRC).sort();
 const sources = new Map(files.map(f => [path.relative(SRC, f).replace(/\\/g, '/'), fs.readFileSync(f, 'utf8')]));
 
@@ -66,12 +77,26 @@ else {
   else console.log(`  OK   autonome (${(Buffer.byteLength(built, 'utf8') / 1024).toFixed(1)} Ko)`);
 
   /* The root file is a build artifact that is committed, so it can silently fall behind the
-     source it was built from. Editing it directly is the mistake this catches. */
+     source it was built from. Editing it directly is the mistake the marker catches. */
   const marker = 'function mergeLibraries';
   const inSource = [...sources.values()].some(s => s.includes(marker));
   if (inSource && !built.includes(marker))
     fail('index.html ne contient pas le code de src/ — relancer `npm run build`');
-  else console.log('  OK   a jour avec src/');
+
+  /* The marker alone is not enough, and it gave a false OK on a build that was a whole commit
+     behind: it only proves SOME build of src/ is in there, not the current one. Anything in
+     src/ modified after the file was published means the page on disk - and therefore the page
+     GitHub Pages serves - is not the code in the repo. */
+  const publishedAt = fs.statSync(builtPath).mtimeMs;
+  const newer = allSourceFiles()
+    .filter(f => fs.statSync(f).mtimeMs > publishedAt)
+    .map(f => path.relative(path.join(__dirname, '..'), f).replace(/\\/g, '/'));
+  if (newer.length){
+    fail(`index.html est plus ancien que src/ — relancer \`npm run build\` (${newer.length} fichier(s))`);
+    newer.slice(0, 6).forEach(f => console.log('       ' + f));
+    if (newer.length > 6) console.log(`       … et ${newer.length - 6} autre(s)`);
+  }
+  else if (inSource) console.log('  OK   a jour avec src/');
 }
 
 console.log(failures ? `\n${failures} echec(s)\n` : '\nTout passe.\n');

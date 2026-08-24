@@ -197,7 +197,7 @@ const en = {
   "vol.ownedCount": { "one": "{n} volume owned", "other": "{n} volumes owned" },
   "vol.missingCount": { "one": "{n} missing", "other": "{n} missing" },
   "vol.complete": "Complete",
-  "vol.noTotal": "No known volume count — set it to build a shopping list",
+  "vol.gapsHint": { "one": "{n} hole below what you already own", "other": "{n} holes below what you already own" },
   "vol.ownRange": "I own 1 to N",
   "vol.ownRangePrompt": "Which volumes do you own? For example 1-12, or a single number.",
   "net.mbUnreachable": "MangaBaka unreachable. Check your connection.",
@@ -231,6 +231,7 @@ const en = {
   "shop.startNote": "read, owned in print: nothing yet",
   "shop.missing": "Missing:",
   "shop.ownedOf": "{n} of {total} volumes",
+  "shop.ownedNoTotal": { "one": "{n} volume owned · total unknown", "other": "{n} volumes owned · total unknown" },
   "shop.gap": { "one": "{n} gap", "other": "{n} gaps" },
   "shop.volumesOwned": "Volumes owned",
   "shop.volumesMissing": "Missing",
@@ -261,6 +262,9 @@ const en = {
   "why.tags": "Same style",
   "why.author": "Same author",
   "filter.why": "Reason",
+  "preview.notInLibrary": "Not in your collection",
+  "preview.hint": "Not added yet — the tracking block appears once it is in your collection.",
+  "preview.fromDiscover": "Discover",
   "mihon.search": "Search in Mihon",
   "mihon.failed": "Could not open the share sheet",
   "mihon.hint": "Opens the Android share sheet. Mihon appears there as “Search”, with its own icon — Android shows the activity name, not the app name."
@@ -379,7 +383,7 @@ const fr = {
   "vol.ownedCount": { "one": "{n} tome possédé", "other": "{n} tomes possédés" },
   "vol.missingCount": { "one": "{n} manquant", "other": "{n} manquants" },
   "vol.complete": "Complète",
-  "vol.noTotal": "Nombre de tomes inconnu — saisis-le pour avoir une liste de courses",
+  "vol.gapsHint": { "one": "{n} trou sous ce que tu possèdes déjà", "other": "{n} trous sous ce que tu possèdes déjà" },
   "vol.ownRange": "Je possède 1 à N",
   "vol.ownRangePrompt": "Quels tomes possèdes-tu ? Par exemple 1-12, ou un seul numéro.",
   "net.mbUnreachable": "MangaBaka injoignable. Vérifie ta connexion.",
@@ -413,6 +417,7 @@ const fr = {
   "shop.startNote": "lus, possédés en papier : rien encore",
   "shop.missing": "Manquants :",
   "shop.ownedOf": "{n} tomes sur {total}",
+  "shop.ownedNoTotal": { "one": "{n} tome possédé · total inconnu", "other": "{n} tomes possédés · total inconnu" },
   "shop.gap": { "one": "{n} trou", "other": "{n} trous" },
   "shop.volumesOwned": "Tomes possédés",
   "shop.volumesMissing": "Manquants",
@@ -443,6 +448,9 @@ const fr = {
   "why.tags": "Même style",
   "why.author": "Même auteur",
   "filter.why": "Raison",
+  "preview.notInLibrary": "Pas dans ta collection",
+  "preview.hint": "Pas encore ajoutée — le bloc de suivi apparaît une fois la série dans ta collection.",
+  "preview.fromDiscover": "Découvrir",
   "mihon.search": "Chercher dans Mihon",
   "mihon.failed": "Impossible d'ouvrir le partage",
   "mihon.hint": "Ouvre le partage Android. Mihon y apparaît sous le nom « Recherche », avec son icône — Android affiche le nom de l’activité, pas celui de l’app."
@@ -821,7 +829,10 @@ function shapeSeries(s) {
     // keep the AniList id where one exists
     titre: s.title || s.romanized_title || s.native_title || "",
     romaji: s.romanized_title || s.title || "",
-    url: `https://mangabaka.org/series/${s.id}`,
+    /* The public page is /{id}. `/series/{id}` looks right and 404s - it is the API path,
+       not the site's. The record's own links[] ends with the canonical URL, which is how this
+       was settled rather than guessed. */
+    url: `https://mangabaka.org/${s.id}`,
     cover: cover.url,
     blurhash: cover.blurhash,
     type: s.type ? s.type[0].toUpperCase() + s.type.slice(1) : "",
@@ -834,7 +845,9 @@ function shapeSeries(s) {
     pop: s.popularity && s.popularity.global != null ? Number(s.popularity.global) : 0,
     annee: s.year || null,
     genres: (s.genres || []).map((g) => typeof g === "string" ? g : g.name).filter(Boolean).slice(0, 8),
-    auteur: [...s.authors || [], ...s.artists || []].map((a) => typeof a === "string" ? a : a && a.name).filter(Boolean).join(", "),
+    /* Deduplicated: when one person both writes and draws - which is most manga - they appear
+       in authors AND artists, and the sheet read "Tatsuki Fujimoto, Tatsuki Fujimoto". */
+    auteur: [...new Set([...s.authors || [], ...s.artists || []].map((a) => typeof a === "string" ? a : a && a.name).filter(Boolean))].join(", "),
     desc: (s.description || "").slice(0, 900),
     /* Every alternative title, which is what makes matching a Mihon folder name work. */
     aliases: (s.titles || []).map((x) => x && x.title).filter(Boolean)
@@ -1088,6 +1101,17 @@ function gapVolumes(str) {
   const out = [];
   for (let i = owned[0]; i < owned[owned.length - 1]; i++) if (!have.has(i)) out.push(i);
   return out;
+}
+const GRID_SLACK = 6;
+const GRID_MIN = 12;
+function gridSize(total, maxOwned) {
+  maxOwned = maxOwned > 0 ? maxOwned : 0;
+  if (total > 0) return Math.max(total, maxOwned);
+  return Math.max(maxOwned + GRID_SLACK, GRID_MIN);
+}
+function lastOwned(str) {
+  const v = parseVolumes(str);
+  return v.length ? v[v.length - 1] : 0;
 }
 const isComplete = (str, total) => !!total && missingVolumes(str, total).length === 0;
 const ORDER = ["mihon", "import", "mangadex", "anilist", "mangabaka", "manuel"];
@@ -1678,13 +1702,13 @@ function merge(similar, readers) {
     return (b.why.score || 0) - (a.why.score || 0);
   });
 }
-async function recosFor(d, force) {
+async function recosFor(d, force, record) {
   const key = KEY(d);
   if (!force) {
     const hit = await kvGet(key);
     if (hit) return hit;
   }
-  const mb = MBCACHE[norm(d.t)];
+  const mb = record && record.mb ? record : MBCACHE[norm(d.t)];
   if (mb && mb.mb) {
     const [similar, readers] = await Promise.all([
       recommendations(mb.mb, "similar", 12).catch(() => []),
@@ -1746,24 +1770,27 @@ function trackerHTML(d) {
     ${provenanceHTML(d)}`;
 }
 function volumeGridHTML(d, total) {
-  const owned = new Set(parseVolumes(d.ownedVol));
-  const n = countVolumes(d.ownedVol);
-  if (!total) {
-    return `<div class="trackline"><span class="rmeta">${esc(t("vol.noTotal"))}</span>
-      <span class="rmeta" style="margin-left:auto">${esc(t("vol.ownedCount", { n }))}</span></div>
-      ${n ? `<div class="volgrid">${[...owned].sort((a, b) => a - b).map((v) => volBtn(v, true)).join("")}</div>` : ""}`;
-  }
-  const cells = [];
-  for (let v = 1; v <= total; v++) cells.push(volBtn(v, owned.has(v)));
+  const list = parseVolumes(d.ownedVol);
+  const owned = new Set(list);
+  const n = list.length;
+  const max = lastOwned(d.ownedVol);
+  const size = gridSize(total, max);
   const missing = missingVolumes(d.ownedVol, total).length;
+  const gaps = gapVolumes(d.ownedVol).length;
+  const gapSet = new Set(gapVolumes(d.ownedVol));
+  const cells = [];
+  for (let v = 1; v <= size; v++)
+    cells.push(volBtn(v, owned.has(v), total ? v > total : v > max, gapSet.has(v)));
+  const head = total ? `<span class="rmeta">${esc(t("vol.ownedOf", { n, total }))}</span>
+       <span class="rmeta ${missing ? "" : "zero"}" style="margin-left:auto">${esc(missing ? t("vol.missingCount", { n: missing }) : t("vol.complete"))}</span>` : `<span class="rmeta">${esc(t("vol.ownedCount", { n }))}</span>`;
+  const pct = total ? Math.min(100, Math.round(n / total * 100)) : 0;
   return `
-    <div class="trackline">
-      <span class="rmeta">${esc(t("vol.ownedOf", { n, total }))}</span>
-      <span class="rmeta ${missing ? "" : "zero"}" style="margin-left:auto">${esc(missing ? t("vol.missingCount", { n: missing }) : t("vol.complete"))}</span>
-    </div>
-    <div class="volgrid" role="group" aria-label="${esc(t("vol.gridLabel"))}">${cells.join("")}</div>`;
+    <div class="trackline">${head}</div>
+    ${total ? `<div class="shelfbar" role="img" aria-label="${esc(t("vol.ownedOf", { n, total }))}"><span style="width:${pct}%"></span></div>` : ""}
+    <div class="volgrid" role="group" aria-label="${esc(t("vol.gridLabel"))}">${cells.join("")}</div>
+    ${gaps ? `<p class="rmeta zero" style="margin:0 0 6px">${esc(t("vol.gapsHint", { n: gaps }))}</p>` : ""}`;
 }
-const volBtn = (v, owned) => `<button class="vol ${owned ? "own" : ""}" data-vol="${v}" aria-pressed="${owned}">${v}</button>`;
+const volBtn = (v, owned, ghost, gap) => `<button class="vol ${owned ? "own" : ""} ${ghost ? "ghosted" : ""} ${gap ? "gap" : ""}" data-vol="${v}" aria-pressed="${owned}">${v}</button>`;
 function refreshTracker(d, onRemoved) {
   $("trackwrap").innerHTML = trackerHTML(d);
   wireTracker(d, onRemoved);
@@ -1795,7 +1822,8 @@ function wireTracker(d, onRemoved) {
     });
     const or = $("ownRange");
     if (or) or.onclick = () => {
-      const v = prompt(t("vol.ownRangePrompt"), "1-" + (totals(d).vol || 1));
+      const hint = totals(d).vol || lastOwned(d.ownedVol) || "";
+      const v = prompt(t("vol.ownRangePrompt"), "1-" + hint);
       if (!v) return;
       const m = String(v).match(/^\s*(\d+)\s*[-–]\s*(\d+)\s*$/);
       if (m) d.ownedVol = addRange(d.ownedVol, +m[1], +m[2]);
@@ -1914,17 +1942,41 @@ function recoRowHTML(r) {
   return `<div class="rec">
     ${r.cover ? `<img class="cover" src="${esc(r.cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
     <div style="min-width:0">
-      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a>${isOwned(r) ? '<span class="owned">déjà chez toi</span>' : ""}</div>
+      <div class="rtitle"><button class="titlelink" data-open="${esc(String(r.mb ?? r.id))}">${esc(r.titre)}</button>${isOwned(r) ? '<span class="owned">déjà chez toi</span>' : ""}</div>
       <div class="rmeta">${esc(meta)}</div>
       <div class="rwhy">${whyHTML(r)}</div>
       ${isOwned(r) ? "" : `<div class="ractions"><button class="btn sm" data-addreco="${r.mb ?? r.id}">${esc(t("reco.add"))}</button></div>`}
     </div>
   </div>`;
 }
-function openSheet(d) {
+function previewEntry(r) {
+  return {
+    id: "preview:" + (r.mb ?? r.id),
+    t: r.titre,
+    a: r.auteur || "",
+    s: t("preview.notInLibrary"),
+    st: r.statut || "",
+    g: r.genres || [],
+    r: 0,
+    ownedVol: "",
+    n: r.chapitres || 0,
+    d: "",
+    ad: "",
+    al: r.id || null,
+    m: r.type === "Manhwa" ? "Webtoon" : "",
+    origin: "preview"
+  };
+}
+function openPreview(r, onAdded) {
+  const record = r.src ? r : { ...r, src: r.mb ? "mangabaka" : "anilist" };
+  openSheet(previewEntry(r), { record, preview: true, onAdded });
+}
+function openSheet(d, opts) {
   if (!d) return;
+  opts = opts || {};
   current = d;
-  const meta = recordOf(d);
+  const preview = !!opts.preview;
+  const meta = opts.record || recordOf(d);
   d.n ? Math.min(100, Math.round(d.r / d.n * 100)) : 0;
   meta && meta.chapitres ? meta.chapitres - d.r : null;
   const hmeta = [
@@ -1950,14 +2002,16 @@ function openSheet(d) {
           ${d.origin === "manuel" ? '<span class="pill hi">Ajout manuel</span>' : ""}
           ${(meta ? meta.genres : d.g).slice(0, 8).map((g) => `<span class="pill">${esc(g)}</span>`).join("")}
         </div>
-        <div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>
+        ${preview ? `<div class="trackline"><button class="btn" id="addBtn" style="flex:1 1 auto">${esc(t("reco.add"))}</button>
+             <button class="btn ghost" id="skipBtn">${esc(t("discover.skip"))}</button></div>
+             <p class="rmeta" style="margin:0 0 4px">${esc(t("preview.hint"))}</p>` : `<div class="trackwrap" id="trackwrap">${trackerHTML(d)}</div>`}
         ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(t("mihon.search"))}</button>
         <p class="rmeta" style="margin:6px 0 0">${esc(t("mihon.hint"))}</p>` : ""}
         <dl>
-          <dt>Dernière fois</dt><dd>${esc(d.d || "—")}</dd>
-          <dt>Ajouté le</dt><dd>${esc(d.ad || "—")}</dd>
+          ${preview ? "" : `<dt>Dernière fois</dt><dd>${esc(d.d || "—")}</dd>
+          <dt>Ajouté le</dt><dd>${esc(d.ad || "—")}</dd>`}
           <dt>Auteur</dt><dd>${esc(meta && meta.auteur || d.a || "—")}</dd>
-          <dt>Source</dt><dd>${esc(d.s)}</dd>
+          ${preview ? "" : `<dt>Source</dt><dd>${esc(d.s)}</dd>`}
           ${meta ? `<dt>${esc(t("sheet.record"))}</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)}</a> ${esc(t("sheet.via", { source: (CREDIT[meta.src] || {}).name || "" }))}${(CREDIT[meta.src] || {}).licence ? ` <span class="rmeta">(${esc(CREDIT[meta.src].licence)})</span>` : ""}</dd>` : ""}
         </dl>
         ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
@@ -1970,25 +2024,39 @@ function openSheet(d) {
   const cb = $("closeBtn");
   cb.onclick = closeSheet;
   cb.focus();
-  $("refresh").onclick = () => fillRecos(d, true);
+  $("refresh").onclick = () => fillRecos(d, true, opts.record);
   const moreBtn = $("moreBtn");
   if (moreBtn) moreBtn.onclick = () => {
     const el = $("desc");
     el.classList.toggle("clamped");
     moreBtn.textContent = el.classList.contains("clamped") ? "Lire la suite" : "Replier";
   };
-  wireTracker(d, closeSheet);
+  if (preview) {
+    $("addBtn").onclick = () => {
+      if (!addFromMedia(opts.record, { source: t("preview.fromDiscover") })) return;
+      if (opts.onAdded) opts.onAdded();
+      const added = LIB.entries.find((x) => norm(x.t) === norm(d.t));
+      if (added) openSheet(added);
+      else closeSheet();
+    };
+    $("skipBtn").onclick = () => {
+      closeSheet();
+      if (opts.onSkip) opts.onSkip();
+    };
+  } else {
+    wireTracker(d, closeSheet);
+  }
   const mb = $("mihonBtn");
   if (mb) mb.onclick = () => {
     openInMihon(d.t).catch(() => toast(t("mihon.failed")));
   };
-  fillRecos(d, false);
+  fillRecos(d, false, opts.record);
 }
-async function fillRecos(d, force) {
+async function fillRecos(d, force, record) {
   const box = $("recos");
   box.innerHTML = `<p class="loading">${esc(t("reco.loading"))}</p>`;
   try {
-    const payload = await recosFor(d, force);
+    const payload = await recosFor(d, force, record);
     if (current !== d) return;
     if (!payload.items.length) {
       box.innerHTML = `<p class="note">${esc(t("reco.none"))} <a href="${esc(payload.source)}" target="_blank" rel="noreferrer">${esc(t("reco.seeOn", { title: payload.matched }))}</a></p>`;
@@ -1996,6 +2064,15 @@ async function fillRecos(d, force) {
     }
     const visible = payload.items.filter((r) => !state.hideOwned || !isOwned(r));
     box.innerHTML = visible.length ? visible.map(recoRowHTML).join("") : `<p class="note">${esc(t("reco.allOwned", { n: payload.items.length }))}</p>`;
+    [...box.querySelectorAll("[data-open]")].forEach((b) => {
+      b.onclick = () => {
+        const r = payload.items.find((x) => String(x.mb ?? x.id) === b.dataset.open);
+        if (!r) return;
+        const mine = LIB.entries.find((x) => norm(x.t) === norm(r.titre));
+        if (mine) openSheet(mine);
+        else openPreview(r);
+      };
+    });
     [...box.querySelectorAll("[data-addreco]")].forEach((b) => {
       b.onclick = () => {
         const r = payload.items.find((x) => String(x.mb ?? x.id) === b.dataset.addreco);
@@ -2244,7 +2321,7 @@ function discoverCardHTML(r, i) {
     ${r.cover ? `<img class="cov" src="${esc(r.cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
     <div class="body">
       <div class="rank">${String(i + 1).padStart(2, "0")}${r.score ? ` · ${r.score}/100` : ""}</div>
-      <div class="rtitle"><a href="${esc(r.url)}" target="_blank" rel="noreferrer">${esc(r.titre)}</a></div>
+      <div class="rtitle"><button class="titlelink" data-open="${esc(keyOf(r))}">${esc(r.titre)}</button></div>
       <div class="rmeta">${esc(meta)}</div>
       <div class="rseed">${esc(t("discover.because", { seeds: r.from.slice(0, 3).join(", ") }))}${r.from.length > 3 ? ` +${r.from.length - 3}` : ""}</div>
       <div class="rwhy">${whyHTML(r)}</div>
@@ -2269,6 +2346,22 @@ function renderDiscover(partial, isPartial) {
   }
   const seedLine = DISCOVER && !isPartial ? `<p class="note" style="margin-bottom:12px">${esc(t("discover.crossed", { n: DISCOVER.seeds.length, seeds: DISCOVER.seeds.join(", ") }))}</p>` : "";
   box.innerHTML = seedLine + `<div class="recgrid">${items.map(discoverCardHTML).join("")}</div>`;
+  [...box.querySelectorAll("[data-open]")].forEach((b) => {
+    b.onclick = () => {
+      const r = items.find((x) => keyOf(x) === b.dataset.open);
+      if (!r) return;
+      const mine = LIB.entries.find((x) => norm(x.t) === norm(r.titre));
+      if (mine) {
+        openSheet(mine);
+        return;
+      }
+      openPreview(r, () => {
+        renderDiscover();
+        discoverChanged();
+        $("tabDiscN").textContent = visibleDiscover().length || "—";
+      });
+    };
+  });
   [...box.querySelectorAll("[data-add]")].forEach((b) => {
     b.onclick = () => {
       const r = items.find((x) => keyOf(x) === b.dataset.add);
@@ -2316,7 +2409,7 @@ function shoppingRow(d) {
 }
 function shoppingRows() {
   const rows = LIB.entries.filter(inShopping).map(shoppingRow);
-  const cont = rows.filter((r) => r.owned > 0 && r.missing.length > 0).sort((a, b) => b.ratio - a.ratio);
+  const cont = rows.filter((r) => r.owned > 0 && !r.complete).sort((a, b) => b.ratio - a.ratio);
   const start2 = rows.filter((r) => r.owned === 0).sort((a, b) => (b.d.r || 0) - (a.d.r || 0));
   const done = rows.filter((r) => r.complete);
   return { rows, cont, start: start2, done };
@@ -2348,7 +2441,8 @@ function rowHTML(r, showGaps) {
     ${cover ? `<img src="${esc(cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
     <span class="si">
       <span class="st">${esc(r.d.t)}</span>
-      <span class="sm">${r.tot ? esc(t("shop.ownedOf", { n: r.owned, total: r.tot })) : esc(t("vol.noTotal"))}</span>
+      <span class="sm">${r.tot ? esc(t("shop.ownedOf", { n: r.owned, total: r.tot })) : esc(t("shop.ownedNoTotal", { n: r.owned }))}</span>
+      ${r.tot ? `<span class="shelfbar thin"><span style="width:${Math.min(100, Math.round(r.owned / r.tot * 100))}%"></span></span>` : ""}
       ${r.missing.length ? `<span class="sv">${esc(t("shop.missing"))} ${esc(runs(r.missing).join(", "))}</span>` : ""}
     </span>
     <span class="sc">${r.missing.length ? esc(money(r.cost)) : ""}${gapBadge}</span>
@@ -2959,6 +3053,10 @@ input[type=search]{flex:1 1 190px;min-width:0}
 .rank{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--vermilion);letter-spacing:.1em}
 .rtitle{overflow-wrap:anywhere;font-family:'Anton',sans-serif;text-transform:uppercase;font-size:15px;line-height:1.06}
 .rtitle a{color:inherit;text-decoration:none;border-bottom:1.5px solid var(--vermilion)}
+/* A recommendation's title opens the sheet, so it is a button - but it has to keep reading as
+   a title, not as a control. */
+.titlelink{font:inherit;color:inherit;text-align:left;background:none;border:0;padding:0;
+           border-bottom:1.5px solid var(--vermilion);cursor:pointer}
 .rmeta{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--dim)}
 .rwhy{font-size:12px;line-height:1.4;color:var(--ink-soft)}
 .rwhy b{color:var(--press);font-family:'Space Mono',monospace;font-weight:400}
@@ -3048,6 +3146,17 @@ dd{margin:0}
 .vol{font-family:'Space Mono',monospace;font-size:12px;min-width:36px;height:36px;padding:0 6px;
      border:1.5px solid var(--dim);background:transparent;color:var(--dim);cursor:pointer}
 .vol.own{background:var(--ink);border-color:var(--ink);color:var(--paper-hi)}
+/* Past the published count, or past the collection when nothing is published: still tappable,
+   but dashed, because the app is not claiming these volumes exist. */
+.vol.ghosted{border-style:dashed}
+/* A hole below what you own - the gap on the shelf, and the one worth closing first. */
+.vol.gap{border-color:var(--vermilion);border-width:2px;color:var(--vermilion)}
+.vol.own.ghosted{background:var(--ink-soft);border-color:var(--ink-soft)}
+/* How full the shelf is, in one glance - the sheet under the grid, and each shopping row. */
+.shelfbar{display:block;height:9px;border:1.5px solid var(--ink);background:var(--paper-hi);
+          margin:0 0 8px;overflow:hidden}
+.shelfbar>span{display:block;height:100%;background:var(--ink)}
+.shelfbar.thin{height:5px;margin:3px 0 1px;border-width:1px;max-width:240px}
 .vol:focus-visible{outline:2px solid var(--press);outline-offset:2px}
 .remain.zero,.rmeta.zero{color:var(--press)}
 /* les deux signaux de recommandation concordent : le signal le plus fort disponible */
