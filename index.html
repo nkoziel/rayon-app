@@ -864,6 +864,19 @@ async function matchTitle(title) {
   const first = Array.isArray(d) ? d[0] : d;
   return shapeSeries(first);
 }
+async function batch(ids) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    const q = chunk.map((x) => `id=${encodeURIComponent(x)}`).join("&");
+    const d = await mbGet(`/v1/series/batch?${q}`);
+    (Array.isArray(d) ? d : []).forEach((s) => {
+      const m = shapeSeries(s);
+      if (m) out.push(m);
+    });
+  }
+  return out;
+}
 async function recommendations(mbId, kind = "similar", limit = 12) {
   const path = kind === "readers" ? "readers-also-like" : "similar";
   const d = await mbGet(`/v1/series/${encodeURIComponent(mbId)}/${path}?limit=${limit}`);
@@ -894,6 +907,19 @@ async function resolveOne(d) {
   }
   return matchTitle(d.t);
 }
+const CONCURRENCY = 4;
+async function mapLimit(list, limit, fn) {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, list.length) }, async () => {
+    while (next < list.length) await fn(list[next++]);
+  });
+  await Promise.all(workers);
+}
+function adopt(d, m) {
+  MBCACHE[norm(d.t)] = m;
+  if (!d.mb && m.mb) d.mb = m.mb;
+  if (!d.al && m.id) d.al = m.id;
+}
 async function hydrate(onBatch = () => {
 }) {
   if (running || !LIB.entries.length) return;
@@ -906,18 +932,43 @@ async function hydrate(onBatch = () => {
     }
     const total = todo.length;
     let done = 0, viaMb = 0;
-    const pending = [];
-    for (const d of todo) {
+    const tick = () => {
       $("statusline").textContent = t("hydrate.resolving", { done, total });
+    };
+    const known = todo.filter((d) => d.mb);
+    const unresolved = todo.filter((d) => !d.mb);
+    for (let i = 0; i < known.length; i += 50) {
+      const chunk = known.slice(i, i + 50);
+      tick();
+      try {
+        const byId = new Map(chunk.map((d) => [String(d.mb), d]));
+        for (const m of await batch(chunk.map((d) => d.mb))) {
+          const d = byId.get(String(m.mb));
+          if (d) {
+            adopt(d, m);
+            viaMb++;
+          }
+        }
+      } catch (e) {
+        $("statusline").textContent = e.message;
+      }
+      done += chunk.length;
+      chunk.forEach((d) => {
+        if (!MBCACHE[norm(d.t)]) unresolved.push(d);
+      });
+      saveMb();
+      saveLib();
+      onBatch();
+    }
+    const pending = [];
+    await mapLimit(unresolved, CONCURRENCY, async (d) => {
+      tick();
       try {
         const m = await resolveOne(d);
         if (m) {
-          MBCACHE[norm(d.t)] = m;
-          if (!d.al && m.id) d.al = m.id;
+          adopt(d, m);
           viaMb++;
-        } else {
-          pending.push(d);
-        }
+        } else pending.push(d);
       } catch (e) {
         $("statusline").textContent = e.message;
         pending.push(d);
@@ -926,10 +977,12 @@ async function hydrate(onBatch = () => {
       done++;
       if (done % 10 === 0) {
         saveMb();
+        saveLib();
         onBatch();
       }
-    }
+    });
     saveMb();
+    saveLib();
     onBatch();
     if (pending.length) {
       const withId = pending.filter((d) => d.al), without = pending.filter((d) => !d.al);
@@ -1325,6 +1378,30 @@ function parseBackup(bytes) {
   });
   return entries;
 }
+const stack = [];
+let wired = false;
+function wire() {
+  if (wired) return;
+  wired = true;
+  window.addEventListener("popstate", () => {
+    const teardown = stack.pop();
+    if (teardown) teardown();
+  });
+}
+function openLayer(teardown) {
+  wire();
+  stack.push(teardown);
+  history.pushState({ rayonLayer: stack.length }, "");
+}
+function replaceLayer(teardown) {
+  if (!stack.length) return openLayer(teardown);
+  stack[stack.length - 1] = teardown;
+}
+function closeLayer() {
+  if (!stack.length) return false;
+  history.back();
+  return true;
+}
 const mergeOwned = (a, b) => formatVolumes([...parseVolumes(a), ...parseVolumes(b)]);
 function mergeLibraries(current2, incoming) {
   const out = current2.map((e) => Object.assign({}, e));
@@ -1397,9 +1474,17 @@ function askImportMode(incoming) {
           </div>
         </div>
       </div>`;
-    const done = (v) => {
+    let settled = false;
+    const settle = (v) => {
+      if (settled) return;
+      settled = true;
       closeModal();
       resolve(v);
+    };
+    openLayer(() => settle(null));
+    const done = (v) => {
+      settle(v);
+      closeLayer();
     };
     $("impMerge").onclick = () => done("merge");
     $("impReplace").onclick = () => done("replace");
@@ -1616,9 +1701,13 @@ function openAddModal(prefill) {
       </div>
     </div>`;
   const input = $("addQ");
-  $("addClose").onclick = closeModal;
+  openLayer(closeModal);
+  const dismiss = () => {
+    if (!closeLayer()) closeModal();
+  };
+  $("addClose").onclick = dismiss;
   $("modalScrim").onclick = (e) => {
-    if (e.target.id === "modalScrim") closeModal();
+    if (e.target.id === "modalScrim") dismiss();
   };
   let timer = null, seq = 0;
   const run = async () => {
@@ -1932,10 +2021,13 @@ function whyHTML(r) {
   return out.join(" ");
 }
 let current = null;
-function closeSheet() {
+function teardownSheet() {
   current = null;
   $("overlay").innerHTML = "";
   document.body.style.overflow = "";
+}
+function closeSheet() {
+  if (!closeLayer()) teardownSheet();
 }
 function recoRowHTML(r) {
   const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut, r.score ? r.score + "/100" : null].filter(Boolean).join(" · ");
@@ -1974,6 +2066,7 @@ function openPreview(r, onAdded) {
 function openSheet(d, opts) {
   if (!d) return;
   opts = opts || {};
+  const wasOpen = !!current;
   current = d;
   const preview = !!opts.preview;
   const meta = opts.record || recordOf(d);
@@ -2050,6 +2143,8 @@ function openSheet(d, opts) {
   if (mb) mb.onclick = () => {
     openInMihon(d.t).catch(() => toast(t("mihon.failed")));
   };
+  if (wasOpen) replaceLayer(teardownSheet);
+  else openLayer(teardownSheet);
   fillRecos(d, false, opts.record);
 }
 async function fillRecos(d, force, record) {
@@ -2089,8 +2184,9 @@ async function fillRecos(d, force, record) {
 }
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
-  if ($("modalHost").innerHTML) closeModal();
-  else if (current) closeSheet();
+  if ($("modalHost").innerHTML) {
+    if (!closeLayer()) closeModal();
+  } else if (current) closeSheet();
 });
 const SHELVES = ["all", "reading", "behind", "finished", "unopened", "manual"];
 const SORTS = ["recent", "title", "chapters", "progress", "score"];

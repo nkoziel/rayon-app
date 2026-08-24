@@ -6,6 +6,7 @@ import { LIB, META, markMetaDirty, saveLib, saveMeta, isOwned } from '../core/st
 import { t as T } from '../core/i18n.js';
 import { gql, shapeMedia, SEARCH_PAGE_Q } from '../data/anilist.js';
 import { libraryChanged } from './refresh.js';
+import { openLayer, closeLayer } from './layers.js';
 
 export function addFromMedia(m, opts){
   opts = opts || {};
@@ -41,8 +42,10 @@ export function openAddModal(prefill){
       </div>
     </div>`;
   const input = $("addQ");
-  $("addClose").onclick = closeModal;
-  $("modalScrim").onclick = e => { if (e.target.id === "modalScrim") closeModal(); };
+  openLayer(closeModal);
+  const dismiss = () => { if (!closeLayer()) closeModal(); };
+  $("addClose").onclick = dismiss;
+  $("modalScrim").onclick = e => { if (e.target.id === "modalScrim") dismiss(); };
   let timer = null, seq = 0;
   const run = async () => {
     const term = input.value.trim();

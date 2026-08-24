@@ -13,9 +13,16 @@ import { addFromMedia } from './add.js';
 import { mihonAvailable, openInMihon } from './mihon.js';
 import { libraryChanged } from './refresh.js';
 import { whyHTML } from './why.js';
+import { openLayer, replaceLayer, closeLayer } from './layers.js';
 
 let current = null;
-export function closeSheet(){ current = null; $("overlay").innerHTML = ""; document.body.style.overflow = ""; }
+
+/* The actual teardown. Only layers.js calls this, from popstate — see the rule in that file. */
+function teardownSheet(){ current = null; $("overlay").innerHTML = ""; document.body.style.overflow = ""; }
+
+/* What every control inside the app calls. It goes back through history so the entry the sheet
+   pushed is consumed; if no layer is open (nothing pushed), it closes directly. */
+export function closeSheet(){ if (!closeLayer()) teardownSheet(); }
 
 export function recoRowHTML(r){
   const meta = [r.type, r.annee, r.chapitres?r.chapitres+" ch.":null, r.statut, r.score?r.score+"/100":null].filter(Boolean).join(" · ");
@@ -60,6 +67,9 @@ export function openPreview(r, onAdded){
 export function openSheet(d, opts){
   if (!d) return;
   opts = opts || {};
+  /* Read before `current` is overwritten: a sheet opened FROM a sheet reuses the history entry
+     rather than stacking a second one. */
+  const wasOpen = !!current;
   current = d;
   const preview = !!opts.preview;
   /* Source-agnostic: the record handed in for a preview, else MangaBaka, else AniList. */
@@ -131,6 +141,8 @@ export function openSheet(d, opts){
   /* The share sheet needs the click's user activation, so this stays in the handler and is not
      awaited into a later tick. A refusal is the user changing their mind, not a failure. */
   if (mb) mb.onclick = () => { openInMihon(d.t).catch(() => toast(T("mihon.failed"))); };
+  /* Last, so a throw while rendering cannot leave a history entry with nothing behind it. */
+  if (wasOpen) replaceLayer(teardownSheet); else openLayer(teardownSheet);
   fillRecos(d, false, opts.record);
 }
 
@@ -171,6 +183,8 @@ export async function fillRecos(d, force, record){
 }
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
-  if ($("modalHost").innerHTML) closeModal();
+  /* Escape goes through the same door as back, or the entry it pushed would be left behind
+     and the next back press would appear to do nothing. */
+  if ($("modalHost").innerHTML){ if (!closeLayer()) closeModal(); }
   else if (current) closeSheet();
 });

@@ -9,6 +9,7 @@ import { LIB, setLib, saveLib, setDiscover, META, MDCACHE, markMetaDirty, saveMe
 import { store, db, forgetDb, kvDel, kvSet, DB_NAME } from '../core/store.js';
 import { t as T } from '../core/i18n.js';
 import { parseBackup, consolidateMihon } from './tachibk.js';
+import { openLayer, closeLayer } from '../ui/layers.js';
 
 const mergeOwned = (a, b) => formatVolumes([...parseVolumes(a), ...parseVolumes(b)]);
 
@@ -83,7 +84,15 @@ export function askImportMode(incoming){
           </div>
         </div>
       </div>`;
-    const done = v => { closeModal(); resolve(v); };
+    /* Back must ANSWER this dialog, not just hide it: something is awaiting the promise, and a
+       dismissed dialog that never resolves would hang the import for good. Back means cancel. */
+    let settled = false;
+    const settle = v => { if (settled) return; settled = true; closeModal(); resolve(v); };
+    openLayer(() => settle(null));
+    /* A button answers with its own value first, THEN consumes the entry we pushed. The
+       popstate teardown still fires and still calls settle(null) — it is a no-op by then, so
+       the button's answer wins and cancel can never overwrite a real choice. */
+    const done = v => { settle(v); closeLayer(); };
     $("impMerge").onclick   = () => done("merge");
     $("impReplace").onclick = () => done("replace");
     $("impCancel").onclick  = () => done(null);
