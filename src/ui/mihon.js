@@ -39,6 +39,20 @@
  * the same way, and the two are told apart only by their icon.
  *
  * All of the above was checked against mihonapp/mihon on main, not only against a local fork.
+ *
+ * The search opens filtered to PINNED SOURCES, and nothing here can change that. The path is
+ * ACTION_SEND -> DeepLinkScreen(query), which tries to resolve the text as a deep link to one
+ * series; a plain title is not one, so it falls through to
+ * `navigator.replace(GlobalSearchScreen(query))` - the query alone, no filter. From there
+ * SearchViewModel.State hard-codes `sourceFilter = SourceFilter.PinnedOnly`, and setSourceFilter
+ * is only ever called from the toolbar, by a tap.
+ *
+ * Do not reach for INTENT_SEARCH_FILTER on the strength of its name: it feeds `extensionFilter`,
+ * which narrows the search to ONE EXTENSION. That is a different axis from the Pinned/All toggle,
+ * and it rides on the eu.kanade.tachiyomi.SEARCH intent, which never arrived from inside the TWA
+ * - the reason this went through the share sheet in the first place.
+ *
+ * The answer for a user who finds Pinned-only unhelpful is to pin the sources they actually use.
  */
 
 const isAndroid = () => /android/i.test(navigator.userAgent);
