@@ -36,6 +36,33 @@ async function resolveOne(d){
   return matchTitle(d.t);
 }
 
+/* Resolving one series at a time is what makes a phone never finish.
+ *
+ * mbGet() shares one cooldown across the whole app and backs everything off on a 429, so a
+ * handful of requests in flight cannot run away — and four at once is roughly a quarter of the
+ * wall time on mobile latency, which is where this actually hurt. */
+const CONCURRENCY = 4;
+
+export async function mapLimit(list, limit, fn){
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, list.length) }, async () => {
+    while (next < list.length) await fn(list[next++]);
+  });
+  await Promise.all(workers);
+}
+
+/* Remember where a record came from, on the entry itself.
+ *
+ * The MangaBaka id is stable identity, not cache: keeping it on the entry means it survives in
+ * localStorage and travels in the JSON export, so the NEXT device to see this library resolves
+ * it with one request per fifty series instead of one per series. Without it every device pays
+ * full price for the same lookups forever. */
+function adopt(d, m){
+  MBCACHE[norm(d.t)] = m;
+  if (!d.mb && m.mb) d.mb = m.mb;
+  if (!d.al && m.id) d.al = m.id;      // backfill the AniList id when MangaBaka knows it
+}
+
 export async function hydrate(onBatch = () => {}){
   if (running || !LIB.entries.length) return;
   running = true;
@@ -45,30 +72,49 @@ export async function hydrate(onBatch = () => {}){
 
     const total = todo.length;
     let done = 0, viaMb = 0;
+    const tick = () => { $("statusline").textContent = T("hydrate.resolving", { done, total }); };
 
-    /* Entries that already carry an AniList id can be resolved one call at a time, but the
-       bridge has no bulk form — so collect the MangaBaka ids first, then batch the details. */
+    /* Pass 1 — everything that already carries a MangaBaka id, 50 per request.
+       This is REVIEW.md §2.2: a 300-series library is six requests, not three hundred. */
+    const known = todo.filter(d => d.mb);
+    const unresolved = todo.filter(d => !d.mb);
+
+    for (let i = 0; i < known.length; i += 50){
+      const chunk = known.slice(i, i + 50);
+      tick();
+      try{
+        const byId = new Map(chunk.map(d => [String(d.mb), d]));
+        for (const m of await batch(chunk.map(d => d.mb))){
+          const d = byId.get(String(m.mb));
+          if (d){ adopt(d, m); viaMb++; }
+        }
+      }catch(e){ $("statusline").textContent = e.message; }
+      done += chunk.length;
+      /* Whatever the batch did not return still needs resolving by id or title. */
+      chunk.forEach(d => { if (!MBCACHE[norm(d.t)]) unresolved.push(d); });
+      saveMb(); saveLib(); onBatch();
+    }
+
+    /* Pass 2 — no MangaBaka id yet, so one lookup each. There is no bulk form of the AniList
+       bridge or of /series/match, which is why this pass is the one worth parallelising. */
     const pending = [];
-    for (const d of todo){
-      $("statusline").textContent = T("hydrate.resolving", { done, total });
+    await mapLimit(unresolved, CONCURRENCY, async d => {
+      tick();
       try{
         const m = await resolveOne(d);
-        if (m){
-          MBCACHE[norm(d.t)] = m;
-          if (!d.al && m.id) d.al = m.id;      // backfill the AniList id when MangaBaka knows it
-          viaMb++;
-        } else {
-          pending.push(d);                      // nothing on MangaBaka: try AniList below
-        }
+        if (m){ adopt(d, m); viaMb++; }
+        else pending.push(d);                   // nothing on MangaBaka: try AniList below
       }catch(e){
         $("statusline").textContent = e.message;
         pending.push(d);
         await sleep(1500);
       }
       done++;
-      if (done % 10 === 0){ saveMb(); onBatch(); }
-    }
-    saveMb(); onBatch();
+      /* Save often: an interrupted run on a phone is the normal case, not the exception, and
+         everything already fetched should survive it. */
+      if (done % 10 === 0){ saveMb(); saveLib(); onBatch(); }
+    });
+    saveMb(); saveLib(); onBatch();
 
     /* Whatever MangaBaka did not have, ask AniList — if it is answering at all. */
     if (pending.length){
@@ -112,9 +158,8 @@ function status(viaMb){
 export async function refreshOne(d){
   const m = await resolveOne(d);
   if (!m) return null;
-  MBCACHE[norm(d.t)] = m;
-  if (!d.al && m.id) { d.al = m.id; saveLib(); }
-  saveMb();
+  adopt(d, m);
+  saveLib(); saveMb();
   return m;
 }
 
