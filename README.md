@@ -1,186 +1,167 @@
-# Rayon — manga library & recommendations
+# Rayon
 
-Standalone web app: a library of series, cross-database metadata, progress tracking, and a
-**Discover** tab that cross-references recommendations from the series you already read. No
-account, no server — everything is stored in your browser.
+**Your manga library, the recommendations it earns you, and the volumes you are still missing —
+in one page, stored on your own device.**
 
-Every recommendation says *why* it is being suggested, as three badges: how many readers have
-both series, how many tags they share, and whether they come from the same author.
+No account. No server. No sync. Open the link and it is yours.
 
-**Rayon does not read manga. [Mihon](https://mihon.app/) is the reader.** Each series sheet
-has a *Chercher dans Mihon* button that hands the title straight to the app's cross-source
-search. Rayon keeps track of what you read and helps you find what to read next.
+**→ [nkoziel.github.io/rayon-app](https://nkoziel.github.io/rayon-app/)**
 
-**Live:** https://nkoziel.github.io/rayon-app/
+![The library grid](docs/screenshots/library.jpg)
 
-## Folder contents
+---
 
-```
-index.html              the built application — ONE self-contained file (generated)
-src/                    the source: index.html shell, style.css, main.js
-manifest.webmanifest    install metadata
-sw.js                   service worker (offline support)
-icons/                  192, 512, maskable, apple-touch icons
-tools/                  build publish step and the verification harness
-```
+## Why it exists
 
-> **`index.html` at the root is generated. Edit `src/`, then run `npm run build`** — the build
-> overwrites the root file. It is committed on purpose so the app stays openable straight from
-> a clone, with no build step.
+Reading apps are good at reading. They are bad at the two questions you actually have between
+series: *what should I read next*, and *which volume am I missing on the shelf*.
+
+Rayon answers those two, and hands the reading itself to
+**[Mihon](https://mihon.app/)** — which is free, excellent, and already installed.
+Every series sheet has a *Search in Mihon* button that drops the title straight into its
+cross-source search.
+
+---
+
+## What you get
+
+### Recommendations that tell you *why*
+
+![The Discover tab](docs/screenshots/discover.jpg)
+
+Discover reads every series you have made progress in, asks what people who liked it also read,
+and ranks what comes back from several of them at once. Each suggestion carries its evidence:
+
+- **`691 readers`** — how many people have both series in their list
+- **`28 shared tags`** — how much thematic ground they cover in common
+- **`Same author`** — the strongest signal there is
+
+You can filter by reason. Show me only what the tag graph suggests. Show me only what other
+readers back. It also says which of *your* series produced each suggestion, so a bad
+recommendation tells you something too.
+
+Records come from **[MangaBaka](https://mangabaka.org/)**, which already aggregates AniList,
+MyAnimeList, MangaUpdates, Kitsu, Anime-Planet, Shikimori and ANN — so ratings are averaged
+across up to seven databases rather than taken from one.
+
+### Progress tracking that admits what it does not know
+
+<img src="docs/screenshots/sheet.png" alt="A series sheet" width="420">
+
+Every series says **where its chapter count came from** and how much to trust it. MangaBaka's
+aggregate, MangaDex's latest *translated* chapter, AniList (which publishes no total until a
+series is finished), your backup's count, or your own entry — which always wins.
+
+That line exists because "how many chapters exist" has no single reliable answer, and an app
+that hides the difference is quietly lying to you. The full cascade, source by source, is in
+[`docs/TOTALS.md`](docs/TOTALS.md).
+
+### A shelf you can check while standing in the shop
+
+<img src="docs/screenshots/volumes.png" alt="The volume grid" width="420">
+
+Switch a series to **Volumes** and tracking becomes physical: tap the volumes you own. Gaps
+*below* what you already own are flagged in red — the hole on the shelf is a different problem
+from a volume you have not bought yet.
+
+![The shopping tab](docs/screenshots/shopping.jpg)
+
+The **Shopping** tab turns that into a list: what is missing, what it would cost, sorted so the
+nearly-finished collections come first. It renders entirely from local state, no network call —
+because a bookshop is exactly where signal is bad.
+
+### Your Mihon backup, understood properly
+
+Drop a `.tachibk` in and it is decoded in the browser — gzip and protobuf, no upload, no server.
+
+A backup is a record of the *app*, not of your library: it keeps every series you ever opened,
+once per source. Migrate a title between two sources and it appears twice. Rayon folds those
+back together, keeps the favourites, and takes the **highest** progress in each group — so a
+series you read 393 chapters of on a source you abandoned does not come back at zero.
+
+On one real 232-row backup: 118 series, 43 duplicate titles resolved, no progress lost.
+
+---
+
+## Getting started
+
+**1. Open [the app](https://nkoziel.github.io/rayon-app/).** You land on an empty library.
+
+**2. Fill it.** Either **Import** a Mihon/Tachiyomi `.tachibk` backup (or a `.json` export from
+someone else), or use the **Add** tab to search titles one at a time.
+
+**3. Install it.** Chrome on Android: ⋮ → *Add to home screen*. Safari on iPhone: Share →
+*Add to Home Screen*. It then launches fullscreen with no address bar, and starts offline —
+only metadata lookups need the network.
+
+An **Android APK** is also published (`io.github.nkoziel.rayon`, ~0.9 MB), built with Bubblewrap
+as a Trusted Web Activity — see [`docs/ANDROID.md`](docs/ANDROID.md) for the packaging routes and
+the Mihon hand-off.
+
+---
+
+## Where your data lives
+
+| | |
+|---|---|
+| **Your library and progress** | `localStorage`, on this device |
+| **Records, totals, recommendations** | IndexedDB, on this device — regenerable cache |
+| **Sent to a server** | nothing, except the titles you look up |
+
+Two people on the same URL have two independent libraries. There is no account to create and
+nothing to sign in to.
+
+**Back it up.** *Export* writes a `.json` file — that is the only backup that exists, and it
+doubles as the way to hand a reading list to a friend. *Erase everything* offers it first.
+
+> **One honest caveat:** the page currently loads its fonts from Google Fonts, which discloses
+> your IP address to Google on every open. Self-hosting them is planned.
+
+---
+
+## Running it yourself
+
+`index.html` at the repo root is a single self-contained file. Open it straight from a clone and
+everything works except installation and offline mode, which need an `http(s)://` origin.
+
+To host it: any static host. GitHub Pages (configured here — pushing to `main` publishes),
+Netlify Drop, Cloudflare Pages, Vercel. The only requirement is HTTPS, or the service worker
+will not register.
+
+---
+
+## Developing
 
 ```bash
 npm install
+npm run dev        # Vite dev server on src/
 npm run build      # src/ -> one self-contained index.html at the root
-npm test           # Vitest
 npm run verify     # tests + module structure + the published bundle
-npm run dev        # Vite dev server
 ```
 
-## 1. Try it right now
-
-Open `index.html` in a browser. Everything works except installation and offline mode,
-which both require an `http(s)://` address — or just use the live URL above.
-
-To load a library: **Import** (Mihon `.tachibk` backup or `.json` export), or the **Add**
-tab to search for titles one by one.
-
-## 2. Hosting it yourself
-
-Any static host works. Fastest options:
-
-- **GitHub Pages** — already configured here: pushing to `main` publishes automatically.
-- **Netlify Drop** — go to `app.netlify.com/drop`, drag the folder in, URL is immediate.
-- **Cloudflare Pages**, **Vercel** — same idea.
-
-One requirement: serve over HTTPS, otherwise the service worker will not register.
-
-## 3. Installing on Android
-
-Open the URL in Chrome → ⋮ menu → **Add to home screen**. The app launches fullscreen,
-no address bar, with its icon. It starts offline; only metadata lookups need the network.
-
-On iPhone: Safari → Share → **Add to Home Screen**.
-
-## 4. Building a real APK
-
-Both routes start from the public URL.
-
-### PWABuilder (nothing to install)
-
-1. Go to `pwabuilder.com`, enter the app URL.
-2. *Package for stores → Android*, pick **Signed APK** for direct sharing, or **App Bundle**
-   for the Play Store.
-3. Download the package and share the APK. Recipients must allow installation from unknown
-   sources.
-
-The APK is a *Trusted Web Activity*: an Android shell displaying the app fullscreen.
-
-### Bubblewrap (command line) — the route actually used
-
-An APK is already built and published this way: package `io.github.nkoziel.rayon`, ~0.9 MB.
-
-```bash
-npm install -g @bubblewrap/cli
-bubblewrap init --manifest https://nkoziel.github.io/rayon-app/manifest.webmanifest
-bubblewrap build          # produces app-release-signed.apk
+```
+src/core/     dom, norm, store, state, i18n, volumes — no UI, no app flow
+src/data/     mangabaka, anilist, mangadex, totals, recos — fetching and deriving
+src/import/   tachibk (protobuf), library (import/merge/export/reset)
+src/ui/       library, sheet, tracker, discover, add, shopping, mihon, why
+index.html    generated single file, committed on purpose
 ```
 
-Requires JDK 17 and the Android SDK, which Bubblewrap offers to install for you.
+> **The root `index.html` is a build artifact — edit `src/` and rebuild.** It is committed so a
+> clone stays openable with no build step, and `npm run verify` fails if it falls behind `src/`.
 
-> **Digital Asset Links are set up.** For the APK to run without a Chrome address bar, Android
-> requires `assetlinks.json` at the **domain root** — not at `/rayon-app/`. It is served from
-> the separate [`nkoziel.github.io`](https://github.com/nkoziel/nkoziel.github.io) repository
-> and validates against
-> [Google's checker](https://developers.google.com/digital-asset-links/tools/generator).
-> **If the app is ever re-signed with a different key, that file must be updated**, or the TWA
-> silently falls back to showing the address bar.
+The interface ships in **English, with French selectable** — both complete; a missing key in
+either is a test failure, not a graceful fallback.
 
-> **On Windows, Bubblewrap has sharp edges.** It cannot be driven non-interactively, it wants
-> the pre-2020 SDK layout, and it breaks on a JDK path containing spaces because it builds its
-> `apksigner` command by string concatenation. The working configuration and each workaround
-> are written up in the project roadmap.
+Further reading: **`REVIEW.md`** (technical review, numbered findings), **`CLAUDE.md`**
+(conventions and the invariants not to break), [`docs/TOTALS.md`](docs/TOTALS.md) (the totals
+cascade and the storage split), [`docs/ANDROID.md`](docs/ANDROID.md) (packaging).
 
-### Capacitor (only if you want native later)
+---
 
-Worth it only if you plan to add native features (notifications, system share, file access
-outside the browser):
+## Credits
 
-```bash
-npm install @capacitor/core @capacitor/cli
-npx cap init Rayon com.example.rayon --web-dir=.
-npx cap add android
-npx cap open android      # build the APK from Android Studio
-```
-
-## Chapter tracking, and the matter of totals
-
-Every series sheet has a tracking block: **Chapters / Volumes** toggle, a counter, "N left",
-and a line stating **where the total came from**. The setting is per-series; the toolbar
-button only sets the default.
-
-There is no single reliable source for "how many chapters have been released". The app
-therefore applies a cascade, in this order:
-
-| Priority | Source | What it is worth |
-|---|---|---|
-| 1 | **Your manual entry** | Always authoritative. *Set total* button. |
-| 2 | **MangaDex** | Volume structure and latest translated chapter. Good coverage for Japanese manga, partial for Asura or Flame manhwa. *Check releases* button. |
-| 3 | **AniList** | `chapters` and `volumes` are only filled in for **completed** series. For an ongoing series these fields are empty — a database limitation, not a bug. |
-| 4 | **Your Mihon backup** | The chapter count at your reading source. Often the most current figure for weekly series, but it counts duplicates and split chapters. |
-
-Practical consequences:
-
-- **Ongoing Japanese manga** (Kingdom, Sakamoto Days…): MangaDex gives the latest translated
-  chapter and the volume split. Note that scanlation numbering sometimes differs from the
-  official one; the app warns you when your progress exceeds the known total.
-- **Completed series**: AniList is enough, its totals are correct.
-- **Webtoons and manhwa**: often no volume split exists — they are not published in print
-  volumes. Volume mode will show "no known split", which is normal. Chapter tracking remains.
-- **Series missing from MangaDex**: manual entry. Two clicks, and the value takes priority
-  from then on.
-
-*Derive from my chapters* converts chapter progress into a volume count using the MangaDex
-volume split.
-
-**Open question**: direct browser calls to MangaDex (CORS policy) have not been verified from
-this environment yet. If *Check releases* returns a blocking error, everything else keeps
-working — AniList, your backup and manual entry cover the need.
-
-## Handing a title to Mihon
-
-On Android, every series sheet shows **Chercher dans Mihon**. It fires an Android intent that
-Mihon declares for exactly this purpose (`eu.kanade.tachiyomi.SEARCH`), landing you in its
-cross-source search with the title already filled in.
-
-It targets the official Mihon package (`app.mihon`), so the hand-off is deterministic with no
-app chooser. If Mihon is not installed the button falls back to mihon.app.
-
-The button is hidden elsewhere: a browser cannot ask whether an app is installed — deliberately,
-since that would be a fingerprinting vector — so it appears where the intent *can* work.
-
-## Sharing with others
-
-- **The link is enough.** Everyone lands on an empty library, with a welcome screen
-  explaining what to do.
-- **Sharing a list**: **Export** → `.json` file. The other person loads it via **Import**.
-  Handy for handing a selection to a friend.
-- Nothing goes through a server: two people on the same URL have two independent libraries.
-
-## Technical notes
-
-- **Mihon / Tachiyomi backups**: `.tachibk` is a gzip-compressed protobuf, decoded in the
-  browser via `DecompressionStream`. Chrome, Edge, Firefox 113+, Safari 16.4+.
-- **AniList**: public GraphQL API, no key, limited to 30 requests per minute. The app batches
-  its calls (50 entries per request) and caches everything.
-- **Storage**: `localStorage` holds only your library and preferences. Metadata, MangaDex data
-  and recommendation caches live in IndexedDB, because they used to overflow the ~5 MB
-  localStorage quota and silently stop the library from saving at all. The JSON export is your
-  only backup — redo it from time to time, and note that **Tout effacer** offers it first.
-- **Privacy**: nothing is sent anywhere apart from the titles queried against AniList and
-  MangaDex — **except** that the page currently loads its fonts from Google Fonts, which
-  discloses your IP address to Google on every open. Self-hosting the fonts is planned.
-
-## Documentation
-
-- `REVIEW.md` — technical review, numbered findings (§1.1 to §6)
-- `CLAUDE.md` — conventions and invariants for working on this codebase
+Records and recommendations from **[MangaBaka](https://mangabaka.org/)**
+(CC BY-NC-SA 4.0 — this project is and stays non-commercial), with **AniList** as a fallback and
+**MangaDex** for volume structure and translated-chapter counts. Reading happens in
+**[Mihon](https://mihon.app/)**.

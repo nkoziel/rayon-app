@@ -8,15 +8,17 @@ No account, no server, everything local in the browser.
 **All code, comments, documentation and commit messages are in English.**
 
 **The UI ships in English by default, with French selectable** (decided 2026-08-23, so the
-app is easy to share). The current code still has French strings hard-coded throughout
-`index.html`; they are being migrated to a `t()` lookup — see the i18n phase in the vault
-roadmap.
+app is easy to share). The migration to `t()` is **complete as of 2026-09-04**: no user-visible
+string is hard-coded any more, in `src/index.html` or in any module.
 
-Consequences while that migration is in progress:
-- New UI strings go through `t()` with an English default and a French entry. Never add a new
-  hard-coded French string.
+- Every new UI string goes through `t()` with an English entry and a French one. Never add a
+  hard-coded string of either language.
 - French must stay a *complete* locale, not a partial fallback — the owner uses the app in
-  French. A missing key falling back to English is a bug, not a graceful degradation.
+  French. A missing key falling back to English is a bug, not a graceful degradation, and
+  `i18n.test.js` fails on one.
+- Static markup is translated by `applyStatic()` through `data-i18n` / `data-i18n-attr`. A
+  control whose label carries state (`#viewBtn`, `#unitBtn`) must NOT use `data-i18n` — it is set
+  from JS at boot and on language change, or retranslating the shell silently resets the view.
 
 ## Layout — read this before editing anything
 
@@ -88,6 +90,23 @@ is how every behavioural check on this app has been done.
 
 7. **Do not break opening the file directly.** `index.html` must stay usable without a server.
    If a build is introduced, it must emit a single file (`vite-plugin-singlefile`).
+
+8. **Never compare against display text.** Every value the code branches on is an internal
+   token, and the label is looked up only when it is rendered. This was violated three times and
+   each one was a bug the tests could not see:
+   - `progressOf().unit` returned `"tomes"`, and callers tested `p.unit === "tomes"` — a
+     comparison against the interface language, which stopped matching in English.
+   - `META.statut` held `"Terminé"` from AniList, `"releasing"` from MangaBaka and a third
+     spelling from Mihon backups, while `totals()` tested for `"Terminé"`.
+   - "Show all" set `state.source = "Toutes"`, which matches no source, so clearing the filters
+     emptied the library instead of showing it.
+
+   Tokens now: `"vol"`/`"ch"` for units, MangaBaka's status vocabulary for `statut` (mapped at
+   the edge in `anilist.js` and `tachibk.js`), `"all"` for every filter axis, `"manual"` for the
+   hand-added source. Labels come from `unitLabel()`, `unitShort()`, `statusLabel()`,
+   `sourceLabel()`, `srcLabel()`, `srcNote()`. Records cached before a token existed still hold
+   the old French string, so each mapper passes an unknown value through unchanged — do not
+   "clean up" those legacy branches without a migration.
 
 ## Known traps
 
@@ -186,5 +205,12 @@ Anything involving real storage, the network, or the service worker still needs 
 
 - `REVIEW.md` — full technical review, numbered findings (§1.1 to §6). Those numbers are
   authoritative in commits and discussion.
-- `README.md` — user documentation.
+- `README.md` — the pitch and the getting-started path, with screenshots in `docs/screenshots/`.
+  Keep it about what the app is worth; reference material belongs in `docs/`.
+- `docs/TOTALS.md` — the totals cascade source by source, the two tracking axes, storage split.
+- `docs/ANDROID.md` — installing, APK packaging, Digital Asset Links, the Mihon intent.
 - Vault notes: `G:\Mon Drive\NKO\Projects\rayon-app\` (roadmap, MangaBaka API findings).
+
+**Screenshots** are captured from a seeded library at a ~1200 px viewport and cropped to
+1400 px wide. Photographic ones (grid, Discover, Shopping) are JPEG; text-heavy panels (sheet,
+volume grid) are PNG — each is whichever encoding came out smaller.
