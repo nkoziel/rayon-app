@@ -37,7 +37,10 @@ export const RECO_Q = `query ($id:Int){ Media(id:$id, type:MANGA){ id siteUrl ti
   recommendations(sort:RATING_DESC, perPage:12){ nodes{ rating mediaRecommendation{ ${FIELDS} } } } } }`;
 
 const FORMAT = {MANGA:"Manga", NOVEL:"Light novel", ONE_SHOT:"One-shot"};
-const PSTATUS = {FINISHED:"Terminé", RELEASING:"En cours", NOT_YET_RELEASED:"À paraître", CANCELLED:"Annulé", HIATUS:"En pause"};
+/* MangaBaka's own vocabulary, adopted here as the canonical one: three sources answering in
+   three languages is what let a comparison against "Terminé" pass for a test. statusLabel()
+   in core/i18n.js turns a token into text at render time. */
+const PSTATUS = {FINISHED:"completed", RELEASING:"releasing", NOT_YET_RELEASED:"upcoming", CANCELLED:"cancelled", HIATUS:"hiatus"};
 const COUNTRY = {JP:"Manga", KR:"Manhwa", CN:"Manhua", TW:"Manhua"};
 
 export function shapeMedia(m){

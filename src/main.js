@@ -2,11 +2,11 @@
 
 import { $, esc, stripTags, sleep, uid, toast } from './core/dom.js';
 import { norm } from './core/norm.js';
-import { t as T, setLocale, locale, AVAILABLE, applyStatic } from './core/i18n.js';
+import { t as T, setLocale, locale, AVAILABLE, applyStatic, sourceLabel } from './core/i18n.js';
 import { gql, shapeMedia, searchBatch, loadRecos, RECO_Q, SEARCH_PAGE_Q } from './data/anilist.js';
 import { hydrate } from './data/hydrate.js';
 import { mdResolve, mdAggregate } from './data/mangadex.js';
-import { totals, unitOf, SRCLABEL, SRCNOTE } from './data/totals.js';
+import { totals, unitOf } from './data/totals.js';
 import { importFile, exportLib, mergeLibraries, purgeSeriesData, resetEverything } from './import/library.js';
 import { mihonAvailable, openInMihon } from './ui/mihon.js';
 import { addFromMedia, openAddModal } from './ui/add.js';
@@ -26,7 +26,7 @@ import {
 } from './core/state.js';
 
 /* ============================================================
-   Navigation, amorçage
+   Navigation and boot
    ============================================================ */
 /* Values are internal keys; `label` turns each into display text. Keeping them separate is
    what lets the language change without altering what the app compares against. */
@@ -113,7 +113,7 @@ function boot(){
         v=>lib.filter(d=>shelfTest(d,v)).length, v=>T("shelf."+v));
     chips($("srcRow"), SOURCES, state.source, v=>{ state.source=v; draw(); renderLibrary(); },
         v=> v==="all" ? lib.length : lib.filter(d=>d.s===v).length,
-        v=> v==="all" ? T("source.all") : v);
+        v=> v==="all" ? T("source.all") : sourceLabel(v));
     chips($("sortRow"), SORTS, state.sort, v=>{ state.sort=v; draw(); renderLibrary(); },
         null, v=>T("sort."+v));
   };
@@ -181,14 +181,9 @@ $("resetBtn").onclick = async () => {
      rather than mentioning it afterwards. */
   if (n && confirm(T("reset.exportFirst", { n })))
     exportLib();
-  if (!confirm(
-    `Effacer DÉFINITIVEMENT toutes les données de Rayon ?\n\n`
-    + `• ${n} série(s) et leur progression\n`
-    + `• Fiches, totaux et recommandations en cache\n`
-    + `• Tes préférences\n\n`
-    + `Cette action est irréversible.`)) return;
+  if (!confirm(T("reset.confirm", { n }))) return;
   const btn = $("resetBtn");
-  btn.disabled = true; btn.textContent = "Effacement…";
+  btn.disabled = true; btn.textContent = T("reset.erasing");
   const done = await resetEverything();
   if (!done){
     /* The delete was blocked by another tab. Reloading now would queue an open() behind a
@@ -204,7 +199,7 @@ $("resetBtn").onclick = async () => {
 $("mdBatch").onclick = async () => {
   const btn = $("mdBatch");
   const todo = libRows().filter(d => d.r > 0 && !(MDCACHE[norm(d.t)] && MDCACHE[norm(d.t)].at)).slice(0, 40);
-  if (!todo.length){ toast("Rien de neuf à vérifier dans ce rayon"); return; }
+  if (!todo.length){ toast(T("md.nothingNew")); return; }
   btn.disabled = true;
   let ok = 0, ko = 0;
   for (let i=0;i<todo.length;i++){
@@ -217,7 +212,7 @@ $("mdBatch").onclick = async () => {
     renderLibrary();
     await sleep(320);
   }
-  $("statusline").textContent = `${ok} série(s) mises à jour · ${ko} sans correspondance`;
+  $("statusline").textContent = T("md.batchDone", { ok, ko });
   btn.disabled = false;
 };
 $("file").addEventListener("change", e=>{ if (e.target.files && e.target.files[0]) importFile(e.target.files[0], afterImport); e.target.value = ""; });
@@ -227,9 +222,9 @@ $("tabShop").onclick = () => setTab("shopping");
 $("shopPrice").onclick = () => { if (askPrice()) renderShopping(); };
 $("tabAdd").onclick = () => openAddModal("");
 $("runDiscover").onclick = runDiscover;
-$("resetDismissed").onclick = () => { DISMISSED.clear(); saveDismissed(); renderDiscover(); toast("Titres écartés réaffichés"); };
+$("resetDismissed").onclick = () => { DISMISSED.clear(); saveDismissed(); renderDiscover(); toast(T("discover.dismissedRestored")); };
 
-/* glisser-déposer */
+/* drag and drop */
 const dz = $("dropzone");
 let dragDepth = 0;
 window.addEventListener("dragenter", e=>{ e.preventDefault(); dragDepth++; dz.classList.remove("hidden"); });
@@ -248,7 +243,10 @@ const savedSeeds = store.get("seeds:v1");
 state.seeds = savedSeeds === "Tout" ? "all" : (savedSeeds || 25);
 drawDiscoverChips();
 state.unit = store.get("unit:v1") || "ch";
+/* Both of these carry state, so they are set from JS rather than through data-i18n: retranslating
+   the shell must not silently flip the view back to the label it shipped with. */
 $("unitBtn").textContent = T(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
+$("viewBtn").textContent = T(state.view === "grid" ? "btn.listView" : "btn.postersView");
 
 /* What has to happen after a library is replaced or merged. Passed into importFile so the
    import layer does not have to reach back up into the UI. */
@@ -291,6 +289,7 @@ $("langBtn").onclick = () => {
   applyStatic();
   $("langBtn").textContent = T("lang." + next);
   $("unitBtn").textContent = T(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
+  $("viewBtn").textContent = T(state.view === "grid" ? "btn.listView" : "btn.postersView");
   boot();
 };
 $("langBtn").textContent = T("lang." + locale());

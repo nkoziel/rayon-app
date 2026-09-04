@@ -6,6 +6,7 @@
 import { norm } from '../core/norm.js';
 import { META, MDCACHE, MBCACHE, state } from '../core/state.js';
 import { countVolumes } from '../core/volumes.js';
+import { t as T } from '../core/i18n.js';
 
 /* The cascade, weakest first — a later source overwrites an earlier one.
  *
@@ -43,7 +44,9 @@ export function totals(d){
   if (meta && !meta.missing){
     /* AniList leaves `chapters` empty for an ongoing series. That emptiness is a database
        limitation, not a fact about the series — never treat it as one. */
-    const fini = meta.statut === "Terminé";
+    /* "completed" is the token every source is normalised to; the French string is what
+       records cached before that normalisation still hold. */
+    const fini = meta.statut === "completed" || meta.statut === "Terminé";
     if (fini || !out.ch) put("ch", "chSrc", meta.chapitres, "anilist");
     if (fini || !out.vol) put("vol", "volSrc", meta.volumes, "anilist");
   }
@@ -53,21 +56,18 @@ export function totals(d){
   return out;
 }
 
-export const SRCLABEL = {
-  mangabaka:"MangaBaka", mangadex:"MangaDex", anilist:"AniList",
-  mihon:"chapitres de ta source", import:"fichier importé", manuel:"saisi à la main"
-};
-export const SRCNOTE = {
-  mangabaka:"comptes de publication agrégés par MangaBaka depuis plusieurs bases",
-  mangadex:"dernier chapitre traduit recensé par MangaDex — ce qui est disponible à lire, pas ce qui est paru",
-  anilist:"AniList ne renseigne les totaux que pour les séries achevées",
-  mihon:"nombre de chapitres présents chez ta source de lecture",
-  import:"valeur venue du fichier importé",
-  manuel:"ta saisie"
-};
+/* Source names and the caveat that goes with each. Looked up at call time rather than frozen
+   into a const table, so switching language re-labels a provenance line already on screen. */
+export const srcLabel = src => T("src." + src);
+export const srcNote  = src => T("srcnote." + src);
 
-/* unité effective d'une série */
+/* The unit a series is tracked in, as an internal token — "vol" or "ch". Display labels come
+   from unitLabel()/unitShort(); keeping them apart is what stopped a French build comparing
+   against the string "tomes". */
 export function unitOf(d){ return d.unit || state.unit; }
+
+export const unitLabel = u => T(u === "vol" ? "unit.volLong"  : "unit.chLong");
+export const unitShort = u => T(u === "vol" ? "unit.volShort" : "unit.chShort");
 
 /* Reading progress against the effective total, in whichever unit the series uses.
    Lives here rather than with the grid because the tracker needs it too, and putting it in
@@ -80,9 +80,11 @@ export function progressOf(d){
        physical collection. See core/volumes.js. */
     const read = countVolumes(d.ownedVol), tot = t.vol || 0;
     return {read, tot, pct: tot ? Math.min(100, Math.round(read/tot*100)) : 0,
-            label: read + (tot ? "/"+tot : "") + " tomes", remain: tot ? tot-read : null, unit:"tomes", t};
+            label: read + (tot ? "/"+tot : "") + " " + unitShort("vol"),
+            remain: tot ? tot-read : null, unit:"vol", t};
   }
   const read = d.r || 0, tot = t.ch || 0;
   return {read, tot, pct: tot ? Math.min(100, Math.round(read/tot*100)) : 0,
-          label: read + (tot ? "/"+tot : "") + " ch.", remain: tot ? Math.round((tot-read)*10)/10 : null, unit:"chapitres", t};
+          label: read + (tot ? "/"+tot : "") + " " + unitShort("ch"),
+          remain: tot ? Math.round((tot-read)*10)/10 : null, unit:"ch", t};
 }

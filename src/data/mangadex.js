@@ -3,7 +3,7 @@
    different axes — see REVIEW.md §4. */
 
 /* ============================================================
-   MangaDex : structure en tomes et dernier chapitre publié
+   MangaDex: volume structure and the latest published chapter
    ============================================================ */
 const MD = "https://api.mangadex.org";
 
@@ -35,7 +35,7 @@ export async function mdResolve(entry){
   return id;
 }
 
-/* structure tomes / chapitres */
+/* volume and chapter structure */
 export async function mdAggregate(entry){
   const key = norm(entry.t);
   const id = await mdResolve(entry);

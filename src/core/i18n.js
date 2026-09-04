@@ -228,6 +228,110 @@ const en = {
   "mihon.failed":              "Could not open the share sheet",
 
   "mihon.hint":                "Opens the Android share sheet. Mihon appears there as “Search”, with its own icon — Android shows the activity name, not the app name.",
+
+  /* ---- shell chrome ---- */
+  "app.pageTitle":             "Rayon — manga library & recommendations",
+  "app.pageDescription":       "Your manga, webtoon and manhwa library, and the recommendations its readers actually cross-reference.",
+  "lib.searchPlaceholder":     "Title, author, genre…",
+  "lib.searchLabel":           "Search",
+  "btn.filters":               "Filters",
+  "btn.refresh":               "Refresh",
+  "btn.add":                   "Add",
+  "discover.run":              "Run analysis",
+  "discover.dismissedRestored":"Dismissed titles shown again",
+
+  /* ---- units, as displayed ---- */
+  "unit.chShort":              "ch.",
+  "unit.volShort":             "vol.",
+  "unit.chLong":               "chapters",
+  "unit.volLong":              "volumes",
+  "tape.manual":               "By hand",
+  "owned.badge":               "already yours",
+  "source.manual":             "Added by hand",
+
+  /* ---- series sheet ---- */
+  "sheet.label":               "{title} — details",
+  "sheet.lastRead":            "Last read",
+  "sheet.addedOn":             "Added on",
+  "sheet.author":              "Author",
+  "sheet.source":              "Source",
+  "sheet.readMore":            "Read more",
+  "sheet.readLess":            "Show less",
+  "sheet.recos":               "What readers of this also read",
+  "sheet.manualPill":          "Added by hand",
+
+  /* ---- tracker ---- */
+  "track.remaining":           "{n} {unit} left",
+  "track.upToDate":            "Up to date",
+  "track.unknownTotal":        "Total unknown",
+  "track.setTotalCh":          "How many chapters have been released?",
+  "track.setTotalVol":         "How many volumes have been released?",
+  "track.checking":            "Checking…",
+  "track.latestChapter":       "Latest translated chapter: {n}",
+  "track.alsoVolumes":         " · {n} volumes",
+  "track.noChapterListed":     "No chapter listed",
+  "track.removeConfirm":       "Remove \u201c{title}\u201d from your library?\n\nIts cached data will be deleted too.",
+
+  /* ---- where a total comes from ---- */
+  "prov.totalVol":             "Volume total:",
+  "prov.totalCh":              "Chapter total:",
+  "prov.checkedOn":            ", checked {date}",
+  "prov.noVolSplit":           "No volume split known.",
+  "prov.noVolSplitNote":       "Common for webtoons, which are published without a print edition. Check on MangaDex, or set the total by hand.",
+  "prov.noTotal":              "No reliable total.",
+  "prov.noTotalNote":          "Ongoing series: AniList publishes no count until a series is finished. Check on MangaDex, or set the total.",
+  "prov.notOnMangadex":        "Not on MangaDex",
+  "prov.notOnMangadexNote":    "\u2014 release tracking has to be manual.",
+  "prov.pastTotal":            "You are further along than the known total ({read} > {total}).",
+  "prov.pastTotalNote":        "Scanlation and official numbering often differ: set the total by hand to settle it.",
+
+  "src.mangabaka":             "MangaBaka",
+  "src.mangadex":              "MangaDex",
+  "src.anilist":               "AniList",
+  "src.mihon":                 "chapters at your source",
+  "src.import":                "imported file",
+  "src.manuel":                "set by hand",
+  "srcnote.mangabaka":         "Publication counts aggregated by MangaBaka across several databases",
+  "srcnote.mangadex":          "Latest translated chapter listed by MangaDex \u2014 what is available to read, not what has been published",
+  "srcnote.anilist":           "AniList only fills in totals for series that are finished",
+  "srcnote.mihon":             "Number of chapters sitting at your reading source",
+  "srcnote.import":            "Value taken from the imported file",
+  "srcnote.manuel":            "Your own entry",
+
+  /* ---- add a title ---- */
+  "add.title":                 "Add a title",
+  "add.searchLabel":           "Search for a title",
+  "add.catalogue":             "Searches the AniList catalogue \u2014 over 100,000 series.",
+  "add.typeTwoLong":           "Type at least two letters to start the search.",
+  "add.typeTwo":               "Type at least two letters.",
+  "add.searching":             "Searching",
+  "add.noResults":             "Nothing found for \u201c{term}\u201d.",
+  "add.added":                 "\u201c{title}\u201d added",
+  "add.already":               "Already in your list",
+
+  /* ---- import dialog ---- */
+  "import.title":              { one: "Import {n} series", other: "Import {n} series" },
+  "import.already":            "Your library already holds {n}.",
+  "import.mergeNote":          "{added} new, {updated} updated, {total} in total. Your progress is never rolled back.",
+  "import.replaceNote":        { one: "Your {n} series and its progress will be lost for good.", other: "Your {n} series and their progress will be lost for good." },
+  "export.filename":           "my-library.json",
+
+  /* ---- erasing everything ---- */
+  "reset.confirm":             "Erase ALL of Rayon's data for good?\n\n\u2022 {n} series and their progress\n\u2022 Cached records, totals and recommendations\n\u2022 Your preferences\n\nThis cannot be undone.",
+  "reset.erasing":             "Erasing\u2026",
+
+  /* ---- release check, in bulk ---- */
+  "md.nothingNew":             "Nothing new to check on this shelf",
+  "md.batchDone":              "{ok} series updated \u00b7 {ko} with no match",
+  /* ---- publication status ---- */
+  "status.releasing":            "Ongoing",
+  "status.completed":            "Completed",
+  "status.publishing_finished":  "Publication finished",
+  "status.cancelled":            "Cancelled",
+  "status.hiatus":               "On hiatus",
+  "status.upcoming":             "Not yet released",
+  "status.licensed":             "Licensed",
+  "status.unknown":              "Unknown",
 };
 
 const fr = {
@@ -438,6 +542,110 @@ const fr = {
   "mihon.failed":              "Impossible d'ouvrir le partage",
 
   "mihon.hint":                "Ouvre le partage Android. Mihon y apparaît sous le nom « Recherche », avec son icône — Android affiche le nom de l’activité, pas celui de l’app.",
+
+  /* ---- shell chrome ---- */
+  "app.pageTitle":             "Rayon — bibliothèque manga & recommandations",
+  "app.pageDescription":       "Ta bibliothèque manga, webtoon et manhwa, et les recommandations que ses lecteurs croisent vraiment.",
+  "lib.searchPlaceholder":     "Titre, auteur, genre…",
+  "lib.searchLabel":           "Chercher",
+  "btn.filters":               "Filtres",
+  "btn.refresh":               "Actualiser",
+  "btn.add":                   "Ajouter",
+  "discover.run":              "Analyser",
+  "discover.dismissedRestored":"Titres écartés réaffichés",
+
+  /* ---- units, as displayed ---- */
+  "unit.chShort":              "ch.",
+  "unit.volShort":             "t.",
+  "unit.chLong":               "chapitres",
+  "unit.volLong":              "tomes",
+  "tape.manual":               "Manuel",
+  "owned.badge":               "déjà chez toi",
+  "source.manual":             "Ajout manuel",
+
+  /* ---- series sheet ---- */
+  "sheet.label":               "Fiche {title}",
+  "sheet.lastRead":            "Dernière fois",
+  "sheet.addedOn":             "Ajouté le",
+  "sheet.author":              "Auteur",
+  "sheet.source":              "Source",
+  "sheet.readMore":            "Lire la suite",
+  "sheet.readLess":            "Replier",
+  "sheet.recos":               "Ce que lisent ceux qui ont aimé",
+  "sheet.manualPill":          "Ajout manuel",
+
+  /* ---- tracker ---- */
+  "track.remaining":           "Reste {n} {unit}",
+  "track.upToDate":            "À jour",
+  "track.unknownTotal":        "Total inconnu",
+  "track.setTotalCh":          "Nombre de chapitres parus :",
+  "track.setTotalVol":         "Nombre de tomes parus :",
+  "track.checking":            "Vérification…",
+  "track.latestChapter":       "Dernier chapitre traduit : {n}",
+  "track.alsoVolumes":         " · {n} tomes",
+  "track.noChapterListed":     "Aucun chapitre recensé",
+  "track.removeConfirm":       "Retirer « {title} » de ta bibliothèque ?\n\nSes données en cache seront également supprimées.",
+
+  /* ---- where a total comes from ---- */
+  "prov.totalVol":             "Total tomes :",
+  "prov.totalCh":              "Total chapitres :",
+  "prov.checkedOn":            ", relevé le {date}",
+  "prov.noVolSplit":           "Aucun découpage en tomes connu.",
+  "prov.noVolSplitNote":       "Fréquent pour les webtoons, publiés sans édition papier. Vérifie sur MangaDex, ou saisis le total à la main.",
+  "prov.noTotal":              "Aucun total fiable.",
+  "prov.noTotalNote":          "Série en cours : AniList ne publie pas de compte tant qu'elle n'est pas achevée. Vérifie sur MangaDex, ou saisis le total.",
+  "prov.notOnMangadex":        "Absente de MangaDex",
+  "prov.notOnMangadexNote":    "— le suivi des sorties doit être manuel.",
+  "prov.pastTotal":            "Tu es allé plus loin que le total connu ({read} > {total}).",
+  "prov.pastTotalNote":        "Les numérotations diffèrent souvent entre scantrad et édition officielle : saisis le total à la main pour trancher.",
+
+  "src.mangabaka":             "MangaBaka",
+  "src.mangadex":              "MangaDex",
+  "src.anilist":               "AniList",
+  "src.mihon":                 "chapitres de ta source",
+  "src.import":                "fichier importé",
+  "src.manuel":                "saisi à la main",
+  "srcnote.mangabaka":         "Comptes de publication agrégés par MangaBaka depuis plusieurs bases",
+  "srcnote.mangadex":          "Dernier chapitre traduit recensé par MangaDex — ce qui est disponible à lire, pas ce qui est paru",
+  "srcnote.anilist":           "AniList ne renseigne les totaux que pour les séries achevées",
+  "srcnote.mihon":             "Nombre de chapitres présents chez ta source de lecture",
+  "srcnote.import":            "Valeur venue du fichier importé",
+  "srcnote.manuel":            "Ta saisie",
+
+  /* ---- add a title ---- */
+  "add.title":                 "Ajouter un titre",
+  "add.searchLabel":           "Chercher un titre",
+  "add.catalogue":             "Recherche dans le catalogue AniList — plus de 100 000 séries.",
+  "add.typeTwoLong":           "Tape au moins deux lettres pour lancer la recherche.",
+  "add.typeTwo":               "Tape au moins deux lettres.",
+  "add.searching":             "Recherche",
+  "add.noResults":             "Rien trouvé pour « {term} ».",
+  "add.added":                 "« {title} » ajouté",
+  "add.already":               "Déjà dans ta liste",
+
+  /* ---- import dialog ---- */
+  "import.title":              { one: "Importer {n} série", other: "Importer {n} séries" },
+  "import.already":            "Ta bibliothèque en contient déjà {n}.",
+  "import.mergeNote":          "{added} nouvelles, {updated} mises à jour, {total} au total. Ta progression n'est jamais reculée.",
+  "import.replaceNote":        { one: "Ta série et sa progression seront définitivement perdues.", other: "Tes {n} séries et leur progression seront définitivement perdues." },
+  "export.filename":           "ma-bibliotheque.json",
+
+  /* ---- erasing everything ---- */
+  "reset.confirm":             "Effacer DÉFINITIVEMENT toutes les données de Rayon ?\n\n• {n} séries et leur progression\n• Fiches, totaux et recommandations en cache\n• Tes préférences\n\nCette action est irréversible.",
+  "reset.erasing":             "Effacement…",
+
+  /* ---- release check, in bulk ---- */
+  "md.nothingNew":             "Rien de neuf à vérifier dans ce rayon",
+  "md.batchDone":              "{ok} séries mises à jour · {ko} sans correspondance",
+  /* ---- publication status ---- */
+  "status.releasing":            "En cours",
+  "status.completed":            "Terminé",
+  "status.publishing_finished":  "Publication terminée",
+  "status.cancelled":            "Annulé",
+  "status.hiatus":               "En pause",
+  "status.upcoming":             "À paraître",
+  "status.licensed":             "Sous licence",
+  "status.unknown":              "Inconnu",
 };
 
 const LOCALES = { en, fr };
@@ -484,6 +692,26 @@ export function t(key, params){
   }
   if (!params) return v;
   return String(v).replace(/\{(\w+)\}/g, (m, k) => (params[k] !== undefined ? params[k] : m));
+}
+
+/* Publication status. MangaBaka answers in these tokens; AniList records and Mihon backups are
+   mapped onto them at the edge, so one lookup covers all three sources and nothing anywhere
+   compares against display text. Records cached before that normalisation hold a French label —
+   those pass through unchanged rather than rendering as a missing key. */
+const STATUS_TOKENS = new Set([
+  "releasing", "completed", "publishing_finished",
+  "cancelled", "hiatus", "upcoming", "licensed", "unknown"
+]);
+export function statusLabel(s){
+  return s && STATUS_TOKENS.has(s) ? t("status." + s) : (s || "");
+}
+
+/* A series' `s` field is data, not a key: it holds the reading source a Mihon backup named,
+   and no dictionary can know those. The one exception is the hand-added marker, stored as a
+   token so it can be shown in whichever language the reader picked. Libraries created before
+   that split hold the literal French string, so both spellings map onto the same key. */
+export function sourceLabel(s){
+  return (s === "manual" || s === "Ajout manuel") ? t("source.manual") : s;
 }
 
 /* Translate static markup: <b data-i18n="tab.library"> and

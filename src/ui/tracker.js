@@ -6,7 +6,7 @@ import { $, esc, toast } from '../core/dom.js';
 import { norm } from '../core/norm.js';
 import { LIB, MDCACHE, saveLib, state } from '../core/state.js';
 import { t as T } from '../core/i18n.js';
-import { totals, unitOf, progressOf, SRCLABEL, SRCNOTE } from '../data/totals.js';
+import { totals, unitOf, progressOf, srcLabel, srcNote, unitLabel } from '../data/totals.js';
 import { parseVolumes, toggleVolume, addRange, countVolumes, missingVolumes,
          gapVolumes, gridSize, lastOwned } from '../core/volumes.js';
 import { mdAggregate } from '../data/mangadex.js';
@@ -18,18 +18,28 @@ export function provenanceHTML(d){
   const unit = unitOf(d);
   const md = MDCACHE[norm(d.t)];
   const lines = [];
+  /* One line, built the same way on both axes: the figure, where it came from, and the caveat
+     that source carries. The "checked on" date is MangaDex-only — it is the one source whose
+     answer is a snapshot of what has been translated so far, not a published total. */
+  const totalLine = (value, src) =>
+    `${esc(unit === "vol" ? T("prov.totalVol") : T("prov.totalCh"))} <b>${value}</b> — ${esc(srcLabel(src))}`
+    + (src === "mangadex" && t.at ? esc(T("prov.checkedOn", { date: t.at })) : "")
+    + `. <span>${esc(srcNote(src))}.</span>`;
+
   if (unit === "vol"){
     lines.push(t.vol
-      ? `Total tomes : <b>${t.vol}</b> — ${SRCLABEL[t.volSrc]}${t.volSrc==="mangadex"&&t.at?`, relevé le ${t.at}`:""}. <span>${SRCNOTE[t.volSrc]}.</span>`
-      : `<span class="warn">Aucun découpage en tomes connu.</span> Fréquent pour les webtoons, publiés sans édition papier. Vérifie sur MangaDex ou saisis le total à la main.`);
+      ? totalLine(t.vol, t.volSrc)
+      : `<span class="warn">${esc(T("prov.noVolSplit"))}</span> ${esc(T("prov.noVolSplitNote"))}`);
   } else {
     lines.push(t.ch
-      ? `Total chapitres : <b>${t.ch}</b> — ${SRCLABEL[t.chSrc]}${t.chSrc==="mangadex"&&t.at?`, relevé le ${t.at}`:""}. <span>${SRCNOTE[t.chSrc]}.</span>`
-      : `<span class="warn">Aucun total fiable.</span> Série en cours : AniList ne publie pas de compte tant qu'elle n'est pas achevée. Vérifie sur MangaDex ou saisis le total.`);
+      ? totalLine(t.ch, t.chSrc)
+      : `<span class="warn">${esc(T("prov.noTotal"))}</span> ${esc(T("prov.noTotalNote"))}`);
   }
-  if (md && md.id === null) lines.push(`<span class="warn">Absente de MangaDex</span> — le suivi des sorties doit être manuel.`);
+  if (md && md.id === null)
+    lines.push(`<span class="warn">${esc(T("prov.notOnMangadex"))}</span> ${esc(T("prov.notOnMangadexNote"))}`);
   const p = unit === "vol" ? {read:countVolumes(d.ownedVol), tot:t.vol} : {read:d.r||0, tot:t.ch};
-  if (p.tot && p.read > p.tot) lines.push(`<span class="warn">Tu es allé plus loin que le total connu (${p.read} > ${p.tot}).</span> Les numérotations diffèrent souvent entre scantrad et édition officielle : saisis le total à la main pour trancher.`);
+  if (p.tot && p.read > p.tot)
+    lines.push(`<span class="warn">${esc(T("prov.pastTotal", { read: p.read, total: p.tot }))}</span> ${esc(T("prov.pastTotalNote"))}`);
   return `<div class="prov">${lines.join("<br>")}</div>`;
 }
 
@@ -38,8 +48,8 @@ export function trackerHTML(d){
   const p = progressOf(d);
   const read = unit === "vol" ? countVolumes(d.ownedVol) : (d.r||0);
   const remainTxt = p.tot
-    ? (p.remain > 0 ? `Reste ${p.remain} ${p.unit}` : "À jour")
-    : "Total inconnu";
+    ? (p.remain > 0 ? T("track.remaining", { n: p.remain, unit: unitLabel(p.unit) }) : T("track.upToDate"))
+    : T("track.unknownTotal");
   return `
     <div class="trackline">
       <div class="seg" role="group" aria-label="${esc(T("track.unitLabel"))}">
@@ -61,7 +71,7 @@ export function trackerHTML(d){
       <button class="btn sm ghost" id="mdCheck">${esc(T("btn.checkReleases"))}</button>
       <button class="btn sm ghost" id="setTotal">${esc(T("track.setTotal"))}</button>
       ${unit==="vol" ? `<button class="btn sm ghost" id="ownRange">${esc(T("vol.ownRange"))}</button>` : ""}
-      <button class="btn sm ghost" id="removeBtn" style="margin-left:auto">Retirer</button>
+      <button class="btn sm ghost" id="removeBtn" style="margin-left:auto">${esc(T("btn.remove"))}</button>
     </div>
     ${provenanceHTML(d)}`;
 }
@@ -160,7 +170,7 @@ export function wireTracker(d, onRemoved){
   });
   $("setTotal").onclick = () => {
     const cur = unit === "vol" ? (d.manVol || totals(d).vol || "") : (d.manCh || totals(d).ch || "");
-    const v = prompt(unit === "vol" ? "Nombre de tomes parus :" : "Nombre de chapitres parus :", cur);
+    const v = prompt(T(unit === "vol" ? "track.setTotalVol" : "track.setTotalCh"), cur);
     if (v === null) return;
     const n = parseFloat(String(v).replace(",", "."));
     if (isNaN(n) || n < 0){ if (unit==="vol") delete d.manVol; else delete d.manCh; }
@@ -169,13 +179,15 @@ export function wireTracker(d, onRemoved){
   };
   $("mdCheck").onclick = async () => {
     const btn = $("mdCheck");
-    btn.disabled = true; btn.textContent = "Vérification…";
+    btn.disabled = true; btn.textContent = T("track.checking");
     try{
       const info = await mdAggregate(d);
-      toast(info.maxCh ? `Dernier chapitre traduit : ${info.maxCh}${info.maxVol?` · ${info.maxVol} tomes`:""}` : "Aucun chapitre recensé");
+      toast(info.maxCh
+        ? T("track.latestChapter", { n: info.maxCh }) + (info.maxVol ? T("track.alsoVolumes", { n: info.maxVol }) : "")
+        : T("track.noChapterListed"));
       refreshTracker(d, onRemoved);
     }catch(e){
-      btn.disabled = false; btn.textContent = "Vérifier les sorties";
+      btn.disabled = false; btn.textContent = T("btn.checkReleases");
       const box = document.createElement("p");
       box.className = "err"; box.style.marginTop = "8px"; box.textContent = e.message;
       $("trackwrap").appendChild(box);
@@ -186,7 +198,7 @@ export function wireTracker(d, onRemoved){
      after the first "+" click. See REVIEW.md §1.4. Same goes for any button added to
      trackerHTML() later. */
   $("removeBtn").onclick = async () => {
-    if (!confirm("Retirer « "+d.t+" » de ta bibliothèque ?\n\nSes données en cache seront également supprimées.")) return;
+    if (!confirm(T("track.removeConfirm", { title: d.t }))) return;
     LIB.entries = LIB.entries.filter(x=>x.id !== d.id);
     saveLib(); if (onRemoved) onRemoved(); libraryChanged();
     toast(T("toast.seriesRemoved"));

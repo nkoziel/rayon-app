@@ -5,8 +5,8 @@ import { libraryChanged } from './refresh.js';
 import { norm } from '../core/norm.js';
 import { recordOf } from '../data/record.js';
 import { LIB, META, state } from '../core/state.js';
-import { t as T } from '../core/i18n.js';
-import { progressOf } from '../data/totals.js';
+import { t as T, sourceLabel, statusLabel } from '../core/i18n.js';
+import { progressOf, unitShort } from '../data/totals.js';
 import { openSheet } from './sheet.js';
 
 /* Internal values, never shown. Labels come from t("shelf."+v) and friends, so switching
@@ -75,7 +75,9 @@ export function posterHTML(d){
   const cover = meta ? meta.cover : "";
   const score = meta ? meta.score : null;
   const behind = p.remain;
-  const tape = d.origin === "manuel" ? "Manuel" : (behind >= 5 ? "+"+behind+" "+(p.unit==="tomes"?"t.":"ch.") : (d.m === "Webtoon" ? "Webtoon" : ""));
+  const tape = d.origin === "manuel" ? T("tape.manual")
+             : (behind >= 5 ? "+" + behind + " " + unitShort(p.unit)
+             : (d.m === "Webtoon" ? "Webtoon" : ""));
   return `<button class="card" data-id="${d.id}">
     <div class="poster">
       ${cover?`<img src="${esc(cover)}" alt="" loading="lazy" decoding="async">`:`<span class="fallback">${esc(d.t)}</span>`}
@@ -84,7 +86,7 @@ export function posterHTML(d){
       <span class="prog"><i class="${pct===100?"done":""}" style="width:${pct}%"></i></span>
     </div>
     <div class="ct">${esc(d.t)}</div>
-    <div class="sub"><span class="src">${esc(d.s)}</span><span>${esc(p.label)}</span></div>
+    <div class="sub"><span class="src">${esc(sourceLabel(d.s))}</span><span>${esc(p.label)}</span></div>
   </button>`;
 }
 
@@ -94,7 +96,7 @@ export function listHTML(d){
   return `<button class="lrow" data-id="${d.id}">
     ${cover?`<img src="${esc(cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
     <span style="min-width:0"><span class="lt">${esc(d.t)}</span><br>
-    <span class="lm">${esc(d.s)} · ${esc(d.st)}${d.d?" · "+esc(d.d):""}</span></span>
+    <span class="lm">${esc([sourceLabel(d.s), statusLabel(d.st), d.d].filter(Boolean).join(" · "))}</span></span>
     <span class="lp">${esc(progressOf(d).label)}</span>
   </button>`;
 }
@@ -127,7 +129,10 @@ export function updateFilterSummary(){
     + (active ? ` <button class="btn sm ghost" id="clearFilters">${esc(T("filter.showAll"))}</button>` : "");
   const cf = $("clearFilters");
   if (cf) cf.onclick = () => {
-    state.shelf = "Tout"; state.source = "Toutes"; state.libType = "Tous types"; state.q = ""; $("q").value = "";
+    /* "all" is the internal value on every axis. These used to be set to the French LABELS,
+       so clearing the filters set state.source to a source name nothing matches and emptied
+       the library instead of showing all of it. */
+    state.shelf = "all"; state.source = "all"; state.libType = "all"; state.q = ""; $("q").value = "";
     libraryChanged(); renderLibrary();
   };
 }

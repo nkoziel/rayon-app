@@ -32,7 +32,7 @@ describe('totals — priority order', () => {
   });
 
   it('prefers AniList over the backup count for a finished series', () => {
-    META[KEY] = { statut: 'Terminé', chapitres: 141, volumes: 34 };
+    META[KEY] = { statut: 'completed', chapitres: 141, volumes: 34 };
     const t = totals(entry({ n: 200 }));
     expect(t.ch).toBe(141);
     expect(t.chSrc).toBe('anilist');
@@ -41,7 +41,7 @@ describe('totals — priority order', () => {
   it('prefers AniList over MangaDex for a finished series', () => {
     /* This was BACKWARDS and produced understated totals: MangaDex reports what has been
        TRANSLATED, not what was published, so Berserk showed 386 chapters when 401 exist. */
-    META[KEY] = { statut: 'Terminé', chapitres: 401 };
+    META[KEY] = { statut: 'completed', chapitres: 401 };
     MDCACHE[KEY] = { maxCh: 386 };
     const t = totals(entry());
     expect(t.ch).toBe(401);
@@ -50,7 +50,7 @@ describe('totals — priority order', () => {
 
   it('prefers MangaBaka over everything automatic', () => {
     MDCACHE[KEY] = { maxCh: 386 };
-    META[KEY] = { statut: 'Terminé', chapitres: 401 };
+    META[KEY] = { statut: 'completed', chapitres: 401 };
     MBCACHE[KEY] = { chapitres: 405, volumes: 43 };
     const t = totals(entry());
     expect(t.ch).toBe(405);
@@ -61,7 +61,7 @@ describe('totals — priority order', () => {
   it('gives MangaBaka counts for an ONGOING series, where AniList has none', () => {
     /* The whole point of the migration: One Piece is releasing, so AniList leaves chapters
        and volumes empty while MangaBaka has both. */
-    META[KEY] = { statut: 'En cours', chapitres: null, volumes: null };
+    META[KEY] = { statut: 'releasing', chapitres: null, volumes: null };
     MBCACHE[KEY] = { chapitres: 1191, volumes: 115 };
     const t = totals(entry());
     expect(t.ch).toBe(1191);
@@ -70,7 +70,7 @@ describe('totals — priority order', () => {
   });
 
   it('lets a manual entry beat everything, MangaBaka included', () => {
-    META[KEY] = { statut: 'Terminé', chapitres: 141 };
+    META[KEY] = { statut: 'completed', chapitres: 141 };
     MDCACHE[KEY] = { maxCh: 150 };
     MBCACHE[KEY] = { chapitres: 160 };
     const t = totals(entry({ manCh: 999 }));
@@ -96,9 +96,18 @@ describe('totals — the AniList blind spot', () => {
   /* AniList only fills `chapters` for FINISHED series. For an ongoing one the field is empty,
      which is a database limitation and not a bug — the cascade must not treat it as truth. */
   it('does not let an ongoing AniList record override MangaDex', () => {
-    META[KEY] = { statut: 'En cours', chapitres: 100 };
+    META[KEY] = { statut: 'releasing', chapitres: 100 };
     MDCACHE[KEY] = { maxCh: 130 };
     expect(totals(entry()).chSrc).toBe('mangadex');
+  });
+
+  it('still reads a record cached before the status vocabulary was normalised', () => {
+    /* AniList used to be shaped into French labels, so an install predating the token change
+       holds "Terminé" in its cache. Dropping that spelling would silently demote every
+       finished series in it back to the backup count. */
+    META[KEY] = { statut: 'Terminé', chapitres: 401 };
+    MDCACHE[KEY] = { maxCh: 386 };
+    expect(totals(entry()).ch).toBe(401);
   });
 });
 
@@ -142,7 +151,16 @@ describe('progressOf', () => {
     const p = progressOf(entry({ r: 50, ownedVol: '1-5', unit: 'vol' }));
     expect(p.read).toBe(5);
     expect(p.tot).toBe(20);
-    expect(p.unit).toBe('tomes');
+    expect(p.unit).toBe('vol');
+  });
+
+  it('reports the unit as an internal token, never as display text', () => {
+    /* It used to be the French label ("tomes"), and callers compared against it to decide what
+       to render. That is a comparison against the interface language: the same branch stopped
+       matching the moment the app was switched to English. */
+    MDCACHE[KEY] = { maxCh: 200, maxVol: 20 };
+    expect(progressOf(entry({ ownedVol: '1-5', unit: 'vol' })).unit).toBe('vol');
+    expect(progressOf(entry({ r: 10, unit: 'ch' })).unit).toBe('ch');
   });
 
   it('counts a sparse collection correctly', () => {
@@ -159,8 +177,8 @@ describe('progressOf', () => {
 
 describe('totals — keyed by norm(), so CJK titles do not share a record', () => {
   it('keeps two non-latin series apart', () => {
-    META[norm('進撃の巨人')] = { statut: 'Terminé', chapitres: 141 };
-    META[norm('ワンピース')] = { statut: 'En cours', chapitres: null };
+    META[norm('進撃の巨人')] = { statut: 'completed', chapitres: 141 };
+    META[norm('ワンピース')] = { statut: 'releasing', chapitres: null };
     expect(totals({ t: '進撃の巨人', n: 0, origin: 'mihon' }).ch).toBe(141);
     expect(totals({ t: 'ワンピース', n: 0, origin: 'mihon' }).ch).toBeNull();
   });

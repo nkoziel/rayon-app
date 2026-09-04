@@ -17,7 +17,7 @@ import { MEDIA_TYPE } from './library.js';
 import { norm } from '../core/norm.js';
 import { LIB, DISCOVER, setDiscover, DISMISSED, saveDismissed, state, isOwned } from '../core/state.js';
 import { kvSet } from '../core/store.js';
-import { t as T } from '../core/i18n.js';
+import { t as T, statusLabel } from '../core/i18n.js';
 import { recosFor } from '../data/recos.js';
 import { whyHTML, mergeWhy, strengthOf, signalsOf } from './why.js';
 import { addFromMedia } from './add.js';
@@ -32,8 +32,8 @@ export async function runDiscover(){
   const btn = $("runDiscover");
   const bar = $("discoverProgress");
   btn.disabled = true; bar.classList.remove("hidden");
-  // une série par titre exact d'abord (fonctionne même avant l'hydratation AniList),
-  // puis fusion des variantes de titre qui pointent vers la même fiche une fois l'identifiant connu
+  // one seed per exact title first (works even before the records are hydrated), then the
+  // title variants pointing at the same record are folded once an id is known
   const byTitle = new Map();
   LIB.entries.filter(d => d.r > 0 || d.origin === "manuel").forEach(d => {
     const k = norm(d.t);
@@ -136,7 +136,7 @@ export function visibleDiscover(){
 }
 
 function discoverCardHTML(r, i){
-  const meta = [r.type, r.annee, r.chapitres?r.chapitres+" ch.":null, r.statut].filter(Boolean).join(" · ");
+  const meta = [r.type, r.annee, r.chapitres?r.chapitres+" ch.":null, statusLabel(r.statut)].filter(Boolean).join(" · ");
   return `<article class="reccard">
     ${r.cover?`<img class="cov" src="${esc(r.cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
     <div class="body">

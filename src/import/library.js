@@ -68,19 +68,19 @@ export function askImportMode(incoming){
       <div class="modal" id="impScrim">
         <div class="modalbox" role="dialog" aria-modal="true" aria-label="${esc(T("import.dialogLabel"))}">
           <div class="modalhead">
-            <h3>Importer ${incoming.length} série${incoming.length>1?"s":""}</h3>
-            <p class="rmeta" style="margin:0">Ta bibliothèque en contient déjà ${cur}.</p>
+            <h3>${esc(T("import.title", { n: incoming.length }))}</h3>
+            <p class="rmeta" style="margin:0">${esc(T("import.already", { n: cur }))}</p>
           </div>
           <div style="padding:14px 15px;display:grid;gap:14px">
             <div>
-              <button class="btn" id="impMerge" style="width:100%">Fusionner</button>
-              <p class="rmeta" style="margin:6px 0 0">${p.added} nouvelle${p.added>1?"s":""}, ${p.updated} mise${p.updated>1?"s":""} à jour, ${p.entries.length} au total. Ta progression n'est jamais reculée.</p>
+              <button class="btn" id="impMerge" style="width:100%">${esc(T("btn.merge"))}</button>
+              <p class="rmeta" style="margin:6px 0 0">${esc(T("import.mergeNote", { added: p.added, updated: p.updated, total: p.entries.length }))}</p>
             </div>
             <div>
-              <button class="btn ghost danger" id="impReplace" style="width:100%">Remplacer</button>
-              <p class="rmeta" style="margin:6px 0 0">Tes ${cur} série${cur>1?"s":""} et leur progression seront définitivement perdues.</p>
+              <button class="btn ghost danger" id="impReplace" style="width:100%">${esc(T("btn.replace"))}</button>
+              <p class="rmeta" style="margin:6px 0 0">${esc(T("import.replaceNote", { n: cur }))}</p>
             </div>
-            <button class="btn ghost" id="impCancel" style="width:100%">Annuler</button>
+            <button class="btn ghost" id="impCancel" style="width:100%">${esc(T("btn.cancel"))}</button>
           </div>
         </div>
       </div>`;
@@ -167,7 +167,7 @@ export function exportLib(){
   const blob = new Blob([JSON.stringify({label:LIB.label, exported:new Date().toISOString(), entries:LIB.entries}, null, 1)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "ma-bibliotheque.json";
+  a.download = T("export.filename");
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
   toast(T("toast.exported"));

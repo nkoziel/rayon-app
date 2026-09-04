@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rayon — bibliothèque manga & recommandations</title>
-<meta name="description" content="Ta bibliothèque manga, webtoon et manhwa, et les recommandations votées par les lecteurs d'AniList.">
+<title data-i18n="app.pageTitle">Rayon — manga library &amp; recommendations</title>
+<meta name="description" data-i18n-attr="content:app.pageDescription" content="Your manga, webtoon and manhwa library, and the recommendations its readers actually cross-reference.">
 <meta name="theme-color" content="#16150F">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -18,36 +18,36 @@
 <div class="wrap">
   <header class="mast">
     <div>
-      <p class="kicker" id="kicker">Bibliothèque locale</p>
+      <p class="kicker" id="kicker">Local library</p>
       <h1 id="mastTitle">Rayon<span class="ghost" aria-hidden="true">Rayon</span></h1>
     </div>
     <div class="vert" aria-hidden="true" id="vert"></div>
   </header>
   <div class="stats" id="stats"></div>
 
-  <!-- ===== onglet bibliothèque ===== -->
+  <!-- ===== library tab ===== -->
   <section id="viewLibrary" role="tabpanel" aria-labelledby="tabLibrary">
     <div id="onboard"></div>
     <div class="toolbar" id="libTools">
       <div class="row">
-        <input type="search" id="q" placeholder="Titre, auteur, genre…" aria-label="Chercher">
-        <button class="btn ghost filterbtn" id="filterBtn" aria-expanded="false">Filtres<span class="dot hidden" id="filterDot"></span></button>
+        <input type="search" id="q" data-i18n-attr="placeholder:lib.searchPlaceholder;aria-label:lib.searchLabel" placeholder="Title, author, genre…" aria-label="Search">
+        <button class="btn ghost filterbtn" id="filterBtn" aria-expanded="false"><span data-i18n="btn.filters">Filters</span><span class="dot hidden" id="filterDot"></span></button>
         <button class="btn ghost" id="moreBtn2" aria-expanded="false">•••</button>
       </div>
       <div class="filtersum" id="filterSum"></div>
       <div class="panel hidden" id="filterPanel">
         <div class="chiprow" id="typeLibRow" role="group" aria-label="Type" data-i18n-attr="aria-label:filter.type"></div>
-        <div class="chiprow" id="shelfRow" role="group" aria-label="Rayon" data-i18n-attr="aria-label:filter.shelf"></div>
+        <div class="chiprow" id="shelfRow" role="group" aria-label="Shelf" data-i18n-attr="aria-label:filter.shelf"></div>
         <div class="chiprow" id="srcRow" role="group" aria-label="Source" data-i18n-attr="aria-label:filter.source"></div>
-        <div class="chiprow" id="sortRow" role="group" aria-label="Tri" data-i18n-attr="aria-label:filter.sort"></div>
+        <div class="chiprow" id="sortRow" role="group" aria-label="Sort" data-i18n-attr="aria-label:filter.sort"></div>
       </div>
       <div class="morebar hidden" id="moreBar">
-        <button class="btn ghost" id="viewBtn">Vue liste</button>
-        <button class="btn ghost" id="unitBtn">Suivi : chapitres</button>
-        <button class="btn ghost" id="mdBatch" data-i18n="btn.checkReleases">Vérifier les sorties</button>
-        <button class="btn ghost" id="importBtn" data-i18n="btn.import">Importer</button>
-        <button class="btn ghost" id="exportBtn" data-i18n="btn.export">Exporter</button>
-        <button class="btn ghost danger" id="resetBtn" data-i18n="btn.reset">Tout effacer</button>
+        <button class="btn ghost" id="viewBtn">List view</button>
+        <button class="btn ghost" id="unitBtn">Tracking: chapters</button>
+        <button class="btn ghost" id="mdBatch" data-i18n="btn.checkReleases">Check releases</button>
+        <button class="btn ghost" id="importBtn" data-i18n="btn.import">Import</button>
+        <button class="btn ghost" id="exportBtn" data-i18n="btn.export">Export</button>
+        <button class="btn ghost danger" id="resetBtn" data-i18n="btn.reset">Erase everything</button>
         <button class="btn ghost" id="langBtn">English</button>
         <input type="file" id="file" accept=".tachibk,.json,.gz" class="hidden">
       </div>
@@ -56,19 +56,19 @@
     <div id="results"></div>
   </section>
 
-  <!-- ===== onglet découvrir ===== -->
+  <!-- ===== discover tab ===== -->
   <section id="viewDiscover" class="hidden" role="tabpanel" aria-labelledby="tabDiscover">
     <div class="toolbar">
       <div class="row">
-        <button class="btn" id="runDiscover">Analyser</button>
-        <button class="btn ghost" id="dFilterBtn" aria-expanded="false">Filtres</button>
-        <button class="btn ghost" id="resetDismissed" data-i18n="discover.resetDismissed">Réafficher les écartés</button>
+        <button class="btn" id="runDiscover" data-i18n="discover.run">Run analysis</button>
+        <button class="btn ghost" id="dFilterBtn" aria-expanded="false" data-i18n="btn.filters">Filters</button>
+        <button class="btn ghost" id="resetDismissed" data-i18n="discover.resetDismissed">Show dismissed again</button>
       </div>
       <div class="panel hidden" id="dFilterPanel">
-        <div class="chiprow" id="seedRow" role="group" aria-label="Séries analysées"></div>
+        <div class="chiprow" id="seedRow" role="group" aria-label="Series analysed" data-i18n-attr="aria-label:discover.seriesAnalysed"></div>
         <div class="chiprow" id="typeRow" role="group" aria-label="Type" data-i18n-attr="aria-label:filter.type"></div>
         <div class="chiprow" id="whyRow" role="group" aria-label="Raison" data-i18n-attr="aria-label:filter.why"></div>
-        <div class="chiprow" id="dsortRow" role="group" aria-label="Tri" data-i18n-attr="aria-label:filter.sort"></div>
+        <div class="chiprow" id="dsortRow" role="group" aria-label="Sort" data-i18n-attr="aria-label:filter.sort"></div>
       </div>
       <div class="progress hidden" id="discoverProgress"><i style="width:0%"></i></div>
       <div class="statusline" id="discoverStatus" role="status" aria-live="polite"></div>
@@ -76,12 +76,12 @@
     <div id="discoverBox"></div>
   </section>
 
-  <!-- ===== onglet courses ===== -->
+  <!-- ===== shopping tab ===== -->
   <section id="viewShop" class="hidden" role="tabpanel" aria-labelledby="tabShop">
     <div class="stats" id="shopStats"></div>
     <div class="toolbar">
       <div class="row">
-        <button class="btn ghost" id="shopPrice" data-i18n="shop.setPrice">Prix par tome</button>
+        <button class="btn ghost" id="shopPrice" data-i18n="shop.setPrice">Price per volume</button>
         <span class="rmeta" id="shopPriceNote"></span>
       </div>
     </div>
@@ -92,17 +92,17 @@
 </div>
 
 <nav class="tabs" role="tablist" data-i18n-attr="aria-label:tabs.label">
-  <button class="tab" role="tab" id="tabLibrary" aria-selected="true" aria-controls="viewLibrary"><span class="badge" id="tabLibN">0</span><span data-i18n="tab.library">Bibliothèque</span></button>
-  <button class="tab" role="tab" id="tabDiscover" aria-selected="false" aria-controls="viewDiscover"><span class="badge" id="tabDiscN">—</span><span data-i18n="tab.discover">Découvrir</span></button>
-  <button class="tab" role="tab" id="tabShop" aria-selected="false" aria-controls="viewShop"><span class="badge" id="tabShopN">0</span><span data-i18n="tab.shopping">Courses</span></button>
+  <button class="tab" role="tab" id="tabLibrary" aria-selected="true" aria-controls="viewLibrary"><span class="badge" id="tabLibN">0</span><span data-i18n="tab.library">Library</span></button>
+  <button class="tab" role="tab" id="tabDiscover" aria-selected="false" aria-controls="viewDiscover"><span class="badge" id="tabDiscN">—</span><span data-i18n="tab.discover">Discover</span></button>
+  <button class="tab" role="tab" id="tabShop" aria-selected="false" aria-controls="viewShop"><span class="badge" id="tabShopN">0</span><span data-i18n="tab.shopping">Shopping</span></button>
   <!-- NOT a tab: it opens a modal and controls no panel. Announcing it as one made the whole
        widget wrong for assistive technology (REVIEW.md §6). -->
-  <button class="tab" id="tabAdd"><span class="badge">＋</span><span data-i18n="tab.add">Ajouter</span></button>
+  <button class="tab" id="tabAdd"><span class="badge">＋</span><span data-i18n="tab.add">Add</span></button>
 </nav>
 
 <div id="overlay"></div>
 <div id="modalHost"></div>
-<div class="dropzone hidden" id="dropzone" data-i18n="lib.dropzone">Dépose ta sauvegarde .tachibk ou ton export .json</div>
+<div class="dropzone hidden" id="dropzone" data-i18n="lib.dropzone">Drop your .tachibk backup or your .json export</div>
 
 <script type="module" src="./main.js"></script>
 </body>

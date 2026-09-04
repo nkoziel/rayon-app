@@ -4,7 +4,7 @@ import { $, esc, toast, closeModal } from '../core/dom.js';
 import { norm } from '../core/norm.js';
 import { recordOf, CREDIT } from '../data/record.js';
 import { LIB, META, saveLib, isOwned, state } from '../core/state.js';
-import { t as T } from '../core/i18n.js';
+import { t as T, sourceLabel, statusLabel } from '../core/i18n.js';
 import { recosFor } from '../data/recos.js';
 import { totals, unitOf, progressOf } from '../data/totals.js';
 import { purgeSeriesData } from '../import/library.js';
@@ -25,11 +25,11 @@ function teardownSheet(){ current = null; $("overlay").innerHTML = ""; document.
 export function closeSheet(){ if (!closeLayer()) teardownSheet(); }
 
 export function recoRowHTML(r){
-  const meta = [r.type, r.annee, r.chapitres?r.chapitres+" ch.":null, r.statut, r.score?r.score+"/100":null].filter(Boolean).join(" · ");
+  const meta = [r.type, r.annee, r.chapitres?r.chapitres+" ch.":null, statusLabel(r.statut), r.score?r.score+"/100":null].filter(Boolean).join(" · ");
   return `<div class="rec">
     ${r.cover?`<img class="cover" src="${esc(r.cover)}" alt="" loading="lazy">`:'<span class="ph"></span>'}
     <div style="min-width:0">
-      <div class="rtitle"><button class="titlelink" data-open="${esc(String(r.mb ?? r.id))}">${esc(r.titre)}</button>${isOwned(r)?'<span class="owned">déjà chez toi</span>':''}</div>
+      <div class="rtitle"><button class="titlelink" data-open="${esc(String(r.mb ?? r.id))}">${esc(r.titre)}</button>${isOwned(r)?`<span class="owned">${esc(T("owned.badge"))}</span>`:''}</div>
       <div class="rmeta">${esc(meta)}</div>
       <div class="rwhy">${whyHTML(r)}</div>
       ${isOwned(r)?"":`<div class="ractions"><button class="btn sm" data-addreco="${r.mb ?? r.id}">${esc(T("reco.add"))}</button></div>`}
@@ -76,24 +76,24 @@ export function openSheet(d, opts){
   const meta = opts.record || recordOf(d);
   const pct = d.n ? Math.min(100, Math.round(d.r/d.n*100)) : 0;
   const behind = meta && meta.chapitres ? meta.chapitres - d.r : null;
-    const hmeta = [meta&&meta.type, meta&&meta.annee, meta&&meta.statut,
+    const hmeta = [meta&&meta.type, meta&&meta.annee, meta&&statusLabel(meta.statut),
     meta&&meta.score ? meta.score+"/100" + (meta.sources > 1 ? " ("+meta.sources+")" : "") : null]
     .filter(Boolean).join(" · ");
   $("overlay").innerHTML = `
     <div class="scrim" id="scrim"></div>
-    <aside class="sheet" role="dialog" aria-label="Fiche ${esc(d.t)}">
-      <div class="sheetbar"><span class="sbt">${esc(d.s)}</span><button class="close" id="closeBtn">Fermer ✕</button></div>
+    <aside class="sheet" role="dialog" aria-label="${esc(T("sheet.label", { title: d.t }))}">
+      <div class="sheetbar"><span class="sbt">${esc(sourceLabel(d.s))}</span><button class="close" id="closeBtn">${esc(T("btn.close"))} ✕</button></div>
       <div class="hero">
         ${meta && meta.banner ? `<img class="banner" src="${esc(meta.banner)}" alt="">` : '<div class="noban"></div>'}
         <div class="front">
           ${meta && meta.cover ? `<img src="${esc(meta.cover)}" alt="">` : '<span class="ph"></span>'}
-          <div><h2>${esc(d.t)}</h2><div class="hmeta">${esc(hmeta || d.s)}</div></div>
+          <div><h2>${esc(d.t)}</h2><div class="hmeta">${esc(hmeta || sourceLabel(d.s))}</div></div>
         </div>
       </div>
       <div class="sbody">
         <div>
           ${d.m==="Webtoon"?'<span class="pill hi">Webtoon</span>':''}
-          ${d.origin==="manuel"?'<span class="pill hi">Ajout manuel</span>':''}
+          ${d.origin==="manuel"?`<span class="pill hi">${esc(T("sheet.manualPill"))}</span>`:''}
           ${(meta?meta.genres:d.g).slice(0,8).map(g=>`<span class="pill">${esc(g)}</span>`).join("")}
         </div>
         ${preview
@@ -104,15 +104,15 @@ export function openSheet(d, opts){
         ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(T("mihon.search"))}</button>
         <p class="rmeta" style="margin:6px 0 0">${esc(T("mihon.hint"))}</p>` : ""}
         <dl>
-          ${preview ? "" : `<dt>Dernière fois</dt><dd>${esc(d.d||"—")}</dd>
-          <dt>Ajouté le</dt><dd>${esc(d.ad||"—")}</dd>`}
-          <dt>Auteur</dt><dd>${esc((meta&&meta.auteur)||d.a||"—")}</dd>
-          ${preview ? "" : `<dt>Source</dt><dd>${esc(d.s)}</dd>`}
+          ${preview ? "" : `<dt>${esc(T("sheet.lastRead"))}</dt><dd>${esc(d.d||"—")}</dd>
+          <dt>${esc(T("sheet.addedOn"))}</dt><dd>${esc(d.ad||"—")}</dd>`}
+          <dt>${esc(T("sheet.author"))}</dt><dd>${esc((meta&&meta.auteur)||d.a||"—")}</dd>
+          ${preview ? "" : `<dt>${esc(T("sheet.source"))}</dt><dd>${esc(sourceLabel(d.s))}</dd>`}
           ${meta ? `<dt>${esc(T("sheet.record"))}</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)}</a> ${esc(T("sheet.via", { source: (CREDIT[meta.src]||{}).name || "" }))}${(CREDIT[meta.src]||{}).licence ? ` <span class="rmeta">(${esc(CREDIT[meta.src].licence)})</span>` : ""}</dd>` : ""}
         </dl>
-        ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
-        <div class="seclabel"><span>Ce que lisent ceux qui ont aimé</span><button class="btn ghost sm" id="refresh">Actualiser</button></div>
-        <div id="recos"><p class="loading">Interrogation d'AniList</p></div>
+        ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">${esc(T("sheet.readMore"))}</button>` : ""}
+        <div class="seclabel"><span>${esc(T("sheet.recos"))}</span><button class="btn ghost sm" id="refresh">${esc(T("btn.refresh"))}</button></div>
+        <div id="recos"><p class="loading">${esc(T("reco.loading"))}</p></div>
       </div>
     </aside>`;
   document.body.style.overflow = "hidden";
@@ -122,7 +122,7 @@ export function openSheet(d, opts){
   const moreBtn = $("moreBtn");
   if (moreBtn) moreBtn.onclick = () => {
     const el = $("desc"); el.classList.toggle("clamped");
-    moreBtn.textContent = el.classList.contains("clamped") ? "Lire la suite" : "Replier";
+    moreBtn.textContent = T(el.classList.contains("clamped") ? "sheet.readMore" : "sheet.readLess");
   };
   if (preview){
     /* Adding re-opens the sheet on the real entry, so the screen the user is looking at becomes

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rayon — bibliothèque manga & recommandations</title>
-<meta name="description" content="Ta bibliothèque manga, webtoon et manhwa, et les recommandations votées par les lecteurs d'AniList.">
+<title data-i18n="app.pageTitle">Rayon — manga library &amp; recommendations</title>
+<meta name="description" data-i18n-attr="content:app.pageDescription" content="Your manga, webtoon and manhwa library, and the recommendations its readers actually cross-reference.">
 <meta name="theme-color" content="#16150F">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -267,7 +267,101 @@ const en = {
   "preview.fromDiscover": "Discover",
   "mihon.search": "Search in Mihon",
   "mihon.failed": "Could not open the share sheet",
-  "mihon.hint": "Opens the Android share sheet. Mihon appears there as “Search”, with its own icon — Android shows the activity name, not the app name."
+  "mihon.hint": "Opens the Android share sheet. Mihon appears there as “Search”, with its own icon — Android shows the activity name, not the app name.",
+  /* ---- shell chrome ---- */
+  "app.pageTitle": "Rayon — manga library & recommendations",
+  "app.pageDescription": "Your manga, webtoon and manhwa library, and the recommendations its readers actually cross-reference.",
+  "lib.searchPlaceholder": "Title, author, genre…",
+  "lib.searchLabel": "Search",
+  "btn.filters": "Filters",
+  "btn.refresh": "Refresh",
+  "btn.add": "Add",
+  "discover.run": "Run analysis",
+  "discover.dismissedRestored": "Dismissed titles shown again",
+  /* ---- units, as displayed ---- */
+  "unit.chShort": "ch.",
+  "unit.volShort": "vol.",
+  "unit.chLong": "chapters",
+  "unit.volLong": "volumes",
+  "tape.manual": "By hand",
+  "owned.badge": "already yours",
+  "source.manual": "Added by hand",
+  /* ---- series sheet ---- */
+  "sheet.label": "{title} — details",
+  "sheet.lastRead": "Last read",
+  "sheet.addedOn": "Added on",
+  "sheet.author": "Author",
+  "sheet.source": "Source",
+  "sheet.readMore": "Read more",
+  "sheet.readLess": "Show less",
+  "sheet.recos": "What readers of this also read",
+  "sheet.manualPill": "Added by hand",
+  /* ---- tracker ---- */
+  "track.remaining": "{n} {unit} left",
+  "track.upToDate": "Up to date",
+  "track.unknownTotal": "Total unknown",
+  "track.setTotalCh": "How many chapters have been released?",
+  "track.setTotalVol": "How many volumes have been released?",
+  "track.checking": "Checking…",
+  "track.latestChapter": "Latest translated chapter: {n}",
+  "track.alsoVolumes": " · {n} volumes",
+  "track.noChapterListed": "No chapter listed",
+  "track.removeConfirm": "Remove “{title}” from your library?\n\nIts cached data will be deleted too.",
+  /* ---- where a total comes from ---- */
+  "prov.totalVol": "Volume total:",
+  "prov.totalCh": "Chapter total:",
+  "prov.checkedOn": ", checked {date}",
+  "prov.noVolSplit": "No volume split known.",
+  "prov.noVolSplitNote": "Common for webtoons, which are published without a print edition. Check on MangaDex, or set the total by hand.",
+  "prov.noTotal": "No reliable total.",
+  "prov.noTotalNote": "Ongoing series: AniList publishes no count until a series is finished. Check on MangaDex, or set the total.",
+  "prov.notOnMangadex": "Not on MangaDex",
+  "prov.notOnMangadexNote": "— release tracking has to be manual.",
+  "prov.pastTotal": "You are further along than the known total ({read} > {total}).",
+  "prov.pastTotalNote": "Scanlation and official numbering often differ: set the total by hand to settle it.",
+  "src.mangabaka": "MangaBaka",
+  "src.mangadex": "MangaDex",
+  "src.anilist": "AniList",
+  "src.mihon": "chapters at your source",
+  "src.import": "imported file",
+  "src.manuel": "set by hand",
+  "srcnote.mangabaka": "Publication counts aggregated by MangaBaka across several databases",
+  "srcnote.mangadex": "Latest translated chapter listed by MangaDex — what is available to read, not what has been published",
+  "srcnote.anilist": "AniList only fills in totals for series that are finished",
+  "srcnote.mihon": "Number of chapters sitting at your reading source",
+  "srcnote.import": "Value taken from the imported file",
+  "srcnote.manuel": "Your own entry",
+  /* ---- add a title ---- */
+  "add.title": "Add a title",
+  "add.searchLabel": "Search for a title",
+  "add.catalogue": "Searches the AniList catalogue — over 100,000 series.",
+  "add.typeTwoLong": "Type at least two letters to start the search.",
+  "add.typeTwo": "Type at least two letters.",
+  "add.searching": "Searching",
+  "add.noResults": "Nothing found for “{term}”.",
+  "add.added": "“{title}” added",
+  "add.already": "Already in your list",
+  /* ---- import dialog ---- */
+  "import.title": { one: "Import {n} series", other: "Import {n} series" },
+  "import.already": "Your library already holds {n}.",
+  "import.mergeNote": "{added} new, {updated} updated, {total} in total. Your progress is never rolled back.",
+  "import.replaceNote": { one: "Your {n} series and its progress will be lost for good.", other: "Your {n} series and their progress will be lost for good." },
+  "export.filename": "my-library.json",
+  /* ---- erasing everything ---- */
+  "reset.confirm": "Erase ALL of Rayon's data for good?\n\n• {n} series and their progress\n• Cached records, totals and recommendations\n• Your preferences\n\nThis cannot be undone.",
+  "reset.erasing": "Erasing…",
+  /* ---- release check, in bulk ---- */
+  "md.nothingNew": "Nothing new to check on this shelf",
+  "md.batchDone": "{ok} series updated · {ko} with no match",
+  /* ---- publication status ---- */
+  "status.releasing": "Ongoing",
+  "status.completed": "Completed",
+  "status.publishing_finished": "Publication finished",
+  "status.cancelled": "Cancelled",
+  "status.hiatus": "On hiatus",
+  "status.upcoming": "Not yet released",
+  "status.licensed": "Licensed",
+  "status.unknown": "Unknown"
 };
 const fr = {
   "app.title": "Rayon",
@@ -453,7 +547,101 @@ const fr = {
   "preview.fromDiscover": "Découvrir",
   "mihon.search": "Chercher dans Mihon",
   "mihon.failed": "Impossible d'ouvrir le partage",
-  "mihon.hint": "Ouvre le partage Android. Mihon y apparaît sous le nom « Recherche », avec son icône — Android affiche le nom de l’activité, pas celui de l’app."
+  "mihon.hint": "Ouvre le partage Android. Mihon y apparaît sous le nom « Recherche », avec son icône — Android affiche le nom de l’activité, pas celui de l’app.",
+  /* ---- shell chrome ---- */
+  "app.pageTitle": "Rayon — bibliothèque manga & recommandations",
+  "app.pageDescription": "Ta bibliothèque manga, webtoon et manhwa, et les recommandations que ses lecteurs croisent vraiment.",
+  "lib.searchPlaceholder": "Titre, auteur, genre…",
+  "lib.searchLabel": "Chercher",
+  "btn.filters": "Filtres",
+  "btn.refresh": "Actualiser",
+  "btn.add": "Ajouter",
+  "discover.run": "Analyser",
+  "discover.dismissedRestored": "Titres écartés réaffichés",
+  /* ---- units, as displayed ---- */
+  "unit.chShort": "ch.",
+  "unit.volShort": "t.",
+  "unit.chLong": "chapitres",
+  "unit.volLong": "tomes",
+  "tape.manual": "Manuel",
+  "owned.badge": "déjà chez toi",
+  "source.manual": "Ajout manuel",
+  /* ---- series sheet ---- */
+  "sheet.label": "Fiche {title}",
+  "sheet.lastRead": "Dernière fois",
+  "sheet.addedOn": "Ajouté le",
+  "sheet.author": "Auteur",
+  "sheet.source": "Source",
+  "sheet.readMore": "Lire la suite",
+  "sheet.readLess": "Replier",
+  "sheet.recos": "Ce que lisent ceux qui ont aimé",
+  "sheet.manualPill": "Ajout manuel",
+  /* ---- tracker ---- */
+  "track.remaining": "Reste {n} {unit}",
+  "track.upToDate": "À jour",
+  "track.unknownTotal": "Total inconnu",
+  "track.setTotalCh": "Nombre de chapitres parus :",
+  "track.setTotalVol": "Nombre de tomes parus :",
+  "track.checking": "Vérification…",
+  "track.latestChapter": "Dernier chapitre traduit : {n}",
+  "track.alsoVolumes": " · {n} tomes",
+  "track.noChapterListed": "Aucun chapitre recensé",
+  "track.removeConfirm": "Retirer « {title} » de ta bibliothèque ?\n\nSes données en cache seront également supprimées.",
+  /* ---- where a total comes from ---- */
+  "prov.totalVol": "Total tomes :",
+  "prov.totalCh": "Total chapitres :",
+  "prov.checkedOn": ", relevé le {date}",
+  "prov.noVolSplit": "Aucun découpage en tomes connu.",
+  "prov.noVolSplitNote": "Fréquent pour les webtoons, publiés sans édition papier. Vérifie sur MangaDex, ou saisis le total à la main.",
+  "prov.noTotal": "Aucun total fiable.",
+  "prov.noTotalNote": "Série en cours : AniList ne publie pas de compte tant qu'elle n'est pas achevée. Vérifie sur MangaDex, ou saisis le total.",
+  "prov.notOnMangadex": "Absente de MangaDex",
+  "prov.notOnMangadexNote": "— le suivi des sorties doit être manuel.",
+  "prov.pastTotal": "Tu es allé plus loin que le total connu ({read} > {total}).",
+  "prov.pastTotalNote": "Les numérotations diffèrent souvent entre scantrad et édition officielle : saisis le total à la main pour trancher.",
+  "src.mangabaka": "MangaBaka",
+  "src.mangadex": "MangaDex",
+  "src.anilist": "AniList",
+  "src.mihon": "chapitres de ta source",
+  "src.import": "fichier importé",
+  "src.manuel": "saisi à la main",
+  "srcnote.mangabaka": "Comptes de publication agrégés par MangaBaka depuis plusieurs bases",
+  "srcnote.mangadex": "Dernier chapitre traduit recensé par MangaDex — ce qui est disponible à lire, pas ce qui est paru",
+  "srcnote.anilist": "AniList ne renseigne les totaux que pour les séries achevées",
+  "srcnote.mihon": "Nombre de chapitres présents chez ta source de lecture",
+  "srcnote.import": "Valeur venue du fichier importé",
+  "srcnote.manuel": "Ta saisie",
+  /* ---- add a title ---- */
+  "add.title": "Ajouter un titre",
+  "add.searchLabel": "Chercher un titre",
+  "add.catalogue": "Recherche dans le catalogue AniList — plus de 100 000 séries.",
+  "add.typeTwoLong": "Tape au moins deux lettres pour lancer la recherche.",
+  "add.typeTwo": "Tape au moins deux lettres.",
+  "add.searching": "Recherche",
+  "add.noResults": "Rien trouvé pour « {term} ».",
+  "add.added": "« {title} » ajouté",
+  "add.already": "Déjà dans ta liste",
+  /* ---- import dialog ---- */
+  "import.title": { one: "Importer {n} série", other: "Importer {n} séries" },
+  "import.already": "Ta bibliothèque en contient déjà {n}.",
+  "import.mergeNote": "{added} nouvelles, {updated} mises à jour, {total} au total. Ta progression n'est jamais reculée.",
+  "import.replaceNote": { one: "Ta série et sa progression seront définitivement perdues.", other: "Tes {n} séries et leur progression seront définitivement perdues." },
+  "export.filename": "ma-bibliotheque.json",
+  /* ---- erasing everything ---- */
+  "reset.confirm": "Effacer DÉFINITIVEMENT toutes les données de Rayon ?\n\n• {n} séries et leur progression\n• Fiches, totaux et recommandations en cache\n• Tes préférences\n\nCette action est irréversible.",
+  "reset.erasing": "Effacement…",
+  /* ---- release check, in bulk ---- */
+  "md.nothingNew": "Rien de neuf à vérifier dans ce rayon",
+  "md.batchDone": "{ok} séries mises à jour · {ko} sans correspondance",
+  /* ---- publication status ---- */
+  "status.releasing": "En cours",
+  "status.completed": "Terminé",
+  "status.publishing_finished": "Publication terminée",
+  "status.cancelled": "Annulé",
+  "status.hiatus": "En pause",
+  "status.upcoming": "À paraître",
+  "status.licensed": "Sous licence",
+  "status.unknown": "Inconnu"
 };
 const LOCALES = { en, fr };
 const AVAILABLE = Object.keys(LOCALES);
@@ -487,6 +675,22 @@ function t(key, params) {
   }
   if (!params) return v;
   return String(v).replace(/\{(\w+)\}/g, (m, k) => params[k] !== void 0 ? params[k] : m);
+}
+const STATUS_TOKENS = /* @__PURE__ */ new Set([
+  "releasing",
+  "completed",
+  "publishing_finished",
+  "cancelled",
+  "hiatus",
+  "upcoming",
+  "licensed",
+  "unknown"
+]);
+function statusLabel(s) {
+  return s && STATUS_TOKENS.has(s) ? t("status." + s) : s || "";
+}
+function sourceLabel(s) {
+  return s === "manual" || s === "Ajout manuel" ? t("source.manual") : s;
 }
 function applyStatic(root = document) {
   root.querySelectorAll("[data-i18n]").forEach((el) => {
@@ -715,7 +919,7 @@ const SEARCH_PAGE_Q = `query ($s:String){ Page(perPage:8){ media(search:$s, type
 const RECO_Q = `query ($id:Int){ Media(id:$id, type:MANGA){ id siteUrl title{romaji english}
   recommendations(sort:RATING_DESC, perPage:12){ nodes{ rating mediaRecommendation{ ${FIELDS} } } } } }`;
 const FORMAT = { MANGA: "Manga", NOVEL: "Light novel", ONE_SHOT: "One-shot" };
-const PSTATUS = { FINISHED: "Terminé", RELEASING: "En cours", NOT_YET_RELEASED: "À paraître", CANCELLED: "Annulé", HIATUS: "En pause" };
+const PSTATUS = { FINISHED: "completed", RELEASING: "releasing", NOT_YET_RELEASED: "upcoming", CANCELLED: "cancelled", HIATUS: "hiatus" };
 const COUNTRY = { JP: "Manga", KR: "Manhwa", CN: "Manhua", TW: "Manhua" };
 function shapeMedia(m) {
   if (!m) return null;
@@ -1187,7 +1391,7 @@ function totals(d) {
     put("vol", "volSrc", md.maxVol, "mangadex");
   }
   if (meta && !meta.missing) {
-    const fini = meta.statut === "Terminé";
+    const fini = meta.statut === "completed" || meta.statut === "Terminé";
     if (fini || !out.ch) put("ch", "chSrc", meta.chapitres, "anilist");
     if (fini || !out.vol) put("vol", "volSrc", meta.volumes, "anilist");
   }
@@ -1199,25 +1403,13 @@ function totals(d) {
   put("vol", "volSrc", d.manVol, "manuel");
   return out;
 }
-const SRCLABEL = {
-  mangabaka: "MangaBaka",
-  mangadex: "MangaDex",
-  anilist: "AniList",
-  mihon: "chapitres de ta source",
-  import: "fichier importé",
-  manuel: "saisi à la main"
-};
-const SRCNOTE = {
-  mangabaka: "comptes de publication agrégés par MangaBaka depuis plusieurs bases",
-  mangadex: "dernier chapitre traduit recensé par MangaDex — ce qui est disponible à lire, pas ce qui est paru",
-  anilist: "AniList ne renseigne les totaux que pour les séries achevées",
-  mihon: "nombre de chapitres présents chez ta source de lecture",
-  import: "valeur venue du fichier importé",
-  manuel: "ta saisie"
-};
+const srcLabel = (src) => t("src." + src);
+const srcNote = (src) => t("srcnote." + src);
 function unitOf(d) {
   return d.unit || state.unit;
 }
+const unitLabel = (u) => t(u === "vol" ? "unit.volLong" : "unit.chLong");
+const unitShort = (u) => t(u === "vol" ? "unit.volShort" : "unit.chShort");
 function progressOf(d) {
   const t2 = totals(d);
   const unit = unitOf(d);
@@ -1227,9 +1419,9 @@ function progressOf(d) {
       read: read2,
       tot: tot2,
       pct: tot2 ? Math.min(100, Math.round(read2 / tot2 * 100)) : 0,
-      label: read2 + (tot2 ? "/" + tot2 : "") + " tomes",
+      label: read2 + (tot2 ? "/" + tot2 : "") + " " + unitShort("vol"),
       remain: tot2 ? tot2 - read2 : null,
-      unit: "tomes",
+      unit: "vol",
       t: t2
     };
   }
@@ -1238,9 +1430,9 @@ function progressOf(d) {
     read,
     tot,
     pct: tot ? Math.min(100, Math.round(read / tot * 100)) : 0,
-    label: read + (tot ? "/" + tot : "") + " ch.",
+    label: read + (tot ? "/" + tot : "") + " " + unitShort("ch"),
     remain: tot ? Math.round((tot - read) * 10) / 10 : null,
-    unit: "chapitres",
+    unit: "ch",
     t: t2
   };
 }
@@ -1295,7 +1487,7 @@ const group = (fields) => {
   });
   return g;
 };
-const MSTATUS = { 0: "Inconnu", 1: "En cours", 2: "Terminé", 3: "Sous licence", 4: "Publication terminée", 5: "Annulé", 6: "En pause" };
+const MSTATUS = { 0: "unknown", 1: "releasing", 2: "completed", 3: "licensed", 4: "publishing_finished", 5: "cancelled", 6: "hiatus" };
 const MMODE = { 0: "", 1: "Gauche→Droite", 2: "Droite→Gauche", 3: "Vertical", 4: "Webtoon", 5: "Vertical continu" };
 const isoDay = (ms) => ms ? new Date(Number(ms)).toISOString().slice(0, 10) : "";
 function consolidateMihon(entries) {
@@ -1363,7 +1555,7 @@ function parseBackup(bytes) {
       t: str(3),
       a: str(5) || str(4),
       s: sources[String(g[1] ? g[1][0].v : "")] || t("backup.unknownSource"),
-      st: MSTATUS[g[8] ? Number(g[8][0].v) : 0] || "Inconnu",
+      st: MSTATUS[g[8] ? Number(g[8][0].v) : 0] || "unknown",
       g: (g[7] || []).map((y) => dec.decode(y.v)).slice(0, 6),
       r: read,
       n: chapters.length,
@@ -1458,19 +1650,19 @@ function askImportMode(incoming) {
       <div class="modal" id="impScrim">
         <div class="modalbox" role="dialog" aria-modal="true" aria-label="${esc(t("import.dialogLabel"))}">
           <div class="modalhead">
-            <h3>Importer ${incoming.length} série${incoming.length > 1 ? "s" : ""}</h3>
-            <p class="rmeta" style="margin:0">Ta bibliothèque en contient déjà ${cur}.</p>
+            <h3>${esc(t("import.title", { n: incoming.length }))}</h3>
+            <p class="rmeta" style="margin:0">${esc(t("import.already", { n: cur }))}</p>
           </div>
           <div style="padding:14px 15px;display:grid;gap:14px">
             <div>
-              <button class="btn" id="impMerge" style="width:100%">Fusionner</button>
-              <p class="rmeta" style="margin:6px 0 0">${p.added} nouvelle${p.added > 1 ? "s" : ""}, ${p.updated} mise${p.updated > 1 ? "s" : ""} à jour, ${p.entries.length} au total. Ta progression n'est jamais reculée.</p>
+              <button class="btn" id="impMerge" style="width:100%">${esc(t("btn.merge"))}</button>
+              <p class="rmeta" style="margin:6px 0 0">${esc(t("import.mergeNote", { added: p.added, updated: p.updated, total: p.entries.length }))}</p>
             </div>
             <div>
-              <button class="btn ghost danger" id="impReplace" style="width:100%">Remplacer</button>
-              <p class="rmeta" style="margin:6px 0 0">Tes ${cur} série${cur > 1 ? "s" : ""} et leur progression seront définitivement perdues.</p>
+              <button class="btn ghost danger" id="impReplace" style="width:100%">${esc(t("btn.replace"))}</button>
+              <p class="rmeta" style="margin:6px 0 0">${esc(t("import.replaceNote", { n: cur }))}</p>
             </div>
-            <button class="btn ghost" id="impCancel" style="width:100%">Annuler</button>
+            <button class="btn ghost" id="impCancel" style="width:100%">${esc(t("btn.cancel"))}</button>
           </div>
         </div>
       </div>`;
@@ -1558,7 +1750,7 @@ function exportLib() {
   const blob = new Blob([JSON.stringify({ label: LIB.label, exported: (/* @__PURE__ */ new Date()).toISOString(), entries: LIB.entries }, null, 1)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "ma-bibliotheque.json";
+  a.download = t("export.filename");
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4e3);
   toast(t("toast.exported"));
@@ -1657,15 +1849,17 @@ function discoverChanged() {
 function addFromMedia(m, opts) {
   opts = opts || {};
   if (LIB.entries.some((e) => e.al && e.al === m.id || norm(e.t) === norm(m.titre))) {
-    toast("Déjà dans ta liste");
+    toast(t("add.already"));
     return false;
   }
   LIB.entries.unshift({
+    /* "manual" is a token, not a label: sourceLabel() turns it into text at render time, so a
+       library built in one language reads correctly in the other. */
     id: uid(),
     t: m.titre,
     a: m.auteur,
-    s: opts.source || "Ajout manuel",
-    st: m.statut || "Inconnu",
+    s: opts.source || "manual",
+    st: m.statut || "",
     g: m.genres.slice(0, 6),
     r: opts.read || 0,
     ownedVol: "",
@@ -1682,22 +1876,22 @@ function addFromMedia(m, opts) {
   saveLib();
   saveMeta();
   libraryChanged();
-  toast("« " + m.titre + " » ajouté");
+  toast(t("add.added", { title: m.titre }));
   return true;
 }
 function openAddModal(prefill) {
   $("modalHost").innerHTML = `
     <div class="modal" id="modalScrim">
-      <div class="modalbox" role="dialog" aria-label="Ajouter un titre">
+      <div class="modalbox" role="dialog" aria-label="${esc(t("add.title"))}">
         <div class="modalhead">
-          <h3>Ajouter un titre</h3>
+          <h3>${esc(t("add.title"))}</h3>
           <div class="row">
-            <input type="search" id="addQ" placeholder="Nom du manga, manhwa, webtoon…" aria-label="Chercher un titre" style="flex:1 1 auto">
-            <button class="btn ghost" id="addClose">Fermer</button>
+            <input type="search" id="addQ" placeholder="${esc(t("add.searchPlaceholder"))}" aria-label="${esc(t("add.searchLabel"))}" style="flex:1 1 auto">
+            <button class="btn ghost" id="addClose">${esc(t("btn.close"))}</button>
           </div>
-          <p class="rmeta" style="margin:8px 0 0">Recherche dans le catalogue AniList — plus de 100 000 séries.</p>
+          <p class="rmeta" style="margin:8px 0 0">${esc(t("add.catalogue"))}</p>
         </div>
-        <div id="addResults"><p class="note" style="margin:14px 15px">Tape au moins deux lettres pour lancer la recherche.</p></div>
+        <div id="addResults"><p class="note" style="margin:14px 15px">${esc(t("add.typeTwoLong"))}</p></div>
       </div>
     </div>`;
   const input = $("addQ");
@@ -1713,35 +1907,35 @@ function openAddModal(prefill) {
   const run = async () => {
     const term = input.value.trim();
     if (term.length < 2) {
-      $("addResults").innerHTML = `<p class="note" style="margin:14px 15px">Tape au moins deux lettres.</p>`;
+      $("addResults").innerHTML = `<p class="note" style="margin:14px 15px">${esc(t("add.typeTwo"))}</p>`;
       return;
     }
     const mine = ++seq;
-    $("addResults").innerHTML = `<p class="loading" style="margin:14px 15px">Recherche</p>`;
+    $("addResults").innerHTML = `<p class="loading" style="margin:14px 15px">${esc(t("add.searching"))}</p>`;
     try {
       const data = await gql(SEARCH_PAGE_Q, { s: term });
       if (mine !== seq) return;
       const hits = (data.Page.media || []).map(shapeMedia).filter(Boolean);
       if (!hits.length) {
-        $("addResults").innerHTML = `<p class="note" style="margin:14px 15px">Rien trouvé pour « ${esc(term)} ».</p>`;
+        $("addResults").innerHTML = `<p class="note" style="margin:14px 15px">${esc(t("add.noResults", { term }))}</p>`;
         return;
       }
       $("addResults").innerHTML = hits.map((h, i) => {
         const owned = isOwned(h);
-        const meta = [h.type, h.annee, h.chapitres ? h.chapitres + " ch." : null, h.statut, h.score ? h.score + "/100" : null].filter(Boolean).join(" · ");
+        const meta = [h.type, h.annee, h.chapitres ? h.chapitres + " ch." : null, statusLabel(h.statut), h.score ? h.score + "/100" : null].filter(Boolean).join(" · ");
         return `<div class="hit">
           ${h.cover ? `<img src="${esc(h.cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
           <span style="min-width:0">
-            <span class="ht">${esc(h.titre)}</span>${owned ? '<span class="owned">déjà chez toi</span>' : ""}<br>
+            <span class="ht">${esc(h.titre)}</span>${owned ? `<span class="owned">${esc(t("owned.badge"))}</span>` : ""}<br>
             <span class="hm">${esc(meta)}${h.auteur ? " · " + esc(h.auteur) : ""}</span>
           </span>
-          <span class="act"><button class="btn sm ${owned ? "ghost" : ""}" data-add="${i}" ${owned ? "disabled" : ""}>${owned ? "Ajouté" : "Ajouter"}</button></span>
+          <span class="act"><button class="btn sm ${owned ? "ghost" : ""}" data-add="${i}" ${owned ? "disabled" : ""}>${esc(t(owned ? "reco.added" : "btn.add"))}</button></span>
         </div>`;
       }).join("");
       [...$("addResults").querySelectorAll("[data-add]")].forEach((b) => {
         b.onclick = () => {
           if (addFromMedia(hits[+b.dataset.add])) {
-            b.textContent = "Ajouté";
+            b.textContent = t("reco.added");
             b.disabled = true;
             b.classList.add("ghost");
           }
@@ -1814,25 +2008,28 @@ async function recosFor(d, force, record) {
   return { ...payload, provider: "anilist" };
 }
 function provenanceHTML(d) {
-  const t2 = totals(d);
+  const t$1 = totals(d);
   const unit = unitOf(d);
   const md = MDCACHE[norm(d.t)];
   const lines = [];
+  const totalLine = (value, src) => `${esc(unit === "vol" ? t("prov.totalVol") : t("prov.totalCh"))} <b>${value}</b> — ${esc(srcLabel(src))}` + (src === "mangadex" && t$1.at ? esc(t("prov.checkedOn", { date: t$1.at })) : "") + `. <span>${esc(srcNote(src))}.</span>`;
   if (unit === "vol") {
-    lines.push(t2.vol ? `Total tomes : <b>${t2.vol}</b> — ${SRCLABEL[t2.volSrc]}${t2.volSrc === "mangadex" && t2.at ? `, relevé le ${t2.at}` : ""}. <span>${SRCNOTE[t2.volSrc]}.</span>` : `<span class="warn">Aucun découpage en tomes connu.</span> Fréquent pour les webtoons, publiés sans édition papier. Vérifie sur MangaDex ou saisis le total à la main.`);
+    lines.push(t$1.vol ? totalLine(t$1.vol, t$1.volSrc) : `<span class="warn">${esc(t("prov.noVolSplit"))}</span> ${esc(t("prov.noVolSplitNote"))}`);
   } else {
-    lines.push(t2.ch ? `Total chapitres : <b>${t2.ch}</b> — ${SRCLABEL[t2.chSrc]}${t2.chSrc === "mangadex" && t2.at ? `, relevé le ${t2.at}` : ""}. <span>${SRCNOTE[t2.chSrc]}.</span>` : `<span class="warn">Aucun total fiable.</span> Série en cours : AniList ne publie pas de compte tant qu'elle n'est pas achevée. Vérifie sur MangaDex ou saisis le total.`);
+    lines.push(t$1.ch ? totalLine(t$1.ch, t$1.chSrc) : `<span class="warn">${esc(t("prov.noTotal"))}</span> ${esc(t("prov.noTotalNote"))}`);
   }
-  if (md && md.id === null) lines.push(`<span class="warn">Absente de MangaDex</span> — le suivi des sorties doit être manuel.`);
-  const p = unit === "vol" ? { read: countVolumes(d.ownedVol), tot: t2.vol } : { read: d.r || 0, tot: t2.ch };
-  if (p.tot && p.read > p.tot) lines.push(`<span class="warn">Tu es allé plus loin que le total connu (${p.read} > ${p.tot}).</span> Les numérotations diffèrent souvent entre scantrad et édition officielle : saisis le total à la main pour trancher.`);
+  if (md && md.id === null)
+    lines.push(`<span class="warn">${esc(t("prov.notOnMangadex"))}</span> ${esc(t("prov.notOnMangadexNote"))}`);
+  const p = unit === "vol" ? { read: countVolumes(d.ownedVol), tot: t$1.vol } : { read: d.r || 0, tot: t$1.ch };
+  if (p.tot && p.read > p.tot)
+    lines.push(`<span class="warn">${esc(t("prov.pastTotal", { read: p.read, total: p.tot }))}</span> ${esc(t("prov.pastTotalNote"))}`);
   return `<div class="prov">${lines.join("<br>")}</div>`;
 }
 function trackerHTML(d) {
   const unit = unitOf(d);
   const p = progressOf(d);
   const read = unit === "vol" ? countVolumes(d.ownedVol) : d.r || 0;
-  const remainTxt = p.tot ? p.remain > 0 ? `Reste ${p.remain} ${p.unit}` : "À jour" : "Total inconnu";
+  const remainTxt = p.tot ? p.remain > 0 ? t("track.remaining", { n: p.remain, unit: unitLabel(p.unit) }) : t("track.upToDate") : t("track.unknownTotal");
   return `
     <div class="trackline">
       <div class="seg" role="group" aria-label="${esc(t("track.unitLabel"))}">
@@ -1854,7 +2051,7 @@ function trackerHTML(d) {
       <button class="btn sm ghost" id="mdCheck">${esc(t("btn.checkReleases"))}</button>
       <button class="btn sm ghost" id="setTotal">${esc(t("track.setTotal"))}</button>
       ${unit === "vol" ? `<button class="btn sm ghost" id="ownRange">${esc(t("vol.ownRange"))}</button>` : ""}
-      <button class="btn sm ghost" id="removeBtn" style="margin-left:auto">Retirer</button>
+      <button class="btn sm ghost" id="removeBtn" style="margin-left:auto">${esc(t("btn.remove"))}</button>
     </div>
     ${provenanceHTML(d)}`;
 }
@@ -1931,7 +2128,7 @@ function wireTracker(d, onRemoved) {
   });
   $("setTotal").onclick = () => {
     const cur = unit === "vol" ? d.manVol || totals(d).vol || "" : d.manCh || totals(d).ch || "";
-    const v = prompt(unit === "vol" ? "Nombre de tomes parus :" : "Nombre de chapitres parus :", cur);
+    const v = prompt(t(unit === "vol" ? "track.setTotalVol" : "track.setTotalCh"), cur);
     if (v === null) return;
     const n = parseFloat(String(v).replace(",", "."));
     if (isNaN(n) || n < 0) {
@@ -1944,14 +2141,14 @@ function wireTracker(d, onRemoved) {
   $("mdCheck").onclick = async () => {
     const btn = $("mdCheck");
     btn.disabled = true;
-    btn.textContent = "Vérification…";
+    btn.textContent = t("track.checking");
     try {
       const info = await mdAggregate(d);
-      toast(info.maxCh ? `Dernier chapitre traduit : ${info.maxCh}${info.maxVol ? ` · ${info.maxVol} tomes` : ""}` : "Aucun chapitre recensé");
+      toast(info.maxCh ? t("track.latestChapter", { n: info.maxCh }) + (info.maxVol ? t("track.alsoVolumes", { n: info.maxVol }) : "") : t("track.noChapterListed"));
       refreshTracker(d, onRemoved);
     } catch (e) {
       btn.disabled = false;
-      btn.textContent = "Vérifier les sorties";
+      btn.textContent = t("btn.checkReleases");
       const box = document.createElement("p");
       box.className = "err";
       box.style.marginTop = "8px";
@@ -1960,7 +2157,7 @@ function wireTracker(d, onRemoved) {
     }
   };
   $("removeBtn").onclick = async () => {
-    if (!confirm("Retirer « " + d.t + " » de ta bibliothèque ?\n\nSes données en cache seront également supprimées.")) return;
+    if (!confirm(t("track.removeConfirm", { title: d.t }))) return;
     LIB.entries = LIB.entries.filter((x) => x.id !== d.id);
     saveLib();
     if (onRemoved) onRemoved();
@@ -2030,11 +2227,11 @@ function closeSheet() {
   if (!closeLayer()) teardownSheet();
 }
 function recoRowHTML(r) {
-  const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut, r.score ? r.score + "/100" : null].filter(Boolean).join(" · ");
+  const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, statusLabel(r.statut), r.score ? r.score + "/100" : null].filter(Boolean).join(" · ");
   return `<div class="rec">
     ${r.cover ? `<img class="cover" src="${esc(r.cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
     <div style="min-width:0">
-      <div class="rtitle"><button class="titlelink" data-open="${esc(String(r.mb ?? r.id))}">${esc(r.titre)}</button>${isOwned(r) ? '<span class="owned">déjà chez toi</span>' : ""}</div>
+      <div class="rtitle"><button class="titlelink" data-open="${esc(String(r.mb ?? r.id))}">${esc(r.titre)}</button>${isOwned(r) ? `<span class="owned">${esc(t("owned.badge"))}</span>` : ""}</div>
       <div class="rmeta">${esc(meta)}</div>
       <div class="rwhy">${whyHTML(r)}</div>
       ${isOwned(r) ? "" : `<div class="ractions"><button class="btn sm" data-addreco="${r.mb ?? r.id}">${esc(t("reco.add"))}</button></div>`}
@@ -2075,24 +2272,24 @@ function openSheet(d, opts) {
   const hmeta = [
     meta && meta.type,
     meta && meta.annee,
-    meta && meta.statut,
+    meta && statusLabel(meta.statut),
     meta && meta.score ? meta.score + "/100" + (meta.sources > 1 ? " (" + meta.sources + ")" : "") : null
   ].filter(Boolean).join(" · ");
   $("overlay").innerHTML = `
     <div class="scrim" id="scrim"></div>
-    <aside class="sheet" role="dialog" aria-label="Fiche ${esc(d.t)}">
-      <div class="sheetbar"><span class="sbt">${esc(d.s)}</span><button class="close" id="closeBtn">Fermer ✕</button></div>
+    <aside class="sheet" role="dialog" aria-label="${esc(t("sheet.label", { title: d.t }))}">
+      <div class="sheetbar"><span class="sbt">${esc(sourceLabel(d.s))}</span><button class="close" id="closeBtn">${esc(t("btn.close"))} ✕</button></div>
       <div class="hero">
         ${meta && meta.banner ? `<img class="banner" src="${esc(meta.banner)}" alt="">` : '<div class="noban"></div>'}
         <div class="front">
           ${meta && meta.cover ? `<img src="${esc(meta.cover)}" alt="">` : '<span class="ph"></span>'}
-          <div><h2>${esc(d.t)}</h2><div class="hmeta">${esc(hmeta || d.s)}</div></div>
+          <div><h2>${esc(d.t)}</h2><div class="hmeta">${esc(hmeta || sourceLabel(d.s))}</div></div>
         </div>
       </div>
       <div class="sbody">
         <div>
           ${d.m === "Webtoon" ? '<span class="pill hi">Webtoon</span>' : ""}
-          ${d.origin === "manuel" ? '<span class="pill hi">Ajout manuel</span>' : ""}
+          ${d.origin === "manuel" ? `<span class="pill hi">${esc(t("sheet.manualPill"))}</span>` : ""}
           ${(meta ? meta.genres : d.g).slice(0, 8).map((g) => `<span class="pill">${esc(g)}</span>`).join("")}
         </div>
         ${preview ? `<div class="trackline"><button class="btn" id="addBtn" style="flex:1 1 auto">${esc(t("reco.add"))}</button>
@@ -2101,15 +2298,15 @@ function openSheet(d, opts) {
         ${mihonAvailable() ? `<button class="btn" id="mihonBtn" style="width:100%">${esc(t("mihon.search"))}</button>
         <p class="rmeta" style="margin:6px 0 0">${esc(t("mihon.hint"))}</p>` : ""}
         <dl>
-          ${preview ? "" : `<dt>Dernière fois</dt><dd>${esc(d.d || "—")}</dd>
-          <dt>Ajouté le</dt><dd>${esc(d.ad || "—")}</dd>`}
-          <dt>Auteur</dt><dd>${esc(meta && meta.auteur || d.a || "—")}</dd>
-          ${preview ? "" : `<dt>Source</dt><dd>${esc(d.s)}</dd>`}
+          ${preview ? "" : `<dt>${esc(t("sheet.lastRead"))}</dt><dd>${esc(d.d || "—")}</dd>
+          <dt>${esc(t("sheet.addedOn"))}</dt><dd>${esc(d.ad || "—")}</dd>`}
+          <dt>${esc(t("sheet.author"))}</dt><dd>${esc(meta && meta.auteur || d.a || "—")}</dd>
+          ${preview ? "" : `<dt>${esc(t("sheet.source"))}</dt><dd>${esc(sourceLabel(d.s))}</dd>`}
           ${meta ? `<dt>${esc(t("sheet.record"))}</dt><dd><a href="${esc(meta.url)}" target="_blank" rel="noreferrer">${esc(meta.titre)}</a> ${esc(t("sheet.via", { source: (CREDIT[meta.src] || {}).name || "" }))}${(CREDIT[meta.src] || {}).licence ? ` <span class="rmeta">(${esc(CREDIT[meta.src].licence)})</span>` : ""}</dd>` : ""}
         </dl>
-        ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">Lire la suite</button>` : ""}
-        <div class="seclabel"><span>Ce que lisent ceux qui ont aimé</span><button class="btn ghost sm" id="refresh">Actualiser</button></div>
-        <div id="recos"><p class="loading">Interrogation d'AniList</p></div>
+        ${meta && meta.desc ? `<div class="desc clamped" id="desc">${esc(meta.desc)}</div><button class="more" id="moreBtn">${esc(t("sheet.readMore"))}</button>` : ""}
+        <div class="seclabel"><span>${esc(t("sheet.recos"))}</span><button class="btn ghost sm" id="refresh">${esc(t("btn.refresh"))}</button></div>
+        <div id="recos"><p class="loading">${esc(t("reco.loading"))}</p></div>
       </div>
     </aside>`;
   document.body.style.overflow = "hidden";
@@ -2122,7 +2319,7 @@ function openSheet(d, opts) {
   if (moreBtn) moreBtn.onclick = () => {
     const el = $("desc");
     el.classList.toggle("clamped");
-    moreBtn.textContent = el.classList.contains("clamped") ? "Lire la suite" : "Replier";
+    moreBtn.textContent = t(el.classList.contains("clamped") ? "sheet.readMore" : "sheet.readLess");
   };
   if (preview) {
     $("addBtn").onclick = () => {
@@ -2252,7 +2449,7 @@ function posterHTML(d) {
   const cover = meta ? meta.cover : "";
   const score = meta ? meta.score : null;
   const behind = p.remain;
-  const tape = d.origin === "manuel" ? "Manuel" : behind >= 5 ? "+" + behind + " " + (p.unit === "tomes" ? "t." : "ch.") : d.m === "Webtoon" ? "Webtoon" : "";
+  const tape = d.origin === "manuel" ? t("tape.manual") : behind >= 5 ? "+" + behind + " " + unitShort(p.unit) : d.m === "Webtoon" ? "Webtoon" : "";
   return `<button class="card" data-id="${d.id}">
     <div class="poster">
       ${cover ? `<img src="${esc(cover)}" alt="" loading="lazy" decoding="async">` : `<span class="fallback">${esc(d.t)}</span>`}
@@ -2261,7 +2458,7 @@ function posterHTML(d) {
       <span class="prog"><i class="${pct === 100 ? "done" : ""}" style="width:${pct}%"></i></span>
     </div>
     <div class="ct">${esc(d.t)}</div>
-    <div class="sub"><span class="src">${esc(d.s)}</span><span>${esc(p.label)}</span></div>
+    <div class="sub"><span class="src">${esc(sourceLabel(d.s))}</span><span>${esc(p.label)}</span></div>
   </button>`;
 }
 function listHTML(d) {
@@ -2270,7 +2467,7 @@ function listHTML(d) {
   return `<button class="lrow" data-id="${d.id}">
     ${cover ? `<img src="${esc(cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
     <span style="min-width:0"><span class="lt">${esc(d.t)}</span><br>
-    <span class="lm">${esc(d.s)} · ${esc(d.st)}${d.d ? " · " + esc(d.d) : ""}</span></span>
+    <span class="lm">${esc([sourceLabel(d.s), statusLabel(d.st), d.d].filter(Boolean).join(" · "))}</span></span>
     <span class="lp">${esc(progressOf(d).label)}</span>
   </button>`;
 }
@@ -2299,9 +2496,9 @@ function updateFilterSummary() {
   $("filterSum").innerHTML = `<b>${libRows().length}</b> ${esc(t("filter.summary", { n: libRows().length }))} · ${esc(parts.join(" · "))}` + (active ? ` <button class="btn sm ghost" id="clearFilters">${esc(t("filter.showAll"))}</button>` : "");
   const cf = $("clearFilters");
   if (cf) cf.onclick = () => {
-    state.shelf = "Tout";
-    state.source = "Toutes";
-    state.libType = "Tous types";
+    state.shelf = "all";
+    state.source = "all";
+    state.libType = "all";
     state.q = "";
     $("q").value = "";
     libraryChanged();
@@ -2412,7 +2609,7 @@ function visibleDiscover() {
   });
 }
 function discoverCardHTML(r, i) {
-  const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, r.statut].filter(Boolean).join(" · ");
+  const meta = [r.type, r.annee, r.chapitres ? r.chapitres + " ch." : null, statusLabel(r.statut)].filter(Boolean).join(" · ");
   return `<article class="reccard">
     ${r.cover ? `<img class="cov" src="${esc(r.cover)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
     <div class="body">
@@ -2680,7 +2877,7 @@ function boot() {
         renderLibrary();
       },
       (v) => v === "all" ? lib.length : lib.filter((d) => d.s === v).length,
-      (v) => v === "all" ? t("source.all") : v
+      (v) => v === "all" ? t("source.all") : sourceLabel(v)
     );
     chips(
       $("sortRow"),
@@ -2791,18 +2988,10 @@ $("resetBtn").onclick = async () => {
   const n = LIB.entries.length;
   if (n && confirm(t("reset.exportFirst", { n })))
     exportLib();
-  if (!confirm(
-    `Effacer DÉFINITIVEMENT toutes les données de Rayon ?
-
-• ${n} série(s) et leur progression
-• Fiches, totaux et recommandations en cache
-• Tes préférences
-
-Cette action est irréversible.`
-  )) return;
+  if (!confirm(t("reset.confirm", { n }))) return;
   const btn = $("resetBtn");
   btn.disabled = true;
-  btn.textContent = "Effacement…";
+  btn.textContent = t("reset.erasing");
   const done = await resetEverything();
   if (!done) {
     btn.disabled = false;
@@ -2816,7 +3005,7 @@ $("mdBatch").onclick = async () => {
   const btn = $("mdBatch");
   const todo = libRows().filter((d) => d.r > 0 && !(MDCACHE[norm(d.t)] && MDCACHE[norm(d.t)].at)).slice(0, 40);
   if (!todo.length) {
-    toast("Rien de neuf à vérifier dans ce rayon");
+    toast(t("md.nothingNew"));
     return;
   }
   btn.disabled = true;
@@ -2837,7 +3026,7 @@ $("mdBatch").onclick = async () => {
     renderLibrary();
     await sleep(320);
   }
-  $("statusline").textContent = `${ok} série(s) mises à jour · ${ko} sans correspondance`;
+  $("statusline").textContent = t("md.batchDone", { ok, ko });
   btn.disabled = false;
 };
 $("file").addEventListener("change", (e) => {
@@ -2856,7 +3045,7 @@ $("resetDismissed").onclick = () => {
   DISMISSED.clear();
   saveDismissed();
   renderDiscover();
-  toast("Titres écartés réaffichés");
+  toast(t("discover.dismissedRestored"));
 };
 const dz = $("dropzone");
 let dragDepth = 0;
@@ -2888,6 +3077,7 @@ state.seeds = savedSeeds === "Tout" ? "all" : savedSeeds || 25;
 drawDiscoverChips();
 state.unit = store.get("unit:v1") || "ch";
 $("unitBtn").textContent = t(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
+$("viewBtn").textContent = t(state.view === "grid" ? "btn.listView" : "btn.postersView");
 onLibraryChanged(() => {
   boot();
   if (state.tab === "shopping") renderShopping();
@@ -2920,6 +3110,7 @@ $("langBtn").onclick = () => {
   applyStatic();
   $("langBtn").textContent = t("lang." + next);
   $("unitBtn").textContent = t(state.unit === "ch" ? "unit.chapters" : "unit.volumes");
+  $("viewBtn").textContent = t(state.view === "grid" ? "btn.listView" : "btn.postersView");
   boot();
 };
 $("langBtn").textContent = t("lang." + locale());
@@ -3297,36 +3488,36 @@ dd{margin:0}
 <div class="wrap">
   <header class="mast">
     <div>
-      <p class="kicker" id="kicker">Bibliothèque locale</p>
+      <p class="kicker" id="kicker">Local library</p>
       <h1 id="mastTitle">Rayon<span class="ghost" aria-hidden="true">Rayon</span></h1>
     </div>
     <div class="vert" aria-hidden="true" id="vert"></div>
   </header>
   <div class="stats" id="stats"></div>
 
-  <!-- ===== onglet bibliothèque ===== -->
+  <!-- ===== library tab ===== -->
   <section id="viewLibrary" role="tabpanel" aria-labelledby="tabLibrary">
     <div id="onboard"></div>
     <div class="toolbar" id="libTools">
       <div class="row">
-        <input type="search" id="q" placeholder="Titre, auteur, genre…" aria-label="Chercher">
-        <button class="btn ghost filterbtn" id="filterBtn" aria-expanded="false">Filtres<span class="dot hidden" id="filterDot"></span></button>
+        <input type="search" id="q" data-i18n-attr="placeholder:lib.searchPlaceholder;aria-label:lib.searchLabel" placeholder="Title, author, genre…" aria-label="Search">
+        <button class="btn ghost filterbtn" id="filterBtn" aria-expanded="false"><span data-i18n="btn.filters">Filters</span><span class="dot hidden" id="filterDot"></span></button>
         <button class="btn ghost" id="moreBtn2" aria-expanded="false">•••</button>
       </div>
       <div class="filtersum" id="filterSum"></div>
       <div class="panel hidden" id="filterPanel">
         <div class="chiprow" id="typeLibRow" role="group" aria-label="Type" data-i18n-attr="aria-label:filter.type"></div>
-        <div class="chiprow" id="shelfRow" role="group" aria-label="Rayon" data-i18n-attr="aria-label:filter.shelf"></div>
+        <div class="chiprow" id="shelfRow" role="group" aria-label="Shelf" data-i18n-attr="aria-label:filter.shelf"></div>
         <div class="chiprow" id="srcRow" role="group" aria-label="Source" data-i18n-attr="aria-label:filter.source"></div>
-        <div class="chiprow" id="sortRow" role="group" aria-label="Tri" data-i18n-attr="aria-label:filter.sort"></div>
+        <div class="chiprow" id="sortRow" role="group" aria-label="Sort" data-i18n-attr="aria-label:filter.sort"></div>
       </div>
       <div class="morebar hidden" id="moreBar">
-        <button class="btn ghost" id="viewBtn">Vue liste</button>
-        <button class="btn ghost" id="unitBtn">Suivi : chapitres</button>
-        <button class="btn ghost" id="mdBatch" data-i18n="btn.checkReleases">Vérifier les sorties</button>
-        <button class="btn ghost" id="importBtn" data-i18n="btn.import">Importer</button>
-        <button class="btn ghost" id="exportBtn" data-i18n="btn.export">Exporter</button>
-        <button class="btn ghost danger" id="resetBtn" data-i18n="btn.reset">Tout effacer</button>
+        <button class="btn ghost" id="viewBtn">List view</button>
+        <button class="btn ghost" id="unitBtn">Tracking: chapters</button>
+        <button class="btn ghost" id="mdBatch" data-i18n="btn.checkReleases">Check releases</button>
+        <button class="btn ghost" id="importBtn" data-i18n="btn.import">Import</button>
+        <button class="btn ghost" id="exportBtn" data-i18n="btn.export">Export</button>
+        <button class="btn ghost danger" id="resetBtn" data-i18n="btn.reset">Erase everything</button>
         <button class="btn ghost" id="langBtn">English</button>
         <input type="file" id="file" accept=".tachibk,.json,.gz" class="hidden">
       </div>
@@ -3335,19 +3526,19 @@ dd{margin:0}
     <div id="results"></div>
   </section>
 
-  <!-- ===== onglet découvrir ===== -->
+  <!-- ===== discover tab ===== -->
   <section id="viewDiscover" class="hidden" role="tabpanel" aria-labelledby="tabDiscover">
     <div class="toolbar">
       <div class="row">
-        <button class="btn" id="runDiscover">Analyser</button>
-        <button class="btn ghost" id="dFilterBtn" aria-expanded="false">Filtres</button>
-        <button class="btn ghost" id="resetDismissed" data-i18n="discover.resetDismissed">Réafficher les écartés</button>
+        <button class="btn" id="runDiscover" data-i18n="discover.run">Run analysis</button>
+        <button class="btn ghost" id="dFilterBtn" aria-expanded="false" data-i18n="btn.filters">Filters</button>
+        <button class="btn ghost" id="resetDismissed" data-i18n="discover.resetDismissed">Show dismissed again</button>
       </div>
       <div class="panel hidden" id="dFilterPanel">
-        <div class="chiprow" id="seedRow" role="group" aria-label="Séries analysées"></div>
+        <div class="chiprow" id="seedRow" role="group" aria-label="Series analysed" data-i18n-attr="aria-label:discover.seriesAnalysed"></div>
         <div class="chiprow" id="typeRow" role="group" aria-label="Type" data-i18n-attr="aria-label:filter.type"></div>
         <div class="chiprow" id="whyRow" role="group" aria-label="Raison" data-i18n-attr="aria-label:filter.why"></div>
-        <div class="chiprow" id="dsortRow" role="group" aria-label="Tri" data-i18n-attr="aria-label:filter.sort"></div>
+        <div class="chiprow" id="dsortRow" role="group" aria-label="Sort" data-i18n-attr="aria-label:filter.sort"></div>
       </div>
       <div class="progress hidden" id="discoverProgress"><i style="width:0%"></i></div>
       <div class="statusline" id="discoverStatus" role="status" aria-live="polite"></div>
@@ -3355,12 +3546,12 @@ dd{margin:0}
     <div id="discoverBox"></div>
   </section>
 
-  <!-- ===== onglet courses ===== -->
+  <!-- ===== shopping tab ===== -->
   <section id="viewShop" class="hidden" role="tabpanel" aria-labelledby="tabShop">
     <div class="stats" id="shopStats"></div>
     <div class="toolbar">
       <div class="row">
-        <button class="btn ghost" id="shopPrice" data-i18n="shop.setPrice">Prix par tome</button>
+        <button class="btn ghost" id="shopPrice" data-i18n="shop.setPrice">Price per volume</button>
         <span class="rmeta" id="shopPriceNote"></span>
       </div>
     </div>
@@ -3371,17 +3562,17 @@ dd{margin:0}
 </div>
 
 <nav class="tabs" role="tablist" data-i18n-attr="aria-label:tabs.label">
-  <button class="tab" role="tab" id="tabLibrary" aria-selected="true" aria-controls="viewLibrary"><span class="badge" id="tabLibN">0</span><span data-i18n="tab.library">Bibliothèque</span></button>
-  <button class="tab" role="tab" id="tabDiscover" aria-selected="false" aria-controls="viewDiscover"><span class="badge" id="tabDiscN">—</span><span data-i18n="tab.discover">Découvrir</span></button>
-  <button class="tab" role="tab" id="tabShop" aria-selected="false" aria-controls="viewShop"><span class="badge" id="tabShopN">0</span><span data-i18n="tab.shopping">Courses</span></button>
+  <button class="tab" role="tab" id="tabLibrary" aria-selected="true" aria-controls="viewLibrary"><span class="badge" id="tabLibN">0</span><span data-i18n="tab.library">Library</span></button>
+  <button class="tab" role="tab" id="tabDiscover" aria-selected="false" aria-controls="viewDiscover"><span class="badge" id="tabDiscN">—</span><span data-i18n="tab.discover">Discover</span></button>
+  <button class="tab" role="tab" id="tabShop" aria-selected="false" aria-controls="viewShop"><span class="badge" id="tabShopN">0</span><span data-i18n="tab.shopping">Shopping</span></button>
   <!-- NOT a tab: it opens a modal and controls no panel. Announcing it as one made the whole
        widget wrong for assistive technology (REVIEW.md §6). -->
-  <button class="tab" id="tabAdd"><span class="badge">＋</span><span data-i18n="tab.add">Ajouter</span></button>
+  <button class="tab" id="tabAdd"><span class="badge">＋</span><span data-i18n="tab.add">Add</span></button>
 </nav>
 
 <div id="overlay"></div>
 <div id="modalHost"></div>
-<div class="dropzone hidden" id="dropzone" data-i18n="lib.dropzone">Dépose ta sauvegarde .tachibk ou ton export .json</div>
+<div class="dropzone hidden" id="dropzone" data-i18n="lib.dropzone">Drop your .tachibk backup or your .json export</div>
 
 </body>
 </html>

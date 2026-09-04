@@ -26,7 +26,10 @@ function pbParse(buf, start, end){
 }
 const dec = new TextDecoder("utf-8");
 const group = fields => { const g={}; fields.forEach(x=>{ (g[x.f]=g[x.f]||[]).push(x); }); return g; };
-const MSTATUS = {0:"Inconnu",1:"En cours",2:"Terminé",3:"Sous licence",4:"Publication terminée",5:"Annulé",6:"En pause"};
+/* Mihon's status enum, mapped onto the same tokens the records use. Note 2 and 4 are not the
+   same fact: Mihon distinguishes a series that has stopped publishing from one whose story is
+   finished, so they keep separate tokens. */
+const MSTATUS = {0:"unknown",1:"releasing",2:"completed",3:"licensed",4:"publishing_finished",5:"cancelled",6:"hiatus"};
 const MMODE = {0:"",1:"Gauche→Droite",2:"Droite→Gauche",3:"Vertical",4:"Webtoon",5:"Vertical continu"};
 const isoDay = ms => ms ? new Date(Number(ms)).toISOString().slice(0,10) : "";
 
@@ -109,7 +112,7 @@ export function parseBackup(bytes){
     entries.push({
       id: uid(), t: str(3), a: str(5)||str(4),
       s: sources[String(g[1]?g[1][0].v:"")] || t("backup.unknownSource"),
-      st: MSTATUS[g[8]?Number(g[8][0].v):0] || "Inconnu",
+      st: MSTATUS[g[8]?Number(g[8][0].v):0] || "unknown",
       g: (g[7]||[]).map(y=>dec.decode(y.v)).slice(0,6),
       r: read, n: chapters.length,
       d: hist.length ? isoDay(Math.max.apply(null,hist)) : "",
